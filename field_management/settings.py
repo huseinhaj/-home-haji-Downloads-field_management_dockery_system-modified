@@ -318,6 +318,25 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 300  # 5 minutes max per task
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # fair scheduling for long tasks
 
+# ESS (browser/Playwright) tasks kwenye foleni yao ili kusudiwa workers
+# maalum (Procfile: worker_fill) — zisizuie emails/default, na ziweze
+# kupandishwa wingi kwa hiyo foleni pekee.
+CELERY_TASK_ROUTES = {
+    'ess_tracker.tasks.run_ess_fill': {'queue': 'essfill'},
+    'ess_tracker.tasks.run_ess_sync': {'queue': 'essfill'},
+    'ess_tracker.tasks.run_ess_push': {'queue': 'essfill'},
+}
+# Kiwango cha juu cha kushtua ESS kwa kila worker (epuka kuzidi/ku-ban).
+ESS_FILL_RATE_LIMIT = os.environ.get('ESS_FILL_RATE_LIMIT', '30/m')
+CELERY_TASK_ANNOTATIONS = {
+    'ess_tracker.tasks.run_ess_fill': {'rate_limit': ESS_FILL_RATE_LIMIT},
+    'ess_tracker.tasks.run_ess_sync': {'rate_limit': ESS_FILL_RATE_LIMIT},
+    'ess_tracker.tasks.run_ess_push': {'rate_limit': ESS_FILL_RATE_LIMIT},
+}
+# Lock ya mwalimu (sekunde). Lazima iwe > time_limit ya task (600s) ili lock
+# isifunguke kabla ya kazi kuisha; pia ikianguka, hujifuta yenyewe.
+ESS_PROFILE_LOCK_SECONDS = int(os.environ.get('ESS_PROFILE_LOCK_SECONDS', '900'))
+
 # Beat schedule: refresh HESLB knowledge every Monday at 06:00 EAT;
 # every day ~06:00 EAT try auto-fill due ESS profiles (calendar-aware).
 CELERY_BEAT_SCHEDULE = {

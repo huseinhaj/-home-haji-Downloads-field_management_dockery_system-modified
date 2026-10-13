@@ -402,12 +402,16 @@ def ess_fill(request):
     if not profile.ess_ready:
         messages.error(request, 'Weka kwanza ESS username na password kwenye wasifu.')
         return redirect('ess_tracker:ess_profile')
+    existing = profile.fill_runs.filter(kind='fill', status='running').first()
+    if existing:
+        messages.info(request, 'Kujaza kunaendelea tayari kwa mwalimu huyu — subiri kukamilika.')
+        return redirect('ess_tracker:ess_fill_status', run_id=existing.id)
     run = EssFillRun.objects.create(profile=profile)
     run.status = 'running'
     run.save()
     try:
         from .tasks import run_ess_fill
-        res = run_ess_fill.apply_async(args=[profile.id, run.id], queue='default')
+        res = run_ess_fill.apply_async(args=[profile.id, run.id], queue='essfill')
         run.task_id = res.id
         run.save()
         started = True
@@ -440,7 +444,7 @@ def ess_sync_names(request):
     run.save()
     try:
         from .tasks import run_ess_sync
-        res = run_ess_sync.apply_async(args=[profile.id, run.id], queue='default')
+        res = run_ess_sync.apply_async(args=[profile.id, run.id], queue='essfill')
         run.task_id = res.id
         run.save()
         started = True
@@ -474,7 +478,7 @@ def ess_push_names(request):
     run.save()
     try:
         from .tasks import run_ess_push
-        res = run_ess_push.apply_async(args=[profile.id, run.id], queue='default')
+        res = run_ess_push.apply_async(args=[profile.id, run.id], queue='essfill')
         run.task_id = res.id
         run.save()
         started = True

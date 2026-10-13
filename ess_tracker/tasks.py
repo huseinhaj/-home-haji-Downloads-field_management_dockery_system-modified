@@ -15,11 +15,12 @@ def _fill_day(weekday, entries):
 @shared_task(bind=True, time_limit=120, soft_time_limit=100)
 def auto_fill_due(self):
     """Jaza kiotomatiki kwa kila mwalimu aliyejiwekea tarehe za shule,
-    siku zinazohesabiwa kwa entries_per_week (queue='default')."""
+    siku zinazohesabiwa kwa entries_per_week (queue='essfill')."""
     from datetime import date
 
     from django.utils import timezone
 
+    from .locks import is_locked
     from .models import EssFillRun, TeacherProfile
 
     today = timezone.localdate()
@@ -38,30 +39,75 @@ def auto_fill_due(self):
                 .exclude(status='failed').filter(started__date=today).exists():
             skipped.append({'id': prof.id, 'why': 'already'})
             continue
+        if is_locked(prof.id):
+            skipped.append({'id': prof.id, 'why': 'locked'})
+            continue
         run = EssFillRun.objects.create(profile=prof)
         from .tasks import run_ess_fill
-        run_ess_fill.apply_async(args=[prof.id, run.id], queue='default')
+        run_ess_fill.apply_async(args=[prof.id, run.id], queue='essfill')
         triggered.append(prof.id)
     return {'date': date.today().isoformat(), 'triggered': triggered,
             'skipped': skipped}
 
 
-@shared_task(bind=True, time_limit=600, soft_time_limit=560)
+def _retry_countdown(task, base):
+    """Backoff: base, base x2, base x4 ... hadi dakika 15."""
+    return min(base * (2 ** task.request.retries), 900)
+
+
+def _retry_safe(task, run_id, res) -> bool:
+    """Retry tu kama run ilishindwa KABLA ya kuwasilisha kitu (saved == 0).
+
+    Hii inaepusha kuwasilisha entry mara mbili kwenye ESS wakati wa retry.
+    """
+    if not res or res.get('status') != 'error':
+        return False
+    if task.request.retries >= task.max_retries:
+        return False
+    from .models import EssFillRun
+    saved = EssFillRun.objects.filter(pk=run_id) \
+        .values_list('saved', flat=True).first() or 0
+    return not saved
+
+
+@shared_task(bind=True, queue='essfill', time_limit=600, soft_time_limit=560,
+             max_retries=3)
 def run_ess_fill(self, profile_id, run_id):
-    """Jaza ESS kwa profile moja (queue='default' — ndiyo worker inayosikiliza)."""
+    """Jaza ESS kwa profile moja (queue='essfill').
+
+    Lock ya mwalimu huzuia run mbili za mtu mmoja ziende pamoja. Kama
+    mwingine anaendelea, tunasubiri (retry) badala ya kugongana kwenye ESS.
+    """
     from .essfill import run_fill
-    return run_fill(profile_id, run_id)
+    from .locks import profile_lock
+    with profile_lock(profile_id) as got:
+        if not got:
+            raise self.retry(countdown=_retry_countdown(self, 90))
+        res = run_fill(profile_id, run_id)
+    if _retry_safe(self, run_id, res):
+        raise self.retry(countdown=_retry_countdown(self, 120))
+    return res
 
 
-@shared_task(bind=True, time_limit=600, soft_time_limit=560)
+@shared_task(bind=True, queue='essfill', time_limit=600, soft_time_limit=560,
+             max_retries=3)
 def run_ess_sync(self, profile_id, run_id):
-    """Sawazisha majina ya task/sub-task na ESS (queue='default')."""
+    """Sawazisha majina ya task/sub-task na ESS (queue='essfill')."""
     from .essfill import run_sync
-    return run_sync(profile_id, run_id)
+    from .locks import profile_lock
+    with profile_lock(profile_id) as got:
+        if not got:
+            raise self.retry(countdown=_retry_countdown(self, 90))
+        return run_sync(profile_id, run_id)
 
 
-@shared_task(bind=True, time_limit=600, soft_time_limit=560)
+@shared_task(bind=True, queue='essfill', time_limit=600, soft_time_limit=560,
+             max_retries=3)
 def run_ess_push(self, profile_id, run_id):
-    """Tuma majina ya local kwenda ESS official (queue='default')."""
+    """Tuma majina ya local kwenda ESS official (queue='essfill')."""
     from .essfill import run_push
-    return run_push(profile_id, run_id)
+    from .locks import profile_lock
+    with profile_lock(profile_id) as got:
+        if not got:
+            raise self.retry(countdown=_retry_countdown(self, 90))
+        return run_push(profile_id, run_id)
