@@ -52,6 +52,10 @@ class TeacherProfile(models.Model):
         blank=True,
         help_text='ID za sub-task za kujaza kiotomatiki (zikitenganishwa kwa '
                   'koma). Tupu = sub-task zote zinazohitaji.')
+    auto_fill_enabled = models.BooleanField(
+        default=True,
+        help_text='Washa/kuzima kujaza kiotomatiki. Kikizimwa, mfumo haujazi '
+                  'yenyewe; unaweza kujaza mwenyewe kwa kitufe cha "Jaza".')
     holidays = models.ManyToManyField(
         'Holiday', blank=True, related_name='profiles',
         help_text='Likizo zilizochaguliwa — zinatolewa kwenye hesabu ya siku za shule (194)')

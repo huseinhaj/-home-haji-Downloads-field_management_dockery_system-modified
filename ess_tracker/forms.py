@@ -117,6 +117,14 @@ class ProfileForm(forms.ModelForm):
         help_text='Chagua sub-task ambazo mfumo ujaze kiotomatiki. '
                   'Bila kuchagua = sub-task zote zinazohitaji.')
 
+    auto_fill_enabled = forms.BooleanField(
+        label='Washa kujaza kiotomatiki',
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        help_text='Kikizimwa, mfumo haitajazi yenyewe. Waweza kuwasha tena '
+                  'au kujaza kwa mkono kwa kitufe cha "Jaza" kwenye nyumbani.')
+
     holidays = forms.ModelMultipleChoiceField(
         label='Likizo (chagua zinazohusu mwaka huu)',
         required=False,
@@ -133,6 +141,7 @@ class ProfileForm(forms.ModelForm):
             self.fields['auto_subtasks'].queryset = SubTask.objects.filter(
                 task__profile=self.instance).order_by('task_id', 'position')
             self.fields['auto_subtasks'].initial = self.instance.auto_subtask_ids()
+            self.fields['auto_fill_enabled'].initial = self.instance.auto_fill_enabled
             self.fields['holidays'].queryset = Holiday.objects.filter(
                 Q(profile__isnull=True) | Q(profile=self.instance))
             self.fields['holidays'].initial = self.instance.holidays.all()
@@ -171,6 +180,7 @@ class ProfileForm(forms.ModelForm):
         profile.entries_per_week = int(self.cleaned_data.get('entries_per_week') or 3)
         chosen = self.cleaned_data.get('auto_subtasks') or []
         profile.auto_subtasks = ','.join(str(s.id) for s in chosen)
+        profile.auto_fill_enabled = bool(self.cleaned_data.get('auto_fill_enabled'))
         if commit:
             profile.save()
             profile.holidays.set(self.cleaned_data.get('holidays') or [])

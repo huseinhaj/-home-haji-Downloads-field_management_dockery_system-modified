@@ -71,6 +71,9 @@ def auto_fill_due(self):
     for prof in TeacherProfile.objects.filter(ess_ready=True) \
             .select_related('user') \
             .exclude(school_open=None).exclude(school_close=None):
+        if not prof.auto_fill_enabled:
+            skipped.append({'id': prof.id, 'why': 'disabled'})
+            continue
         if not (prof.school_open <= today <= prof.school_close):
             skipped.append({'id': prof.id, 'why': 'closed'})
             continue
