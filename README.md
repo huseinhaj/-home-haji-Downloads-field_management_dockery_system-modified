@@ -88,3 +88,24 @@ Walimu wanajiandikisha mara moja, wanachagua sub-task na kubonyeza **Jaza**.
 > ```
 > Beat hutuma kumbukumbu Jumatatu–Ijumaa 07:00 EAT (`ess-notify-due`) na kujaza
 > kiotomatiki kila siku (`ess-auto-fill-daily`).
+
+### 🛠️ Background services (workers + beat)
+
+Web service haitoshelezi ESS/resources peke yake — inahitaji **worker**, **worker
+wa foleni `essfill`**, na **beat**. Chagua mojawapo:
+
+**A) VPS / docker-compose** (tayari imewekwa kwenye `docker-compose.yml`):
+`web`, `celery` (default+emails), `celery-fill` (essfill), `celery-beat`.
+Weka `VAPID_*` kwenye `.env.docker` kisha `docker compose up -d`.
+
+**B) Railway** — kwa kuwa `railway.toml` ina `startCommand` ya web pekee, undaa
+**services tatu za ziada** (repo hii hii) na uweke Start Command ya kila moja:
+
+| Service | Start Command |
+|---|---|
+| worker | `celery -A field_management worker --loglevel=info --concurrency=2 --queues=default,emails` |
+| worker-fill | `celery -A field_management worker --loglevel=info --concurrency=4 --queues=essfill --max-tasks-per-child=20` |
+| beat | `celery -A field_management beat --loglevel=info` |
+
+> Weka `VAPID_*`, `ESS_ENC_KEY` na `REDIS_URL` kwenye **kila** service. Beat iwe
+> **replica 1 pekee** (isijirudie).

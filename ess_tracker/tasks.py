@@ -3,6 +3,30 @@ from celery import shared_task
 # Siku za kujaza ESS: Jumatatu–Ijumaa (weekday 0=Jumatatu ... 4=Ijumaa).
 FILL_WEEKDAYS = (0, 1, 2, 3, 4)
 
+# Saa za Tanzania (EAT). TIME_ZONE ya Django ni UTC; hesabu za siku za kujaza
+# zinahitaji tarehe ya EAT ili usiku wa manane usisababishe kukosa/kuongeza siku.
+EAT = None  # hupangwa kwa lazy kwenye _eat_tz()
+
+
+def _eat_tz():
+    global EAT
+    if EAT is None:
+        from zoneinfo import ZoneInfo
+        EAT = ZoneInfo('Africa/Dar_es_Salaam')
+    return EAT
+
+
+def _today_eat():
+    from django.utils import timezone
+    return timezone.now().astimezone(_eat_tz()).date()
+
+
+def _eat_day_bounds(day):
+    """(mwanzoni, mwisho) wa siku ya EAT kama aware datetimes (kwa DB queries)."""
+    from datetime import datetime, time, timedelta
+    start = datetime.combine(day, time.min, tzinfo=_eat_tz())
+    return start, start + timedelta(days=1)
+
 
 def _fill_day(weekday, entries=None):
     """True kama leo ni siku ya kujaza (Jumatatu–Ijumaa).
@@ -18,14 +42,11 @@ def _fill_day(weekday, entries=None):
 def auto_fill_due(self):
     """Jaza kiotomatiki kwa kila mwalimu aliyejiwekea tarehe za shule,
     siku zinazohesabiwa kwa entries_per_week (queue='essfill')."""
-    from datetime import date
-
-    from django.utils import timezone
-
     from .locks import is_locked
     from .models import EssFillRun, TeacherProfile
 
-    today = timezone.localdate()
+    today = _today_eat()
+    day_start, day_end = _eat_day_bounds(today)
     triggered = []
     skipped = []
     for prof in TeacherProfile.objects.filter(ess_ready=True) \
@@ -38,7 +59,8 @@ def auto_fill_due(self):
             skipped.append({'id': prof.id, 'why': 'not-fill-day'})
             continue
         if EssFillRun.objects.filter(profile=prof, kind='fill') \
-                .exclude(status='failed').filter(started__date=today).exists():
+                .exclude(status='failed') \
+                .filter(started__gte=day_start, started__lt=day_end).exists():
             skipped.append({'id': prof.id, 'why': 'already'})
             continue
         if is_locked(prof.id):
@@ -48,7 +70,7 @@ def auto_fill_due(self):
         from .tasks import run_ess_fill
         run_ess_fill.apply_async(args=[prof.id, run.id], queue='essfill')
         triggered.append(prof.id)
-    return {'date': date.today().isoformat(), 'triggered': triggered,
+    return {'date': today.isoformat(), 'triggered': triggered,
             'skipped': skipped}
 
 
@@ -139,19 +161,16 @@ def notify_fill_due():
     (hawana run ya 'done' ya leo). Waliojibiwa tayari kiotomatiki
     hawasumbuliwi — wanapata arifa ya matokeo kwenye run_ess_fill.
     """
-    from datetime import date
-
-    from django.utils import timezone
-
     from .models import EssFillRun, TeacherProfile
     from .push import push_configured, send_to_profile
 
-    today = timezone.localdate()
+    today = _today_eat()
     if not _fill_day(today.weekday()):
-        return {'date': date.today().isoformat(), 'skipped': 'not-fill-day'}
+        return {'date': today.isoformat(), 'skipped': 'not-fill-day'}
     if not push_configured():
-        return {'date': date.today().isoformat(), 'skipped': 'not-configured'}
+        return {'date': today.isoformat(), 'skipped': 'not-configured'}
 
+    day_start, day_end = _eat_day_bounds(today)
     sent = 0
     skipped = 0
     profs = TeacherProfile.objects.filter(
@@ -163,7 +182,7 @@ def notify_fill_due():
             continue
         done_today = EssFillRun.objects.filter(
             profile=prof, kind='fill', status='done',
-            finished__date=today).exists()
+            finished__gte=day_start, finished__lt=day_end).exists()
         if done_today:
             skipped += 1
             continue
@@ -171,4 +190,4 @@ def notify_fill_due():
                               body='Bonyeza "Jaza" kuingiza maendeleo yako ya leo.',
                               url='/ess/', tag='ess-remind')
         sent += res.get('sent', 0)
-    return {'date': date.today().isoformat(), 'sent': sent, 'skipped': skipped}
+    return {'date': today.isoformat(), 'sent': sent, 'skipped': skipped}
