@@ -308,6 +308,52 @@ def _wait_for_table(page, timeout_s=30) -> bool:
     return False
 
 
+def _page_loading(page) -> bool:
+    """True kama jedwali bado linaonyesha spinner/'Loading...' inayoonekana."""
+    try:
+        for el in page.query_selector_all(
+                'mat-progress-spinner, .mat-mdc-progress-spinner, '
+                '.mdc-circular-progress, .mat-mdc-progress-bar, '
+                '[class*=spinner i]'):
+            try:
+                if el.is_visible():
+                    return True
+            except Exception:
+                continue
+    except Exception:
+        pass
+    try:
+        return 'loading...' in _visible_text(page, 400).lower()
+    except Exception:
+        return False
+
+
+def _table_settled(page, timeout_s=25):
+    """Subiri jedwali litulie kisha rudi safu halisi (au [] kama 'No data').
+
+    ESS ni Angular: baada ya kubadilisha mwaka ukurasa hupakia tena, hivyo
+    huonekana safu ya mpito/kiunzi wakati 'Loading...' bado ipo. Hii husubiri
+    hadi idadi ya safu itulie na spinner iishe ili tusichague mwaka kwa safu
+    ya kiunzi (jambo lililotokea kwenye Run #35).
+    """
+    deadline = time.time() + timeout_s
+    last_n = None
+    stable = 0
+    while time.time() < deadline:
+        loading = _page_loading(page)
+        rows = _rows(page)
+        n = len(rows)
+        if not loading and n == last_n:
+            stable += 1
+            if stable >= 2:
+                return rows
+        else:
+            stable = 0
+        last_n = n
+        page.wait_for_timeout(400)
+    return _rows(page)
+
+
 def _current_year(page):
     try:
         return page.evaluate(
@@ -1142,7 +1188,8 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                 pass
 
             # ESS inaweza kuwa na sub-tasks chini ya mwaka mwingine (FY vs CY);
-            # pima miaka iliyohifadhiwa na uchague unao na safu.
+            # pima miaka iliyohifadhiwa. Hujaribu mwaka unaotarajiwa (CY)
+            # kwanza, kisha mingine hadi sub-task zipatikane (fallback).
             cands = _candidate_years(page)
             for c in cands:
                 emit('mwaka-pendekezwa: id=%s type=%s title=%s src=%s'
@@ -1151,88 +1198,102 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                         c.get('yearTitle'), c.get('_src')))
             if cy and cy.get('id'):
                 cands.sort(key=lambda c: 0 if c['id'] == cy['id'] else 1)
-            chosen = cy
-            for cand in cands:
-                try:
-                    _set_current_year(page, cand)
-                    _goto_subtasks(page)
-                    n = len(_rows(page))
-                except Exception as exc:
-                    emit(f'mwaka {cand.get("id")}: kosa {exc}')
-                    continue
-                emit(f'mwaka {cand.get("id")} '
-                     f'({cand.get("yearTypeCode") or cand.get("yearType") or "?"}): safu {n}')
-                if n > 0:
-                    chosen = cand
-                    break
+                if not any(c.get('id') == cy['id'] for c in cands):
+                    cands.insert(0, cy)
 
             threshold = SELECTORS['match_threshold']
             remaining = list(wanted)
-            page_no = 0
-            while remaining:
-                page_no += 1
-                page.wait_for_selector(SELECTORS['row_selector'], timeout=15000)
-                row_els = _rows(page)
-                visible = []
-                for i, el in enumerate(row_els):
-                    cell = el.query_selector(SELECTORS['subtask_cell_selector'])
-                    if cell:
-                        visible.append({'i': i, 'text': cell.inner_text(),
-                                        'pct': _row_current_pct(el)})
-                emit(f'Ukurasa {page_no}: safu {len(visible)}')
-                if page_no == 1:
-                    for v in visible:
-                        one = re.sub(r'\s+', ' ', v['text']).strip()[:90]
-                        emit(f'   • [{v["pct"]}] {one}')
+            tried = set()
+
+            def _process_year(cand):
+                """Weka mwaka, subiri jedwali litulie, jaza sub-task zilizosalia."""
+                nonlocal saved, skipped, failed
+                yid = cand.get('id')
+                if not yid or yid in tried:
+                    return
+                tried.add(yid)
+                try:
+                    _set_current_year(page, cand)
+                    _goto_subtasks(page)
+                    row_els = _table_settled(page)
+                except Exception as exc:
+                    emit(f'mwaka {yid}: kosa {exc}')
+                    return
+                emit(f'mwaka {yid} '
+                     f'({cand.get("yearTypeCode") or cand.get("yearType") or "?"}): '
+                     f'safu {len(row_els)}')
+                page_no = 0
+                while remaining:
+                    page_no += 1
+                    visible = []
+                    for i, el in enumerate(row_els):
+                        cell = el.query_selector(SELECTORS['subtask_cell_selector'])
+                        if cell:
+                            visible.append({'i': i, 'text': cell.inner_text(),
+                                            'pct': _row_current_pct(el)})
+                    emit(f'Ukurasa {page_no}: safu {len(visible)}')
+                    if page_no == 1:
+                        for v in visible:
+                            one = re.sub(r'\s+', ' ', v['text']).strip()[:90]
+                            emit(f'   • [{v["pct"]}] {one}')
+                        if not visible:
+                            emit(f'   (jedwali tupu) URL: {page.url}')
+                            emit('   ukurasa: ' + _visible_text(page, 400))
                     if not visible:
-                        emit(f'   (jedwali tupu) URL: {page.url}')
-                        emit('   ukurasa: ' + _visible_text(page, 400))
+                        break
 
-                for entry in list(remaining):
-                    st, text, note, pct, target = entry
-                    match, score = _best_row_match(text, visible, threshold)
-                    if not match:
-                        continue
-                    remaining.remove(entry)
-                    cur = match['pct']
-                    # Jumla inayotakiwa (target) isomwe kutoka jina la ESS.
-                    ess_target = parse_count(match.get('text') or '', st.position)
-                    if ess_target and ess_target > 0:
-                        target = float(ess_target)
-                    emit(f'  target = {target:g} (kutoka ESS)')
-                    # Soma entries za nyuma za ESS ili actual/asilimia ziwe sawa.
-                    prev, _prior = _prior_actual_for_ess(
-                        page, match['i'], st, emit)
-                    note, pct = entry_from_values(st, target, pct, prev)
-                    emit(f'  hesabu: prev={prev} => {pct:.2f}% (actual/target)')
-                    if cur is not None and float(pct) <= float(cur) + 0.5:
-                        skipped += 1
-                        emit(f'= ESS tayari {float(cur):.0f}% (>= {pct:.2f}%): {text[:50]}')
-                        continue
-                    emit(f'-> {text[:50]}  (match {score:.2f}) => {pct:.2f}%')
-                    emit(f'   desc: {note[:70]}')
-                    try:
-                        _fill_one(page, match['i'], text, pct, emit=emit, note=note)
-                        saved += 1
-                        _set_progress(run_id, saved=saved)
-                    except Exception as exc:
-                        if (isinstance(exc, PendingProgressError)
-                                or 'pending progress' in str(exc).lower()):
+                    for entry in list(remaining):
+                        st, text, note, pct, target = entry
+                        match, score = _best_row_match(text, visible, threshold)
+                        if not match:
+                            continue
+                        remaining.remove(entry)
+                        cur = match['pct']
+                        # Jumla inayotakiwa (target) isomwe kutoka jina la ESS.
+                        ess_target = parse_count(match.get('text') or '', st.position)
+                        if ess_target and ess_target > 0:
+                            target = float(ess_target)
+                        emit(f'  target = {target:g} (kutoka ESS)')
+                        # Soma entries za nyuma za ESS ili actual/asilimia ziwe sawa.
+                        prev, _prior = _prior_actual_for_ess(
+                            page, match['i'], st, emit)
+                        note, pct = entry_from_values(st, target, pct, prev)
+                        emit(f'  hesabu: prev={prev} => {pct:.2f}% (actual/target)')
+                        if cur is not None and float(pct) <= float(cur) + 0.5:
                             skipped += 1
-                            emit(f'  = ESS ina pending progress (imeachwa): {text[:40]}')
-                        else:
-                            failed += 1
-                            emit(f'  !! imeshindikana ({pct:.2f}%): {exc}')
-                        _close_progress_dialog(page)
-                        _set_progress(run_id, saved=saved, skipped=skipped,
-                                      not_found=failed)
-                        continue
+                            emit(f'= ESS tayari {float(cur):.0f}% (>= {pct:.2f}%): {text[:50]}')
+                            continue
+                        emit(f'-> {text[:50]}  (match {score:.2f}) => {pct:.2f}%')
+                        emit(f'   desc: {note[:70]}')
+                        try:
+                            _fill_one(page, match['i'], text, pct, emit=emit, note=note)
+                            saved += 1
+                            _set_progress(run_id, saved=saved)
+                        except Exception as exc:
+                            if (isinstance(exc, PendingProgressError)
+                                    or 'pending progress' in str(exc).lower()):
+                                skipped += 1
+                                emit(f'  = ESS ina pending progress (imeachwa): {text[:40]}')
+                            else:
+                                failed += 1
+                                emit(f'  !! imeshindikana ({pct:.2f}%): {exc}')
+                            _close_progress_dialog(page)
+                            _set_progress(run_id, saved=saved, skipped=skipped,
+                                          not_found=failed)
+                            continue
 
-                nxt = page.query_selector(SELECTORS['paginator_next_selector'])
-                if not nxt or nxt.get_attribute('disabled') is not None or nxt.is_disabled():
+                    nxt = page.query_selector(SELECTORS['paginator_next_selector'])
+                    if not nxt or nxt.get_attribute('disabled') is not None or nxt.is_disabled():
+                        break
+                    nxt.click()
+                    page.wait_for_timeout(700)
+                    row_els = _rows(page)
+
+            # Jaribu mwaka unaotarajiwa kwanza, kisha mingine hadi zipatikane.
+            for cand in cands:
+                if not remaining:
                     break
-                nxt.click()
-                page.wait_for_timeout(700)
+                _process_year(cand)
 
             not_found = len(remaining) + failed
             browser.close()
