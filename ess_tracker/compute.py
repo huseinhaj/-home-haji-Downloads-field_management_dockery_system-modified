@@ -501,13 +501,18 @@ def increment_pct(task: Task) -> float | None:
 
 def plan_for(st: SubTask, current_pct: float | None = None,
              leo: date | None = None) -> dict | None:
-    """Tathmini: viingilio kwa wiki vinavyohitajika kufikia 100%.
+    """Tathmini: viingilio kwa wiki vinavyohitajika kufikia LENGO la sasa.
+
+    Lengo ni asilimia ya KALENDA ya mwaka (tarajio la sasa kwa sub-task hii,
+    mf. 87% katikati ya Oktoba) — SIO 100%. 100% hutumika tu kama hakuna
+    kalenda (mwisho wa mwaka/linear). Hivyo ushauri unyame ukifika tarajio
+    la kalenda badala ya kukuchochea uendelee hadi 100%.
 
     Inatumia asilimia ya sasa (kwa kawaida ile HALISI ya ESS) na muda
     uliobaki wa dirisha la shule. Rudi None kama hakuna dirisha/muda.
 
     Funguo:
-      weeks_left, current, remaining, increment, epw_setting,
+      goal, weeks_left, current, remaining, increment, epw_setting,
       entries_needed, epw_needed, on_track, impossible
     """
     leo = leo or date.today()
@@ -519,12 +524,18 @@ def plan_for(st: SubTask, current_pct: float | None = None,
         current_pct, _src = pct_auto_for(st)
     if current_pct is None:
         return None
-    remaining = max(0.0, 100.0 - float(current_pct))
+    # Lengo = tarajio la kalenda la sasa (linear/annual kama hakuna kalenda).
+    goal = expected_pct(st, leo)
+    if goal is None:
+        goal = 100.0
+    goal = round(min(100.0, max(0.0, float(goal))), 2)
+    remaining = max(0.0, goal - float(current_pct))
     inc = subtask_increment_pct(st)
     # epw_setting = idadi ya kujaza ALIYOIWEKA mwalimu (entries_per_week), sio
     # vipindi vya mtaala. Vipindi ni msingi wa `inc` (asilimia) pekee.
     epw_setting = entries_per_week(getattr(st.task, 'profile', None))
     out = {
+        'goal': goal,
         'weeks_left': round(weeks_left, 1),
         'current': round(float(current_pct), 1),
         'remaining': round(remaining, 1),
@@ -743,7 +754,10 @@ def entry_from_values(st: SubTask, target, base_pct,
         target = 0.0
     base_pct = float(base_pct or 0.0)
     if target > 0:
-        planned = round(target * base_pct / 100.0)
+        # FLOOR (sio round) ili kujaza kusiwe mbele ya kalenda — mf. lengo 90%
+        # la majaribio 5 lisitoe "5 kati ya 5" (100%); linatoa "4 kati ya 5"
+        # (80%). Hivyo kujaza kwenda hatua kwa hatua na si kukurupuka.
+        planned = math.floor(target * base_pct / 100.0 + 1e-9)
         actual = max(planned, int(prev_actual or 0))
         actual = int(min(actual, int(target)))
         pct = round(100.0 * actual / target, 2)

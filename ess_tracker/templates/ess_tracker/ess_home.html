@@ -119,19 +119,19 @@
             {% if s.plan and s.plan.remaining > 0 %}
               {% if s.plan.impossible %}
               <div class="text-danger fw-semibold" style="font-size:.72rem">
-                <i class="fas fa-triangle-exclamation me-1"></i>Muda hautoshi — ongeza viingilio!</div>
+                <i class="fas fa-triangle-exclamation me-1"></i>Muda hautoshi kufikia lengo la kalenda {{ s.plan.goal|floatformat:"0" }}% — ongeza viingilio!</div>
               {% elif s.plan.on_track %}
               <div class="text-muted" style="font-size:.72rem">
                 <i class="fas fa-gauge-high me-1"></i>Ingia ~{{ s.plan.epw_needed }}x/wiki
-                (wiki {{ s.plan.weeks_left }} zilizobaki) &rarr; 100%</div>
+                (wiki {{ s.plan.weeks_left }} zilizobaki) &rarr; lengo la kalenda {{ s.plan.goal|floatformat:"0" }}%</div>
               {% else %}
               <div class="text-danger fw-semibold" style="font-size:.72rem">
                 <i class="fas fa-arrow-up me-1"></i>Ongeza hadi ~{{ s.plan.epw_needed }}x/wiki
-                (sasa {{ s.plan.epw_setting }}x) &rarr; 100%</div>
+                (sasa {{ s.plan.epw_setting }}x) &rarr; lengo la kalenda {{ s.plan.goal|floatformat:"0" }}%</div>
               {% endif %}
             {% elif s.plan %}
               <div class="text-success" style="font-size:.72rem">
-                <i class="fas fa-flag-checkered me-1"></i>Imefikia 100%</div>
+                <i class="fas fa-flag-checkered me-1"></i>Imefikia lengo la kalenda {{ s.plan.goal|floatformat:"0" }}%</div>
             {% endif %}
           </td>
         </tr>
