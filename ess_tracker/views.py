@@ -458,6 +458,37 @@ def _run_in_thread(profile_id, run_id):
 
 @login_required
 @require_POST
+def ess_save_auto_choice(request):
+    """Hifadhi sub-task zilizotick kwenye nyumbani kama chaguo la kiotomatiki.
+
+    Beat/kujaza kiotomatiki hutumia chaguo hili. Tupu = jaza zote.
+    """
+    profile = _me(request)
+    if profile is None:
+        return redirect('ess_tracker:ess_profile')
+    selected = [int(raw) for raw in request.POST.getlist('subtasks')
+                if str(raw).isdigit()]
+    if selected:
+        valid = set(SubTask.objects.filter(task__profile=profile)
+                    .values_list('id', flat=True))
+        chosen = [i for i in sorted(set(selected)) if i in valid]
+    else:
+        chosen = []
+    profile.auto_subtasks = ','.join(str(i) for i in chosen)
+    profile.save(update_fields=['auto_subtasks'])
+    if chosen:
+        messages.success(
+            request,
+            f'Sawa! Kujaza kiotomatiki (beat) kutajaza sub-task {len(chosen)} '
+            f'ulizochagua pekee. Nyingine hazitaguswa.')
+    else:
+        messages.success(
+            request, 'Hakuna uliyochagua — kujaza kiotomatiki kutajaza ZOTE.')
+    return redirect('ess_tracker:ess_home')
+
+
+@login_required
+@require_POST
 def ess_sync_names(request):
     """Chukua majina ya task/sub-task kutoka official ESS na usawazishe local."""
     profile = _me(request)

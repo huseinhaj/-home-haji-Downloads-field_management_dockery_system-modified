@@ -148,16 +148,31 @@
 
 <div class="card shadow-sm" style="max-width:960px;margin:0 auto;">
   <div class="card-body text-center">
-    <form id="jaza-form" method="post" action="{% url 'ess_tracker:ess_fill' %}"
-          onsubmit="return confirm('Kujaza ESS kunahitaji login ya akaunti yako ya ESS. Endelea?')">
+    <form id="jaza-form" method="post" action="{% url 'ess_tracker:ess_fill' %}">
       {% csrf_token %}
-      <button class="btn btn-success btn-lg px-4" {% if not profile.ess_ready %}disabled{% endif %}>
+      <button class="btn btn-success btn-lg px-4" {% if not profile.ess_ready %}disabled{% endif %}
+              onclick="return confirm('Kujaza ESS kunahitaji login ya akaunti yako ya ESS. Endelea?')">
         <i class="fas fa-cloud-upload-alt me-2"></i>Jaza
       </button>
+      <button class="btn btn-outline-success btn-lg px-4 ms-2" type="submit"
+              formaction="{% url 'ess_tracker:ess_save_auto_choice' %}" formnovalidate
+              onclick="return confirm('Hifadhi sub-task ulizochagua kwa KUJAZA KIOTOMATIKI (beat)? Zile usizochagua hazitaguswa.')">
+        <i class="fas fa-floppy-disk me-2"></i>Hifadhi kwa kiotomatiki
+      </button>
       <div class="small text-muted mt-1">
-        Umechagua sub-task hapo juu? Tunajaza <b>zilizochaguliwa</b> pekee.
-        Usipochagua, tunajaza <b>zote</b>.
+        Umechagua sub-task hapo juu? <b>Jaza</b> = jaza <b>sasa</b> zilizochaguliwa.
+        <b>Hifadhi kwa kiotomatiki</b> = beat ijaze <b>zilizochaguliwa</b> kila siku.
+        Usipochagua = tunajaza <b>zote</b>.
       </div>
+      {% with chosen=profile.auto_subtask_ids %}
+      <div class="small mt-1">
+        {% if chosen %}
+        <span class="badge bg-success">Beat itajaza sub-task {{ chosen|length }} uliyochagua</span>
+        {% else %}
+        <span class="badge bg-secondary">Beat itajaza ZOTE</span>
+        {% endif %}
+      </div>
+      {% endwith %}
       <a href="{% url 'ess_tracker:ess_fill_log' %}" class="btn btn-outline-secondary ms-2">Historia ya kujaza</a>
     </form>
     <form method="post" action="{% url 'ess_tracker:ess_sync_names' %}" class="mt-2"

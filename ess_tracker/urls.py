@@ -20,6 +20,7 @@ urlpatterns = [
     path('fill/sync/', views.ess_sync_names, name='ess_sync_names'),
     path('fill/push/', views.ess_push_names, name='ess_push_names'),
     path('fill/read/', views.ess_read_pcts, name='ess_read_pcts'),
+    path('fill/auto-choice/', views.ess_save_auto_choice, name='ess_save_auto_choice'),
     path('fill/<int:run_id>/', views.ess_fill_status, name='ess_fill_status'),
     path('fill/<int:run_id>/json/', views.ess_fill_status_json, name='ess_fill_status_json'),
     path('fill/log/', views.ess_fill_log, name='ess_fill_log'),
