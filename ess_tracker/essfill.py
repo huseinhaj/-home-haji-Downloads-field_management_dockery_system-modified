@@ -19,7 +19,7 @@ from django.utils import timezone as tz
 
 from .compute import (built_wanted, entry_from_values,
                       on_track_status, parse_count, pct_auto_for, pct_for,
-                      plan_for, subtask_increment_pct)
+                      plan_for, subtask_increment_pct, target_for)
 from .models import EssFillRun, SubTask
 
 BASE_URL = 'https://ess.utumishi.go.tz/'
@@ -2566,9 +2566,25 @@ def subtask_snapshot(task) -> list[dict]:
         pct, src = pct_auto_for(st)
         recorded, _ = pct_for(st)
         inc = subtask_increment_pct(st)
-        status, expected_pct, gap = on_track_status(st, pct)
         ess_val = float(st.official_pct) if st.official_pct is not None else None
+        # Badge: linganisha thamani HALISI (ESS, kisha actual, kisha iliyopangwa)
+        # na tarajio — sio thamani iliyopangwa (ambayo kwa kujenga = tarajio,
+        # ingefanya kila kitu kionekane "sawa").
+        cur_real = ess_val if ess_val is not None else (
+            recorded if recorded is not None else pct)
+        status, expected_pct, gap = on_track_status(st, cur_real)
         plan = plan_for(st, ess_val if ess_val is not None else pct)
+        # Asilimia ITAKAYOTUMWA: hii ndiyo thamani ambayo kujaza kutatumia
+        # (floor ya target x base), SIO base yenyewe. Na itaskip kama ESS
+        # tayari ipo juu/sawa.
+        target = target_for(st)
+        if target and target > 0 and pct is not None:
+            planned = int(target * pct / 100.0)
+            send_pct = round(100.0 * planned / target, 2)
+        else:
+            send_pct = pct
+        will_skip = (ess_val is not None and send_pct is not None
+                     and send_pct <= ess_val + 0.5)
         out.append({
             'st': st,
             'target': target_display(st),
@@ -2576,6 +2592,9 @@ def subtask_snapshot(task) -> list[dict]:
             'expected': expected_display(st),
             'pct': pct,
             'pct_str': '' if pct is None else f'{pct:.0f}%',
+            'send_pct': send_pct,
+            'send_pct_str': '' if send_pct is None else f'{send_pct:.0f}%',
+            'will_skip': will_skip,
             'recorded_pct': recorded,
             'source': src,
             'by_calendar': src == 'calendar',

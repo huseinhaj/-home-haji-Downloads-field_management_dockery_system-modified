@@ -94,11 +94,12 @@
           <td>
             <div class="d-flex align-items-center gap-2">
               <div class="progress flex-grow-1" style="height:8px;">
-                <div class="progress-bar {% if s.pct and s.pct >= 100 %}bg-success{% elif s.pct and s.pct >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
-                     style="width:{{ s.pct|default:0 }}%"></div>
+                <div class="progress-bar {% if s.send_pct and s.send_pct >= 100 %}bg-success{% elif s.send_pct and s.send_pct >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                     style="width:{{ s.send_pct|default:0 }}%"></div>
               </div>
-              <span class="small fw-bold">{{ s.pct_str|default:'—' }}</span>
+              <span class="small fw-bold">{{ s.send_pct_str|default:'—' }}</span>
             </div>
+            {% if s.will_skip %}<div class="text-muted" style="font-size:.7rem"><i class="fas fa-forward me-1"></i>itaskip — ESS tayari {{ s.ess_pct_str }}</div>{% endif %}
             {% if s.increment_str %}<div class="text-muted" style="font-size:.7rem">kila kiingilio +{{ s.increment_str }}</div>{% endif %}
             {% if s.by_calendar %}<div class="text-muted" style="font-size:.7rem"><i class="fas fa-calendar-week me-1"></i>kufuata kalenda{% if s.expected_pct_str %} ({{ s.expected_pct_str }}){% endif %}</div>{% endif %}
             {% if s.ess_pct_str %}
