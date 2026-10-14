@@ -149,6 +149,77 @@ def auto_fill_due(self):
             'skipped': skipped}
 
 
+def run_auto_fill_inline(profiles=None, log=None):
+    """Jaza kiotomatiki HUMU ndani ya process hii (bila broker/worker/beat).
+
+    Hukumu ni zile zile za beat (`auto_fill_decision`). Hutumika na:
+      - amri `ess_auto_fill --execute --inline`
+      - kiendesha cha `ess_scheduler` (kilichopachikwa kwenye container ya web)
+      - Cron Job ya Railway (bila beat/worker)
+
+    `profiles` (si lazima): orodha ya TeacherProfile walio tayari; kama haipo,
+    hupatikana kwa `auto_fill_decision`. `log` (si lazima): callable(msg).
+    Hurudisha {'date', 'filled', 'failed'}.
+    """
+    from django.utils import timezone
+
+    from .compute import calendar_window
+    from .essfill import run_fill
+    from .locks import profile_lock
+    from .models import EssFillRun, TeacherProfile
+    from .runstate import reap_stale_runs
+
+    def _log(msg):
+        if log:
+            try:
+                log(msg)
+            except Exception:  # noqa: BLE001
+                pass
+
+    reap_stale_runs()
+    today = _today_eat()
+    cal_win = calendar_window()
+    day_start, day_end = _eat_day_bounds(today)
+
+    if profiles is None:
+        qs = TeacherProfile.objects.filter(ess_ready=True).select_related('user')
+        if not cal_win:
+            qs = qs.exclude(school_open=None).exclude(school_close=None)
+        profiles = []
+        for prof in qs:
+            ready, _why = auto_fill_decision(
+                prof, today, cal_win, day_start, day_end)
+            if ready:
+                profiles.append(prof)
+
+    filled, failed = [], []
+    for prof in profiles:
+        run = EssFillRun.objects.create(
+            profile=prof, only_subtasks=_live_only_subtasks(prof), source='auto')
+        with profile_lock(prof.id) as got:
+            if not got:
+                run.status = 'error'
+                run.finished = timezone.now()
+                run.log = 'Lock ilikuwa inashikiliwa; kurukwa.'
+                run.save()
+                _log(f'  #{prof.id} — lock, imerukwa')
+                continue
+            try:
+                res = run_fill(prof.id, run.id)
+                filled.append(prof.id)
+                _log(f'  #{prof.id} — saved={res.get("saved")} '
+                     f'skipped={res.get("skipped")} '
+                     f'not_found={res.get("not_found")}')
+            except Exception as exc:  # noqa: BLE001
+                failed.append(prof.id)
+                run.status = 'error'
+                run.finished = timezone.now()
+                run.log = (run.log + f'\n{exc}') if run.log else str(exc)
+                run.save()
+                _log(f'  #{prof.id} — HITILAFU: {exc}')
+    return {'date': today.isoformat(), 'filled': filled, 'failed': failed}
+
+
 def _retry_countdown(task, base):
     """Backoff: base, base x2, base x4 ... hadi dakika 15."""
     return min(base * (2 ** task.request.retries), 900)

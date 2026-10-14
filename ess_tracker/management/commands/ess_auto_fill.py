@@ -85,39 +85,8 @@ class Command(BaseCommand):
         Hutumika na Railway Cron Job: service moja inaendesha amri hii kwa
         ratiba, bila kuhitaji beat/worker/worker_fill.
         """
-        from django.utils import timezone
-
-        from ess_tracker.essfill import run_fill
-        from ess_tracker.locks import profile_lock
-        from ess_tracker.models import EssFillRun
-        from ess_tracker.runstate import reap_stale_runs
-
-        reap_stale_runs()
-        done = []
-        for prof in ready:
-            run = EssFillRun.objects.create(
-                profile=prof, only_subtasks=tasks._live_only_subtasks(prof),
-                source='auto')
-            with profile_lock(prof.id) as got:
-                if not got:
-                    run.status = 'error'
-                    run.finished = timezone.now()
-                    run.log = 'Lock ilikuwa inashikiliwa; kurukwa.'
-                    run.save()
-                    self.stdout.write(f'  #{prof.id} — lock, imerukwa')
-                    continue
-                try:
-                    res = run_fill(prof.id, run.id)
-                    done.append(prof.id)
-                    self.stdout.write(self.style.SUCCESS(
-                        f'  #{prof.id} — saved={res.get("saved")} '
-                        f'skipped={res.get("skipped")} '
-                        f'not_found={res.get("not_found")}'))
-                except Exception as exc:  # noqa: BLE001
-                    run.status = 'error'
-                    run.finished = timezone.now()
-                    run.log = (run.log + f'\n{exc}') if run.log else str(exc)
-                    run.save()
-                    self.stderr.write(f'  #{prof.id} — HITILAFU: {exc}')
+        res = tasks.run_auto_fill_inline(
+            ready, log=lambda m: self.stdout.write(str(m)))
+        total = len(res.get('filled', [])) + len(res.get('failed', []))
         self.stdout.write(self.style.SUCCESS(
-            f'Imekamilika (inline): {len(done)}/{len(ready)}'))
+            f'Imekamilika (inline): {len(res.get("filled", []))}/{total}'))

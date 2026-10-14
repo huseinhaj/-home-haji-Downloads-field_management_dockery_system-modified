@@ -147,6 +147,21 @@ python manage.py ess_auto_fill --execute --inline  # endesha HUMU (bila worker/b
 > siku. `--inline` hujaza moja kwa moja ndani ya cron, hivyo huhitaji `beat`
 > wala `worker`.
 
+> **Njia inayojipanga yenyewe — embedded scheduler (mapendekezo kwa Railway).**
+> Railway hudeploy **service moja (web)** kwa `railway up`; Procfile
+> (`worker`/`beat`) **hupuuzwa**, hivyo beat huwa haifanyi kazi. Kipanga-saa
+> **`ess_scheduler`** hupachikwa kwenye container ya **web** na kujaza kila siku
+> **06:30 EAT** (hutumia hukumu zile zile za `auto_fill_due`, bila broker/worker).
+> - Hupachikwa **kiotomatiki** kwenye Railway (hugundua `RAILWAY_*` env) —
+>   hakuna service ya ziada wala Cron Job.
+> - Huzimwa kwenye docker-compose (yenye `celery-beat` yake).
+> - Kulazimisha: weka `ESS_EMBED_SCHEDULER=1` (washa) au `=0` (zima); kwa
+>   docker-compose unaweza `=1` ili kuiendesha badala ya celery-beat.
+> - **Usiweke `beat`/`worker` services pia** — kujaza ni kilekile; hata hivyo
+>   `auto_fill_decision` huruka mwalimu aliyejaza leo (kizuizi cha mara-moja).
+> - Kukagua: `python manage.py ess_scheduler --once` (endesha mara moja), au
+>   angalia log `/tmp/ess_scheduler.log` kwenye container.
+
 **Historia ya kujaza** (`/ess/fill/log/`) inaonyesha kila run ikiwa na safu
 **Aina** (`kind`: Kujaza/Sawazisha/Tuma/Soma) na **Chanzo** (`source`:
 **Kiotomatiki** kwa beat, **Mwenyewe** kwa kubofya). Run za **kujaza**

@@ -134,6 +134,32 @@ else:
     print('HESLB knowledge already cached.')
 " 2>&1 || true) &
 
+# ═════════════════════════════════════════════════════════════════════════════
+# EMBEDDED ESS SCHEDULER — kujaza kiotomatiki bila beat/worker tofauti.
+# Railway hudeploy service MOJA (web) kwa `railway up`; Procfile (worker/beat)
+# HUPUUZWA. Kwa hivyo kipanga-saa hiki hupachikwa kwenye container ya web na
+# kujaza kila siku 06:30 EAT (hutumia hukumu zile zile za beat). Hupachikwa
+# kiotomatiki kwenye Railway (RAILWAY_* env), huzimwa kwenye docker-compose
+# (ambayo ina celery-beat yake). Lazima: ESS_EMBED_SCHEDULER=1/0.
+# ═════════════════════════════════════════════════════════════════════════════
+EMBED_SCHED="$(printf '%s' "${ESS_EMBED_SCHEDULER:-}" | tr '[:upper:]' '[:lower:]' | tr -d ' ')"
+if [ -z "$EMBED_SCHED" ]; then
+    if [ -n "$RAILWAY_PROJECT_ID" ] || [ -n "$RAILWAY_SERVICE_ID" ] || [ -n "$RAILWAY_ENVIRONMENT_NAME" ]; then
+        EMBED_SCHED=1
+    fi
+fi
+if [ "$SERVICE_ROLE_NORM" = "web" ]; then
+    case "$EMBED_SCHED" in
+        1|true|yes|on)
+            echo "⏰ ESS embedded scheduler ON — kujaza kiotomatiki kila siku 06:30 EAT"
+            (python manage.py ess_scheduler --catch-up >> /tmp/ess_scheduler.log 2>&1) &
+            ;;
+        *)
+            echo "⏸️  ESS embedded scheduler OFF (ESS_EMBED_SCHEDULER='$ESS_EMBED_SCHEDULER')."
+            ;;
+    esac
+fi
+
 # ── Start services ────────────────────────────────────────────────────────────
 if [ "$TTC_READY" = "1" ]; then
     # TTC portal gunicorn on internal port 8001
