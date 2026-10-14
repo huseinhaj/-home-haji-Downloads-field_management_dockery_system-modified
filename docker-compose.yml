@@ -65,7 +65,7 @@ services:
       - .env.docker
     environment:
       - SERVICE_ROLE=worker_fill
-      - ESS_FILL_CONCURRENCY=${ESS_FILL_CONCURRENCY:-4}
+      - ESS_FILL_CONCURRENCY=${ESS_FILL_CONCURRENCY:-8}
       - DATABASE_URL=postgresql://field_user:field_pass@db:5432/field_db
       - REDIS_URL=redis://redis:6379/0
     volumes:

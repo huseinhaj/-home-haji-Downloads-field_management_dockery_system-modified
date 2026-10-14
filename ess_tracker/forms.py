@@ -101,13 +101,14 @@ class ProfileForm(forms.ModelForm):
     entries_per_week = forms.ChoiceField(
         label='Mfumo ujaze maendeleo yako mara ngapi kwa wiki?',
         required=False,
-        choices=[(2, 'Mara 2 kwa wiki'), (3, 'Mara 3 kwa wiki'),
-                 (4, 'Mara 4 kwa wiki'), (5, 'Mara 5 kwa wiki')],
+        choices=[(1, 'Mara 1 kwa wiki'), (2, 'Mara 2 kwa wiki'),
+                 (3, 'Mara 3 kwa wiki'), (4, 'Mara 4 kwa wiki'),
+                 (5, 'Mara 5 kwa wiki')],
         widget=forms.Select(attrs={'class': 'form-select'}),
         help_text='Hesabu ya mwaka mzima (tarehe ya kufungua hadi kufunga) '
-                  'itagawanywa kwa mara hizi ili ufikie 100% tarehe ya kufunga. '
-                  'Mfumo hujaza siku zilizogawanywa kiotomatiki (mf. mara 3 = '
-                  'Jumatatu, Jumatano, Ijumaa).')
+                  'itagawanywa kwa mara hizi (1–5) ili ufikie 100% tarehe ya '
+                  'kufunga. Mfumo hujaza siku zilizogawanywa kiotomatiki '
+                  '(mf. mara 3 = Jumatatu, Jumatano, Ijumaa).')
 
     auto_subtasks = forms.ModelMultipleChoiceField(
         label='Sub-task za kujaza kiotomatiki',

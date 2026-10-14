@@ -47,7 +47,7 @@ class TeacherProfile(models.Model):
         help_text='Tarehe shule inavyofungwa mwaka huu (mf. 2026-12-04)')
     entries_per_week = models.PositiveSmallIntegerField(
         default=3,
-        help_text='Mara ngapi kwa wiki mfumo ujaze maendeleo yako (2–5)')
+        help_text='Mara ngapi kwa wiki mfumo ujaze maendeleo yako (1–5)')
     auto_subtasks = models.TextField(
         blank=True,
         help_text='ID za sub-task za kujaza kiotomatiki (zikitenganishwa kwa '

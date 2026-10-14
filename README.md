@@ -78,14 +78,17 @@ Walimu wanajiandikisha mara moja, wanachagua sub-task na kubonyeza **Jaza**.
 | `ESS_ENC_KEY` | Fernet key ya kusimba password za ESS. Tengeneza: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push (arifa). Tengeneza: `python manage.py gen_vapid_keys` |
 | `VAPID_ADMIN_EMAIL` | Barua pepe ya mawasiliano ya VAPID (mf. `support@utumishi.go.tz`) |
-| `ESS_FILL_CONCURRENCY` | Idadi ya workers wa foleni `essfill` (default 4) |
+| `ESS_FILL_CONCURRENCY` | Idadi ya workers wa foleni `essfill` (walimu wanaojazwa kwa wakati mmoja; default 8). Kila worker = Chromium moja (~200–400MB RAM) |
 
 > **MUHIMU:** Kazi za ESS zinatumia foleni **`essfill`**. Hakikisha worker wa foleni
 > hii anaendesha, la sivyo kazi zitasubiri milele:
 > ```bash
 > celery -A field_management worker --loglevel=info \
->   --concurrency=4 --queues=essfill --max-tasks-per-child=20
+>   --concurrency=8 --queues=essfill --max-tasks-per-child=20
 > ```
+> `ESS_FILL_CONCURRENCY` huamua walimu wangapi hujazwa **sambamba** (default 8).
+> Ongeza tu ikiwa host ina RAM ya kutosha: kila slot ~200–400MB (8 ≈ 2–3GB).
+> Idadi ya walimu wanaotumia mfumo haina kikomo — ni foleni.
 > Beat hutuma kumbukumbu Jumatatu–Ijumaa 07:00 EAT (`ess-notify-due`) na kujaza
 > kiotomatiki kila siku (`ess-auto-fill-daily`).
 

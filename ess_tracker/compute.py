@@ -471,19 +471,25 @@ def plan_for(st: SubTask, current_pct: float | None = None,
     return out
 
 
-def recommend_entries_per_week(profile, leo: date | None = None) -> dict:
+def recommend_entries_per_week(profile, leo: date | None = None,
+                               tasks=None) -> dict:
     """Tathmini: pendekeza idadi ya siku za kujaza kwa wiki kutoka mahesabu.
 
     Hutumia `plan_for` ya sub-task zote na kuchukua kiwango cha juu cha
     `epw_needed` (ili sub-task inayohitaji zaidi iweze kufikia lengo).
     Hurudisha {'days', 'epw_needed', 'behind', 'impossible'}.
+
+    `tasks` (si lazima): queryset ya Task zilizoprefetchiwa (subtasks + task +
+    entries) ili kuepuka queries N+1 kwenye ukurasa wa wasifu.
     """
     leo = leo or date.today()
+    if tasks is None:
+        tasks = profile.tasks.all()
     need = 0.0
     behind = 0
     impossible = 0
     seen = 0
-    for task in profile.tasks.all():
+    for task in tasks:
         for st in task.subtasks.all():
             plan = plan_for(st, leo=leo)
             if not plan:

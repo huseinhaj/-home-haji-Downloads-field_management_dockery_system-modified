@@ -1169,9 +1169,19 @@ def run_fill(profile_id: int, run_id: int) -> dict:
     wanted = built_wanted(profile)
     only_ids = _parse_id_list(getattr(run, 'only_subtasks', ''))
     if only_ids:
-        wanted = [w for w in wanted if w[0].id in only_ids]
-        log.append('Chaguo la mwalimu: sub-task %s pekee.'
-                   % ','.join(str(i) for i in sorted(only_ids)))
+        available = {w[0].id for w in wanted}
+        matched = only_ids & available
+        missing = only_ids - available
+        if matched:
+            wanted = [w for w in wanted if w[0].id in matched]
+            emit('Chaguo la mwalimu: sub-task %s pekee.'
+                 % ','.join(str(i) for i in sorted(matched)))
+        if missing:
+            emit('Tahadhari: sub-task za chaguo hazipo tena (%s) — zimepuuzwa.'
+                 % ','.join(str(i) for i in sorted(missing)))
+        if not matched:
+            emit('Tahadhari: hakuna sub-task ya chaguo iliyopo sasa — '
+                 'tunajaza sub-task zote zinazohitaji.')
     run.required = len(wanted)
     run.save()
 

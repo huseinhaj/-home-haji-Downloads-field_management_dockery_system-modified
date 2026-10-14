@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
-from django.db.models import Sum
+from django.db.models import Prefetch, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.templatetags.static import static
@@ -154,7 +154,12 @@ def ess_profile(request):
     recommend = None
     if profile and not creating:
         from .compute import recommend_entries_per_week
-        recommend = recommend_entries_per_week(profile)
+        tasks_qs = profile.tasks.prefetch_related(
+            Prefetch('subtasks',
+                     queryset=SubTask.objects
+                     .select_related('task__profile')
+                     .prefetch_related('entries')))
+        recommend = recommend_entries_per_week(profile, tasks=tasks_qs)
     return render(request, 'ess_tracker/ess_profile.html', {
         'form': form,
         'creating': creating,

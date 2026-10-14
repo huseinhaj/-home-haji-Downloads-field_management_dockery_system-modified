@@ -57,6 +57,21 @@ def _fill_day(weekday, entries=None):
     return weekday in fill_weekdays(3 if entries is None else entries)
 
 
+def _live_only_subtasks(prof) -> str:
+    """CSV ya IDs za sub-task za chaguo za mwalimu ambazo ZIPO bado.
+
+    IDs zilizofutwa (stale) hupuuzwa ili run isikwame. Tupu = jaza zote.
+    """
+    ids = prof.auto_subtask_ids()
+    if not ids:
+        return ''
+    from .models import SubTask
+    valid = set(SubTask.objects.filter(task__profile=prof)
+                .values_list('id', flat=True))
+    live = [i for i in ids if i in valid]
+    return ','.join(str(i) for i in live)
+
+
 @shared_task(bind=True, time_limit=120, soft_time_limit=100)
 def auto_fill_due(self):
     """Jaza kiotomatiki kwa kila mwalimu aliyejiwekea tarehe za shule,
@@ -89,7 +104,7 @@ def auto_fill_due(self):
             skipped.append({'id': prof.id, 'why': 'locked'})
             continue
         run = EssFillRun.objects.create(
-            profile=prof, only_subtasks=(prof.auto_subtasks or ''))
+            profile=prof, only_subtasks=_live_only_subtasks(prof))
         from .tasks import run_ess_fill
         run_ess_fill.apply_async(args=[prof.id, run.id], queue='essfill')
         triggered.append(prof.id)
