@@ -80,7 +80,7 @@ def auto_fill_decision(prof, today, cal_win, day_start, day_end):
     kutokea: 'disabled', 'no-window', 'closed', 'not-fill-day', 'already',
     'locked'.
     """
-    from .compute import profile_fill_entries
+    from .compute import entries_per_week
     from .locks import is_locked
     from .models import EssFillRun
 
@@ -91,7 +91,9 @@ def auto_fill_decision(prof, today, cal_win, day_start, day_end):
         return False, 'no-window'
     if not (open_d <= today <= close_d):
         return False, 'closed'
-    if not _fill_day(today.weekday(), profile_fill_entries(prof)):
+    # Siku za kujaza = entries_per_week (idadi aliyoiweka mwalimu). Vipindi vya
+    # mtaala hutumika kwa ASILIMIA pekee, sio kwa ratiba ya siku.
+    if not _fill_day(today.weekday(), entries_per_week(prof)):
         return False, 'not-fill-day'
     if EssFillRun.objects.filter(profile=prof, kind='fill') \
             .exclude(status='error') \
@@ -107,8 +109,8 @@ def auto_fill_due(self):
     """Jaza kiotomatiki kwa kila mwalimu (dirisha na mzunguko kutoka mtaala).
 
     Dirisha la mwaka hutoka kalenda ya admin kama ipo, vinginevyo tarehe za
-    wasifu. Siku za kujaza huzagwa kutoka vipindi vya mtaala vya somo
-    (fallback entries_per_week). (queue='essfill')."""
+    wasifu. Siku za kujaza huzagwa kutoka entries_per_week ya mwalimu; vipindi
+    vya mtaala hutumika kwa ASILIMIA pekee (sio ratiba ya siku)."""
     from .compute import calendar_window
     from .models import EssFillRun, TeacherProfile
 
@@ -233,7 +235,7 @@ def notify_fill_due():
     (hawana run ya 'done' ya leo). Waliojibiwa tayari kiotomatiki
     hawasumbuliwi — wanapata arifa ya matokeo kwenye run_ess_fill.
     """
-    from .compute import calendar_target_pct, calendar_window, profile_fill_entries
+    from .compute import calendar_target_pct, calendar_window, entries_per_week
     from .models import EssFillRun, TeacherProfile
     from .push import push_configured, send_to_profile
 
@@ -249,7 +251,7 @@ def notify_fill_due():
     profs = TeacherProfile.objects.filter(
         push_subscriptions__active=True).distinct().select_related('user')
     for prof in profs:
-        if not _fill_day(today.weekday(), profile_fill_entries(prof)):
+        if not _fill_day(today.weekday(), entries_per_week(prof)):
             skipped += 1
             continue
         open_d, close_d = cal_win or (prof.school_open, prof.school_close)

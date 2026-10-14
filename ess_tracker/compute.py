@@ -189,20 +189,6 @@ def effective_entries_per_week(task):
     return task_periods_per_week(task) or entries_per_week(getattr(task, 'profile', None))
 
 
-def profile_fill_entries(profile):
-    """Idadi ya maingizo/wiki kwa mwalimu mzima (kwa ratiba ya kujaza).
-
-    Huchukua kipindi cha juu zaidi kati ya masomo ya tasks zake (mtaala);
-    vinginevyo entries_per_week ya wasifu.
-    """
-    best = 0
-    for task in profile.tasks.all():
-        n = task_periods_per_week(task) or 0
-        if n > best:
-            best = n
-    return best or entries_per_week(profile)
-
-
 def _to_number(val):
     if val is None:
         return None
@@ -526,7 +512,9 @@ def plan_for(st: SubTask, current_pct: float | None = None,
         return None
     remaining = max(0.0, 100.0 - float(current_pct))
     inc = subtask_increment_pct(st)
-    epw_setting = effective_entries_per_week(st.task)
+    # epw_setting = idadi ya kujaza ALIYOIWEKA mwalimu (entries_per_week), sio
+    # vipindi vya mtaala. Vipindi ni msingi wa `inc` (asilimia) pekee.
+    epw_setting = entries_per_week(getattr(st.task, 'profile', None))
     out = {
         'weeks_left': round(weeks_left, 1),
         'current': round(float(current_pct), 1),
@@ -584,7 +572,7 @@ def recommend_entries_per_week(profile, leo: date | None = None,
             n = plan.get('epw_needed') or 0
             if n > need:
                 need = n
-    setting = profile_fill_entries(profile)
+    setting = entries_per_week(profile)
     if need > 0:
         days = int(math.ceil(need - 1e-9))
     else:

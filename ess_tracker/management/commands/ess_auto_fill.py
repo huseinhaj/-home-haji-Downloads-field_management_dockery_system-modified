@@ -6,7 +6,7 @@ REASON_SW = {
     'disabled': 'kujaza kiotomatiki kumezimwa (auto_fill_enabled=False)',
     'no-window': 'hakuna dirisha (kalenda/wasifu hauna tarehe za shule)',
     'closed': 'leo iko nje ya dirisha la shule',
-    'not-fill-day': 'leo si siku ya kujaza kwa idadi ya vipindi',
+    'not-fill-day': 'leo si siku ya kujaza (kwa entries_per_week aliyochagua)',
     'already': 'amejaza tayari leo',
     'locked': 'kuna kujaza kunaendelea (lock)',
 }

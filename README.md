@@ -116,8 +116,13 @@ kwa walio **nyuma ya asilimia ya mwezi** kila siku 07:15 EAT (`ess-notify-calend
 
 **Kujaza kiotomatiki kunapangwa vipi.** Beat huamsha `auto_fill_due` kila siku
 06:30 EAT; inajaza mwalimu ikiwa leo: (1) yuko ndani ya dirisha la kalenda,
-(2) ni siku ya kujaza kulingana na vipindi vya mtaala, (3) hajajaza leo, na
-(4) hakuna lock. Wasifu wenye `auto_fill_enabled=True` + ESS username/password.
+(2) ni siku ya kujaza kulingana na `entries_per_week` aliyochagua mwalimu
+(mf. 3 = Jumatatu/Jumatano/Ijumaa), (3) hajajaza leo, na (4) hakuna lock.
+Wasifu wenye `auto_fill_enabled=True` + ESS username/password.
+
+> **Siku vs. vipindi.** Vipindi vya mtaala (`SUBJECT_PERIODS_WEEK`) hutumika kwa
+> **asilimia/increment** pekee (≈ `100 / (vipindi/wiki × wiki za dirisha)`), SIO
+> kwa ratiba ya siku. Siku za kujaza hutoka `entries_per_week` ya mwalimu.
 
 > **MUHIMU — foleni ya beat.** Task za beat (auto-fill/notify) zinapaswa kwenda
 > foleni **`default`** (`options={"queue": "default"}` kwenye
