@@ -99,8 +99,8 @@
               </div>
               <span class="small fw-bold">{{ s.pct_str|default:'—' }}</span>
             </div>
-            {% if s.by_calendar %}<div class="text-muted" style="font-size:.7rem"><i class="fas fa-calendar-week me-1"></i>kufuata kalenda</div>
-            {% elif s.increment_str %}<div class="text-muted" style="font-size:.7rem">kila kiingilio +{{ s.increment_str }}</div>{% endif %}
+            {% if s.increment_str %}<div class="text-muted" style="font-size:.7rem">kila kiingilio +{{ s.increment_str }}</div>{% endif %}
+            {% if s.by_calendar %}<div class="text-muted" style="font-size:.7rem"><i class="fas fa-calendar-week me-1"></i>kufuata kalenda{% if s.expected_pct_str %} ({{ s.expected_pct_str }}){% endif %}</div>{% endif %}
             {% if s.ess_pct_str %}
             <div class="mt-1">
               <span class="badge bg-primary" title="Asilimia halisi kutoka ESS official{% if s.ess_at %} — ilisomwa {{ s.ess_at|date:'d M Y H:i' }}{% endif %}">
@@ -116,24 +116,22 @@
                 <i class="fas fa-check me-1"></i>Sawa na tarajio {{ s.expected_pct_str }}</span>
               {% endif %}
             {% endif %}
-            {% if not s.by_calendar %}
-              {% if s.plan and s.plan.remaining > 0 %}
-                {% if s.plan.impossible %}
-                <div class="text-danger fw-semibold" style="font-size:.72rem">
-                  <i class="fas fa-triangle-exclamation me-1"></i>Muda hautoshi — ongeza viingilio!</div>
-                {% elif s.plan.on_track %}
-                <div class="text-muted" style="font-size:.72rem">
-                  <i class="fas fa-gauge-high me-1"></i>Ingia ~{{ s.plan.epw_needed }}x/wiki
-                  (wiki {{ s.plan.weeks_left }} zilizobaki) &rarr; 100%</div>
-                {% else %}
-                <div class="text-danger fw-semibold" style="font-size:.72rem">
-                  <i class="fas fa-arrow-up me-1"></i>Ongeza hadi ~{{ s.plan.epw_needed }}x/wiki
-                  (sasa {{ s.plan.epw_setting }}x) &rarr; 100%</div>
-                {% endif %}
-              {% elif s.plan %}
-                <div class="text-success" style="font-size:.72rem">
-                  <i class="fas fa-flag-checkered me-1"></i>Imefikia 100%</div>
+            {% if s.plan and s.plan.remaining > 0 %}
+              {% if s.plan.impossible %}
+              <div class="text-danger fw-semibold" style="font-size:.72rem">
+                <i class="fas fa-triangle-exclamation me-1"></i>Muda hautoshi — ongeza viingilio!</div>
+              {% elif s.plan.on_track %}
+              <div class="text-muted" style="font-size:.72rem">
+                <i class="fas fa-gauge-high me-1"></i>Ingia ~{{ s.plan.epw_needed }}x/wiki
+                (wiki {{ s.plan.weeks_left }} zilizobaki) &rarr; 100%</div>
+              {% else %}
+              <div class="text-danger fw-semibold" style="font-size:.72rem">
+                <i class="fas fa-arrow-up me-1"></i>Ongeza hadi ~{{ s.plan.epw_needed }}x/wiki
+                (sasa {{ s.plan.epw_setting }}x) &rarr; 100%</div>
               {% endif %}
+            {% elif s.plan %}
+              <div class="text-success" style="font-size:.72rem">
+                <i class="fas fa-flag-checkered me-1"></i>Imefikia 100%</div>
             {% endif %}
           </td>
         </tr>
