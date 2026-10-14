@@ -337,6 +337,10 @@ CELERY_TASK_ANNOTATIONS = {
 # isifunguke kabla ya kazi kuisha; pia ikianguka, hujifuta yenyewe.
 ESS_PROFILE_LOCK_SECONDS = int(os.environ.get('ESS_PROFILE_LOCK_SECONDS', '900'))
 
+# Run ya ESS ('running') inayozidi sekunde hizi huchukuliwa kama iliyokwama
+# (stale) na hufungwa kama 'error' kiotomatiki ili isizuie kujaza mpya.
+# Lazima iwe > time_limit ya run_ess_fill (600s).
+ESS_RUN_STALE_SECONDS = int(os.environ.get('ESS_RUN_STALE_SECONDS', '1800'))
 # ── Web Push (VAPID) kwa arifa za walimu ──
 # Tengeneza keys kwa: python manage.py gen_vapid_keys
 # Weka VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY kwenye env ya production.

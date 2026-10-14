@@ -113,7 +113,9 @@ def auto_fill_due(self):
     vya mtaala hutumika kwa ASILIMIA pekee (sio ratiba ya siku)."""
     from .compute import calendar_window
     from .models import EssFillRun, TeacherProfile
+    from .runstate import reap_stale_runs
 
+    reap_stale_runs()
     today = _today_eat()
     cal_win = calendar_window()
     day_start, day_end = _eat_day_bounds(today)
@@ -128,7 +130,8 @@ def auto_fill_due(self):
             skipped.append({'id': prof.id, 'why': why})
             continue
         run = EssFillRun.objects.create(
-            profile=prof, only_subtasks=_live_only_subtasks(prof))
+            profile=prof, only_subtasks=_live_only_subtasks(prof),
+            source='auto')
         from .tasks import run_ess_fill
         run_ess_fill.apply_async(args=[prof.id, run.id], queue='essfill')
         triggered.append(prof.id)

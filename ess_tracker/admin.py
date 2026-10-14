@@ -51,5 +51,6 @@ class WeekEntryAdmin(admin.ModelAdmin):
 
 @admin.register(EssFillRun)
 class EssFillRunAdmin(admin.ModelAdmin):
-    list_display = ('profile', 'started', 'finished', 'status', 'saved', 'skipped', 'not_found')
-    list_filter = ('status',)
+    list_display = ('profile', 'started', 'finished', 'kind', 'source', 'status',
+                    'saved', 'skipped', 'not_found')
+    list_filter = ('status', 'kind', 'source')

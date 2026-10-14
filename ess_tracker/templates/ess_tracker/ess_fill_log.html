@@ -13,6 +13,8 @@
         <thead class="table-light">
           <tr>
             <th>#</th>
+            <th>Aina</th>
+            <th>Chanzo</th>
             <th>Ilianza</th>
             <th class="d-none d-md-table-cell">Ilimalizika</th>
             <th>Status</th>
@@ -26,6 +28,14 @@
           {% for r in runs %}
           <tr>
             <td>{{ r.id }}</td>
+            <td class="small">{{ r.get_kind_display }}</td>
+            <td class="small">
+              {% if r.source == 'auto' %}
+              <span class="badge bg-primary">Kiotomatiki</span>
+              {% else %}
+              <span class="badge bg-secondary">Mwenyewe</span>
+              {% endif %}
+            </td>
             <td class="small">{{ r.started|date:'d M Y H:i' }}</td>
             <td class="small d-none d-md-table-cell">{{ r.finished|date:'d M Y H:i'|default:'—' }}</td>
             <td>
@@ -47,11 +57,11 @@
           </tr>
           {% if r.status != 'running' %}
           <tr class="collapse" id="log{{ r.id }}">
-            <td colspan="8"><pre class="small bg-light p-2 mb-0" style="max-height:200px;overflow:auto;">{{ r.log }}</pre></td>
+            <td colspan="10"><pre class="small bg-light p-2 mb-0" style="max-height:200px;overflow:auto;">{{ r.log }}</pre></td>
           </tr>
           {% endif %}
           {% empty %}
-          <tr><td colspan="8" class="text-center text-muted py-4">Bado hakuna kujaza.</td></tr>
+          <tr><td colspan="10" class="text-center text-muted py-4">Bado hakuna kujaza.</td></tr>
           {% endfor %}
         </tbody>
       </table>

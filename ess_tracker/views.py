@@ -420,6 +420,8 @@ def ess_fill(request):
     if not profile.ess_ready:
         messages.error(request, 'Weka kwanza ESS username na password kwenye wasifu.')
         return redirect('ess_tracker:ess_profile')
+    from .runstate import reap_stale_runs
+    reap_stale_runs(profile)
     existing = profile.fill_runs.filter(kind='fill', status='running').first()
     if existing:
         messages.info(request, 'Kujaza kunaendelea tayari kwa mwalimu huyu — subiri kukamilika.')
@@ -589,6 +591,8 @@ def ess_fill_log(request):
     profile = _me(request)
     if profile is None:
         return redirect('ess_tracker:ess_profile')
+    from .runstate import reap_stale_runs
+    reap_stale_runs(profile)
     runs = profile.fill_runs.all()[:30]
     return render(request, 'ess_tracker/ess_fill_log.html', {'profile': profile, 'runs': runs})
 

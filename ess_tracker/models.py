@@ -25,6 +25,11 @@ RUN_KIND_CHOICES = [
     ('read', 'Soma asilimia ESS'),
 ]
 
+RUN_SOURCE_CHOICES = [
+    ('manual', 'Mwenyewe'),
+    ('auto', 'Kiotomatiki'),
+]
+
 
 class TeacherProfile(models.Model):
     """Wasifu wa mwalimu kwenye app (kwa ajili ya e-Tendaji + ESS auto-fill)."""
@@ -207,6 +212,7 @@ class EssFillRun(models.Model):
     finished = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=RUN_STATUS_CHOICES, default='running')
     kind = models.CharField(max_length=10, choices=RUN_KIND_CHOICES, default='fill')
+    source = models.CharField(max_length=10, choices=RUN_SOURCE_CHOICES, default='manual')
     saved = models.IntegerField(default=0)
     skipped = models.IntegerField(default=0)
     not_found = models.IntegerField(default=0)

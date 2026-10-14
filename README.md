@@ -137,6 +137,18 @@ python manage.py ess_auto_fill --profile 12 # mwalimu mmoja pekee
 python manage.py ess_auto_fill --execute    # endesha kujaza kweli sasa
 ```
 
+**Historia ya kujaza** (`/ess/fill/log/`) inaonyesha kila run ikiwa na safu
+**Aina** (`kind`: Kujaza/Sawazisha/Tuma/Soma) na **Chanzo** (`source`:
+**Kiotomatiki** kwa beat, **Mwenyewe** kwa kubofya). Run za **kujaza**
+(`kind=fill`) pekee zinaathiri kuzuia/kujaza; run nyingine ni za kusawazisha
+majina, kusoma asilimia, n.k.
+
+> **Runs zilizokwama.** Run iliyoanza zaidi ya `ESS_RUN_STALE_SECONDS`
+> (default 1800s) bado `running` hufungwa kama `error` kiotomatiki
+> (`ess_tracker/runstate.reap_stale_runs`) ili **isizuie** kitufe cha "Jaza"
+> milele. Usafi huu hufanyika unapofungua historia, unapobofya "Jaza", na
+> mwanzoni mwa `auto_fill_due`.
+
 ### 🛠️ Background services (workers + beat)
 
 Web service haitoshelezi ESS/resources peke yake — inahitaji **worker**, **worker
