@@ -365,6 +365,12 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=7, minute=0, day_of_week='1-5'),
         "options": {"expires": 3600},
     },
+    "ess-notify-calendar": {
+        # Kila siku 07:15 EAT: alert kwa walio nyuma ya asilimia ya kalenda.
+        "task": "ess_tracker.tasks.notify_calendar_targets",
+        "schedule": crontab(hour=7, minute=15),
+        "options": {"expires": 3600},
+    },
 }
 
 # =========================

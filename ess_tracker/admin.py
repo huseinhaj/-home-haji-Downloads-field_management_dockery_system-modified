@@ -1,11 +1,25 @@
 from django.contrib import admin
 
-from .models import EssFillRun, SubTask, Task, TeacherProfile, WeekEntry
+from .models import (AcademicCalendar, EssFillRun, MonthlyTarget, SubTask,
+                     Task, TeacherProfile, WeekEntry)
 
 
 class SubTaskInline(admin.TabularInline):
     model = SubTask
     extra = 0
+
+
+class MonthlyTargetInline(admin.TabularInline):
+    model = MonthlyTarget
+    extra = 0
+    fields = ('month', 'expected_pct')
+
+
+@admin.register(AcademicCalendar)
+class AcademicCalendarAdmin(admin.ModelAdmin):
+    list_display = ('year', 'is_active', 'school_open', 'school_close', 'updated_at')
+    list_editable = ('is_active',)
+    inlines = [MonthlyTargetInline]
 
 
 @admin.register(TeacherProfile)

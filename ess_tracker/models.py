@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -244,3 +246,83 @@ class PushSubscription(models.Model):
 
     def __str__(self):
         return f'{self.profile} {self.endpoint[:40]}…'
+
+
+MONTH_CHOICES = [
+    (1, 'Januari'), (2, 'Februari'), (3, 'Machi'), (4, 'Aprili'),
+    (5, 'Mei'), (6, 'Juni'), (7, 'Julai'), (8, 'Agosti'),
+    (9, 'Septemba'), (10, 'Oktoba'), (11, 'Novemba'), (12, 'Desemba'),
+]
+
+
+def _clear_calendar_cache():
+    try:
+        from django.core.cache import cache
+        cache.delete('ess:active_calendar')
+    except Exception:
+        pass
+
+
+class AcademicCalendar(models.Model):
+    """Kalenda ya mwaka wa shule inayodhibitiwa na admin.
+
+    Ina tarehe za kufungua/kufunga na asilimia lengwa kwa kila mwezi.
+    Kalenda MOJA tu huwa active; ikiwa active, mfumo (ESS asilimia, dirisha
+    la mwaka, na alerts) hutumia hii kwa walimu WOTE. Hivyo admin akibadilisha
+    kalenda, walimu wote wanapata mabadiliko kiotomatiki.
+    """
+
+    year = models.CharField(max_length=20, unique=True)
+    is_active = models.BooleanField(
+        default=False, help_text='Kalenda inayotumika sasa kwa walimu wote.')
+    school_open = models.DateField(null=True, blank=True)
+    school_close = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-year']
+        verbose_name = 'Kalenda ya mwaka'
+        verbose_name_plural = 'Kalenda za miaka'
+
+    def __str__(self):
+        return f'Kalenda {self.year}' + (' (active)' if self.is_active else '')
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.is_active:
+            AcademicCalendar.objects.exclude(pk=self.pk).update(is_active=False)
+        _clear_calendar_cache()
+
+    def target_pct_for(self, d=None):
+        """Asilimia lengwa ya mwezi (cumulative) kwa tarehe d, au None.
+
+        Huchukua mwezi husika; kama haipo, mwezi wa karibu uliopita ulio na lengo.
+        """
+        d = d or date.today()
+        row = (self.monthly_targets.filter(month__lte=d.month)
+               .order_by('-month').first())
+        return float(row.expected_pct) if row else None
+
+
+class MonthlyTarget(models.Model):
+    """Asilimia lengwa (cumulative) ya mwezi mmoja kwenye kalenda."""
+
+    calendar = models.ForeignKey(AcademicCalendar, on_delete=models.CASCADE,
+                                 related_name='monthly_targets')
+    month = models.PositiveSmallIntegerField(choices=MONTH_CHOICES)
+    expected_pct = models.DecimalField(max_digits=6, decimal_places=2)
+
+    class Meta:
+        ordering = ['month']
+        unique_together = [('calendar', 'month')]
+        verbose_name = 'Lengo la mwezi'
+        verbose_name_plural = 'Malengo ya miezi'
+
+    def __str__(self):
+        return f'{self.get_month_display()}: {self.expected_pct}%'
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        _clear_calendar_cache()

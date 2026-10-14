@@ -74,25 +74,35 @@ def _live_only_subtasks(prof) -> str:
 
 @shared_task(bind=True, time_limit=120, soft_time_limit=100)
 def auto_fill_due(self):
-    """Jaza kiotomatiki kwa kila mwalimu aliyejiwekea tarehe za shule,
-    siku zinazohesabiwa kwa entries_per_week (queue='essfill')."""
+    """Jaza kiotomatiki kwa kila mwalimu (dirisha na mzunguko kutoka mtaala).
+
+    Dirisha la mwaka hutoka kalenda ya admin kama ipo, vinginevyo tarehe za
+    wasifu. Siku za kujaza huzagwa kutoka vipindi vya mtaala vya somo
+    (fallback entries_per_week). (queue='essfill')."""
+    from .compute import calendar_window, profile_fill_entries
     from .locks import is_locked
     from .models import EssFillRun, TeacherProfile
 
     today = _today_eat()
+    cal_win = calendar_window()
     day_start, day_end = _eat_day_bounds(today)
     triggered = []
     skipped = []
-    for prof in TeacherProfile.objects.filter(ess_ready=True) \
-            .select_related('user') \
-            .exclude(school_open=None).exclude(school_close=None):
+    qs = TeacherProfile.objects.filter(ess_ready=True).select_related('user')
+    if not cal_win:
+        qs = qs.exclude(school_open=None).exclude(school_close=None)
+    for prof in qs:
         if not prof.auto_fill_enabled:
             skipped.append({'id': prof.id, 'why': 'disabled'})
             continue
-        if not (prof.school_open <= today <= prof.school_close):
+        open_d, close_d = cal_win or (prof.school_open, prof.school_close)
+        if not (open_d and close_d):
+            skipped.append({'id': prof.id, 'why': 'no-window'})
+            continue
+        if not (open_d <= today <= close_d):
             skipped.append({'id': prof.id, 'why': 'closed'})
             continue
-        if not _fill_day(today.weekday(), prof.entries_per_week):
+        if not _fill_day(today.weekday(), profile_fill_entries(prof)):
             skipped.append({'id': prof.id, 'why': 'not-fill-day'})
             continue
         if EssFillRun.objects.filter(profile=prof, kind='fill') \
@@ -211,6 +221,7 @@ def notify_fill_due():
     (hawana run ya 'done' ya leo). Waliojibiwa tayari kiotomatiki
     hawasumbuliwi — wanapata arifa ya matokeo kwenye run_ess_fill.
     """
+    from .compute import calendar_target_pct, calendar_window, profile_fill_entries
     from .models import EssFillRun, TeacherProfile
     from .push import push_configured, send_to_profile
 
@@ -218,17 +229,19 @@ def notify_fill_due():
     if not push_configured():
         return {'date': today.isoformat(), 'skipped': 'not-configured'}
 
+    cal_win = calendar_window()
+    target = calendar_target_pct(today)
     day_start, day_end = _eat_day_bounds(today)
     sent = 0
     skipped = 0
     profs = TeacherProfile.objects.filter(
         push_subscriptions__active=True).distinct().select_related('user')
     for prof in profs:
-        if not _fill_day(today.weekday(), prof.entries_per_week):
+        if not _fill_day(today.weekday(), profile_fill_entries(prof)):
             skipped += 1
             continue
-        if prof.school_open and prof.school_close \
-                and not (prof.school_open <= today <= prof.school_close):
+        open_d, close_d = cal_win or (prof.school_open, prof.school_close)
+        if open_d and close_d and not (open_d <= today <= close_d):
             skipped += 1
             continue
         done_today = EssFillRun.objects.filter(
@@ -237,8 +250,56 @@ def notify_fill_due():
         if done_today:
             skipped += 1
             continue
+        body = 'Bonyeza "Jaza" kuingiza maendeleo yako ya leo.'
+        if target is not None:
+            body = (f'Lengo la mwezi huu ni {target:.0f}%. '
+                    'Bonyeza "Jaza" kuingiza maendeleo yako ya leo.')
         res = send_to_profile(prof, title='Kumbuka: jaza e-Tendaji leo',
-                              body='Bonyeza "Jaza" kuingiza maendeleo yako ya leo.',
-                              url='/ess/', tag='ess-remind')
+                              body=body, url='/ess/', tag='ess-remind')
         sent += res.get('sent', 0)
     return {'date': today.isoformat(), 'sent': sent, 'skipped': skipped}
+
+
+@shared_task(time_limit=300, soft_time_limit=280)
+def notify_calendar_targets():
+    """Arifa kwa walimu walio NYUMA ya asilimia ya mwezi (kalenda ya admin).
+
+    Hutumia asilimia lengwa ya mwezi husika na maendeleo ya sasa ya mwalimu.
+    Hatumi mtu yeyote kama hakuna kalenda active au push haijapangwa.
+    """
+    from .compute import (active_calendar, calendar_target_pct,
+                          profile_progress_pct)
+    from .models import TeacherProfile
+    from .push import push_configured, send_to_profile
+
+    cal = active_calendar()
+    if not cal:
+        return {'skipped': 'no-calendar'}
+    today = _today_eat()
+    target = calendar_target_pct(today)
+    if target is None:
+        return {'skipped': 'no-target', 'year': cal.year}
+    if not push_configured():
+        return {'skipped': 'not-configured'}
+
+    sent = 0
+    checked = 0
+    behind = 0
+    profs = TeacherProfile.objects.filter(
+        push_subscriptions__active=True).distinct().select_related('user')
+    for prof in profs:
+        cur = profile_progress_pct(prof)
+        if cur is None:
+            continue
+        checked += 1
+        if cur + 0.5 >= target:
+            continue
+        behind += 1
+        body = (f'Kalenda {cal.year}: mwezi huu unatakiwa uwe {target:.0f}%, '
+                f'wewe upo {cur:.0f}%. Ongeza maendeleo.')
+        res = send_to_profile(prof, title='e-Tendaji: uko nyuma ya kalenda',
+                              body=body, url='/ess/', tag='ess-calendar',
+                              renotify=True)
+        sent += res.get('sent', 0)
+    return {'year': cal.year, 'result': today.isoformat(), 'target': target,
+            'checked': checked, 'behind': behind, 'sent': sent}

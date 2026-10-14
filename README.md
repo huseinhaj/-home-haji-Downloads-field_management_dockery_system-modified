@@ -92,6 +92,28 @@ Walimu wanajiandikisha mara moja, wanachagua sub-task na kubonyeza **Jaza**.
 > Beat hutuma kumbukumbu Jumatatu–Ijumaa 07:00 EAT (`ess-notify-due`) na kujaza
 > kiotomatiki kila siku (`ess-auto-fill-daily`).
 
+### 📅 Mtaala na Kalenda ya mwaka (admin)
+
+**Asilimia hutokana na MTAALA, sio mwalimu.** Idadi ya vipindi kwa wiki kwa kila
+somo (`SUBJECT_PERIODS_WEEK`, Mtaala Mpya 2023, TIE, Kidato I–IV) huamua jinsi
+asilimia inapanda (kiingilio kimoja = `100 / (wiki za somo × vipindi/wiki)`).
+Somo lisilojulikana hutumia `entries_per_week` ya mwalimu kama fallback.
+
+**Kalenda ya mwaka.** Admin anaweka kalenda (tarehe za kufungua/kufunga +
+asilimia lengwa ya kila mwezi) kwenye **Django admin** → *ESS → Kalenda za miaka*
+(`/admin/ess_tracker/academiccalendar/`), au kwa amri:
+
+```bash
+python manage.py import_academic_calendar 2026 \
+    --csv kalenda.csv --open 2026-01-06 --close 2026-12-04 --activate
+# CSV: safu mbili (mwezi, asilimia), mwezi = namba 1–12 au jina (Septemba/September)
+```
+
+Kalenda **moja** tu huwa `is_active=True`; ikiwa active, mfumo hutumia dirisha
+lake la mwaka na asilimia zake kwa **walimu wote** — hivyo admin akibadilisha,
+mabadiliko hujituma kiotomatiki (asilimia, ratiba, na alerts). Beat hutuma arifa
+kwa walio **nyuma ya asilimia ya mwezi** kila siku 07:15 EAT (`ess-notify-calendar`).
+
 ### 🛠️ Background services (workers + beat)
 
 Web service haitoshelezi ESS/resources peke yake — inahitaji **worker**, **worker

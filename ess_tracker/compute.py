@@ -172,6 +172,37 @@ def periods_per_year(somo, kidato=None, weeks=TEACHING_WEEKS_PER_YEAR):
     return pww * weeks if pww else None
 
 
+def task_periods_per_week(task):
+    """Vipindi kwa wiki vya somo la task kutoka mtaala (SUBJECT_PERIODS_WEEK).
+
+    Hurejesha None kama somo halijulikani kwenye jedwali.
+    """
+    return periods_per_week(getattr(task, 'somo', ''), getattr(task, 'kidato', None))
+
+
+def effective_entries_per_week(task):
+    """Idadi ya maingizo kwa wiki kwa task.
+
+    Hutumia vipindi vya mtaala vya somo (Mtaala Mpya) kama vinajulikana,
+    vinginevyo hurudi kwenye entries_per_week aliyochagua mwalimu.
+    """
+    return task_periods_per_week(task) or entries_per_week(getattr(task, 'profile', None))
+
+
+def profile_fill_entries(profile):
+    """Idadi ya maingizo/wiki kwa mwalimu mzima (kwa ratiba ya kujaza).
+
+    Huchukua kipindi cha juu zaidi kati ya masomo ya tasks zake (mtaala);
+    vinginevyo entries_per_week ya wasifu.
+    """
+    best = 0
+    for task in profile.tasks.all():
+        n = task_periods_per_week(task) or 0
+        if n > best:
+            best = n
+    return best or entries_per_week(profile)
+
+
 def _to_number(val):
     if val is None:
         return None
@@ -220,8 +251,58 @@ def weeks_between(a, b) -> float | None:
     return (b - a).days / 7.0
 
 
+def active_calendar():
+    """Kalenda ya mwaka iliyowekwa active na admin (kama ipo)."""
+    from django.core.cache import cache
+    key = 'ess:active_calendar'
+    cal = cache.get(key, '__miss__')
+    if cal == '__miss__':
+        from .models import AcademicCalendar
+        cal = AcademicCalendar.objects.filter(is_active=True).first()
+        cache.set(key, cal, 300)
+    return cal
+
+
+def calendar_window():
+    """(kufungua, kufunga) kutoka kalenda ya admin, au None."""
+    cal = active_calendar()
+    if cal and cal.school_open and cal.school_close:
+        return cal.school_open, cal.school_close
+    return None
+
+
+def calendar_target_pct(leo: date | None = None) -> float | None:
+    """Asilimia lengwa ya mwezi kutoka kalenda ya admin (kama ipo)."""
+    cal = active_calendar()
+    if not cal:
+        return None
+    return cal.target_pct_for(leo or date.today())
+
+
+def profile_progress_pct(profile, tasks=None) -> float | None:
+    """Wastani wa asilimia ya maendeleo ya sub-task zote za mwalimu.
+
+    Hutumika kulinganisha na asilimia ya kalenda (alerts). Hurejesha None
+    kama hakuna sub-task yenye kipimo.
+    """
+    if tasks is None:
+        tasks = profile.tasks.all()
+    vals = []
+    for task in tasks:
+        for st in task.subtasks.all():
+            pct, _src = pct_auto_for(st)
+            if pct is not None:
+                vals.append(float(pct))
+    if not vals:
+        return None
+    return round(sum(vals) / len(vals), 2)
+
+
 def _window(task: Task) -> tuple[date | None, date | None]:
-    """Dirisha la mwaka: tarehe ya shule ikiwekwa (Wasifu), vinginevyo za Task."""
+    """Dirisha la mwaka: kalenda ya admin, kisha tarehe za Wasifu, kisha Task."""
+    win = calendar_window()
+    if win:
+        return win
     profile = getattr(task, 'profile', None)
     if profile is not None and profile.school_open and profile.school_close:
         return profile.school_open, profile.school_close
@@ -278,7 +359,7 @@ def subtask_increment_pct(st: SubTask) -> float | None:
     tw = subtask_total_weeks(st)
     if not tw or tw <= 0:
         return None
-    epw = entries_per_week(st.task.profile)
+    epw = effective_entries_per_week(st.task)
     total = tw * epw
     return round(100.0 / total, 4) if total > 0 else None
 
@@ -410,7 +491,7 @@ def schedule_units(task: Task) -> tuple[float, int] | None:
     tw = total_weeks(task)
     if not tw or tw <= 0:
         return None
-    return tw, entries_per_week(task.profile)
+    return tw, effective_entries_per_week(task)
 
 
 def increment_pct(task: Task) -> float | None:
@@ -445,7 +526,7 @@ def plan_for(st: SubTask, current_pct: float | None = None,
         return None
     remaining = max(0.0, 100.0 - float(current_pct))
     inc = subtask_increment_pct(st)
-    epw_setting = entries_per_week(st.task.profile)
+    epw_setting = effective_entries_per_week(st.task)
     out = {
         'weeks_left': round(weeks_left, 1),
         'current': round(float(current_pct), 1),
@@ -503,7 +584,7 @@ def recommend_entries_per_week(profile, leo: date | None = None,
             n = plan.get('epw_needed') or 0
             if n > need:
                 need = n
-    setting = entries_per_week(profile)
+    setting = profile_fill_entries(profile)
     if need > 0:
         days = int(math.ceil(need - 1e-9))
     else:
