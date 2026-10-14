@@ -302,11 +302,16 @@ class AcademicCalendar(models.Model):
         _clear_calendar_cache()
 
     def target_pct_for(self, d=None):
-        """Asilimia lengwa ya mwezi (cumulative) kwa tarehe d, au None.
+        """Asilimia lengwa (cumulative) kwa tarehe d, au None.
 
-        Huchukua mwezi husika; kama haipo, mwezi wa karibu uliopita ulio na lengo.
+        Huchukua lengo la WIKI la karibu lililopita kama lipo (ratiba ya muhula,
+        mf. PEPMIS); vinginevyo lengo la mwezi. Rudi None kama hakuna.
         """
         d = d or date.today()
+        row = (self.weekly_targets.filter(week_start__lte=d)
+               .order_by('-week_start').first())
+        if row:
+            return float(row.expected_pct)
         row = (self.monthly_targets.filter(month__lte=d.month)
                .order_by('-month').first())
         return float(row.expected_pct) if row else None
@@ -328,6 +333,34 @@ class MonthlyTarget(models.Model):
 
     def __str__(self):
         return f'{self.get_month_display()}: {self.expected_pct}%'
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        _clear_calendar_cache()
+
+
+class WeeklyTarget(models.Model):
+    """Asilimia lengwa (cumulative) ya wiki moja kwenye kalenda.
+
+    Hutumika kwa ratiba za muhula (mf. PEPMIS) zinazotoa asilimia kwa kila
+    wiki. Kalenda ikiwa na malengo ya wiki, huyo huchukuliwa kwanza kabla ya
+    lengo la mwezi.
+    """
+
+    calendar = models.ForeignKey(AcademicCalendar, on_delete=models.CASCADE,
+                                 related_name='weekly_targets')
+    week_start = models.DateField(
+        help_text='Tarehe ya kuanza kwa wiki (mf. Jumatatu 2026-07-06)')
+    expected_pct = models.DecimalField(max_digits=6, decimal_places=2)
+
+    class Meta:
+        ordering = ['week_start']
+        unique_together = [('calendar', 'week_start')]
+        verbose_name = 'Lengo la wiki'
+        verbose_name_plural = 'Malengo ya wiki'
+
+    def __str__(self):
+        return f'{self.week_start}: {self.expected_pct}%'
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)

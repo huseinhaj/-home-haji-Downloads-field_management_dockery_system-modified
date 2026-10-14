@@ -2578,6 +2578,7 @@ def subtask_snapshot(task) -> list[dict]:
             'pct_str': '' if pct is None else f'{pct:.0f}%',
             'recorded_pct': recorded,
             'source': src,
+            'by_calendar': src == 'calendar',
             'increment': inc,
             'increment_str': '' if inc is None else f'{inc:.2f}%',
             'status': status,

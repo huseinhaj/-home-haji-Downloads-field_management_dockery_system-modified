@@ -1,23 +1,32 @@
-"""Ingiza kalenda ya mwaka (tarehe + asilimia za kila mwezi) kutoka CSV.
+"""Ingiza kalenda ya mwaka (tarehe + asilimia) kutoka CSV.
 
 Matumizi:
     python manage.py import_academic_calendar 2026 \
         --csv kalenda.csv --open 2026-01-06 --close 2026-12-04 --activate
 
-CSV (safu mbili: mwezi, asilimia):
+    # Ratiba ya wiki (mf. PEPMIS muhula):
+    python manage.py import_academic_calendar 2026 \
+        --weekly-csv wiki.csv --activate
+
+CSV ya mwezi (safu mbili: mwezi, asilimia):
     month,pct
     1,0
     7,20
-    8,30
     ...
 Mwezi unaweza kuwa namba (1-12) au jina (Januari/January).
+
+CSV ya wiki (safu mbili: tarehe ya kuanza kwa wiki, asilimia):
+    week_start,pct
+    2026-07-06,62
+    2026-07-13,64
+    ...
 """
 import csv
 
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.dateparse import parse_date
 
-from ...models import AcademicCalendar, MonthlyTarget
+from ...models import AcademicCalendar, MonthlyTarget, WeeklyTarget
 
 _MONTHS = {
     'januari': 1, 'january': 1, 'jan': 1,
@@ -52,6 +61,9 @@ class Command(BaseCommand):
         parser.add_argument('year', help='Mwaka, mf. 2026')
         parser.add_argument('--csv', dest='csv_path', default='',
                             help='Njia ya faili la CSV (month,pct).')
+        parser.add_argument('--weekly-csv', dest='weekly_csv_path', default='',
+                            help='Njia ya faili la CSV (week_start,pct) — ratiba '
+                                 'ya wiki, mf. PEPMIS.')
         parser.add_argument('--open', dest='open_date', default='',
                             help='Tarehe ya kufungua (YYYY-MM-DD).')
         parser.add_argument('--close', dest='close_date', default='',
@@ -110,6 +122,34 @@ class Command(BaseCommand):
                         defaults={'expected_pct': pct})
                     count += 1
 
+        weekly_count = 0
+        if opts['weekly_csv_path']:
+            try:
+                fh = open(opts['weekly_csv_path'], newline='', encoding='utf-8-sig')
+            except OSError as exc:
+                raise CommandError(f'Imeshindwa kufungua CSV ya wiki: {exc}')
+            with fh:
+                for lineno, raw in enumerate(csv.reader(fh), start=1):
+                    if not raw or not any(str(c).strip() for c in raw):
+                        continue
+                    ws = parse_date(str(raw[0]).strip())
+                    if ws is None:
+                        if lineno == 1:
+                            continue  # header
+                        self.stderr.write(
+                            f'Safu {lineno}: tarehe ya wiki si sahihi: {raw[0]!r}')
+                        continue
+                    try:
+                        pct = float(str(raw[1]).replace('%', '').strip())
+                    except (IndexError, ValueError):
+                        self.stderr.write(f'Safu {lineno}: asilimia si sahihi.')
+                        continue
+                    WeeklyTarget.objects.update_or_create(
+                        calendar=cal, week_start=ws,
+                        defaults={'expected_pct': pct})
+                    weekly_count += 1
+
         self.stdout.write(self.style.SUCCESS(
-            f'Kalenda {cal.year}: malengo {count}, active={cal.is_active}, '
+            f'Kalenda {cal.year}: malengo ya mwezi {count}, ya wiki '
+            f'{weekly_count}, active={cal.is_active}, '
             f'kufungua={cal.school_open}, kufunga={cal.school_close}'))

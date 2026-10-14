@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from .models import (AcademicCalendar, EssFillRun, MonthlyTarget, SubTask,
-                     Task, TeacherProfile, WeekEntry)
+                     Task, TeacherProfile, WeekEntry, WeeklyTarget)
 
 
 class SubTaskInline(admin.TabularInline):
@@ -15,11 +15,18 @@ class MonthlyTargetInline(admin.TabularInline):
     fields = ('month', 'expected_pct')
 
 
+class WeeklyTargetInline(admin.TabularInline):
+    model = WeeklyTarget
+    extra = 0
+    fields = ('week_start', 'expected_pct')
+    ordering = ('week_start',)
+
+
 @admin.register(AcademicCalendar)
 class AcademicCalendarAdmin(admin.ModelAdmin):
     list_display = ('year', 'is_active', 'school_open', 'school_close', 'updated_at')
     list_editable = ('is_active',)
-    inlines = [MonthlyTargetInline]
+    inlines = [WeeklyTargetInline, MonthlyTargetInline]
 
 
 @admin.register(TeacherProfile)
