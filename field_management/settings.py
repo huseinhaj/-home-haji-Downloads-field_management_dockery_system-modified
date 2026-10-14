@@ -345,31 +345,42 @@ VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
 VAPID_ADMIN_EMAIL = os.environ.get('VAPID_ADMIN_EMAIL', 'support@example.com')
 
 # Beat schedule: refresh HESLB knowledge every Monday at 06:00 EAT;
-# every day ~06:00 EAT try auto-fill due ESS profiles (calendar-aware).
+# every day 06:30 EAT try auto-fill due ESS profiles (calendar-aware).
+#
+# MUHIMU — queue: "default": web/worker hupokea `--queues=default,emails`
+# (Procfile/docker-compose). Jina la foleni ya kawaida ya Celery ni "celery",
+# hivyo task ya beat bila `options={"queue": "default"}` huenda kwenye foleni
+# "celery" ambayo HAKUNA worker anayeisikiliza — hukaa brokerni milele.
+# (Angalia maelezo kama haya kwenye results/marks_entry.py.)
 from celery.schedules import crontab  # noqa: E402
+
+_QUEUE = {"queue": "default"}
 
 CELERY_BEAT_SCHEDULE = {
     "refresh-heslb-knowledge-weekly": {
         "task": "heslb_knowledge.refresh",
         "schedule": 604800,  # 7 days in seconds
-        "options": {"expires": 3600},
+        "options": {"expires": 3600, **_QUEUE},
     },
     "ess-auto-fill-daily": {
+        # Kila siku 06:30 EAT (kabla ya arifa za 07:00). Crontab — si
+        # interval — ili kuendana na beat scheduler isiyo na hifadhi
+        # (ephemeral), kwamba kuanzishwa upya hakukanushi saa.
         "task": "ess_tracker.tasks.auto_fill_due",
-        "schedule": 86400.0,  # daily
-        "options": {"expires": 1800},
+        "schedule": crontab(hour=6, minute=30),
+        "options": {"expires": 1800, **_QUEUE},
     },
     "ess-notify-due": {
         # Jumatatu–Ijumaa 07:00 EAT: kumbusha walimu kujaza.
         "task": "ess_tracker.tasks.notify_fill_due",
         "schedule": crontab(hour=7, minute=0, day_of_week='1-5'),
-        "options": {"expires": 3600},
+        "options": {"expires": 3600, **_QUEUE},
     },
     "ess-notify-calendar": {
         # Kila siku 07:15 EAT: alert kwa walio nyuma ya asilimia ya kalenda.
         "task": "ess_tracker.tasks.notify_calendar_targets",
         "schedule": crontab(hour=7, minute=15),
-        "options": {"expires": 3600},
+        "options": {"expires": 3600, **_QUEUE},
     },
 }
 

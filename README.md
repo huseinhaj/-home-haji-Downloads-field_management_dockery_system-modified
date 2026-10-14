@@ -114,6 +114,24 @@ lake la mwaka na asilimia zake kwa **walimu wote** — hivyo admin akibadilisha,
 mabadiliko hujituma kiotomatiki (asilimia, ratiba, na alerts). Beat hutuma arifa
 kwa walio **nyuma ya asilimia ya mwezi** kila siku 07:15 EAT (`ess-notify-calendar`).
 
+**Kujaza kiotomatiki kunapangwa vipi.** Beat huamsha `auto_fill_due` kila siku
+06:30 EAT; inajaza mwalimu ikiwa leo: (1) yuko ndani ya dirisha la kalenda,
+(2) ni siku ya kujaza kulingana na vipindi vya mtaala, (3) hajajaza leo, na
+(4) hakuna lock. Wasifu wenye `auto_fill_enabled=True` + ESS username/password.
+
+> **MUHIMU — foleni ya beat.** Task za beat (auto-fill/notify) zinapaswa kwenda
+> foleni **`default`** (`options={"queue": "default"}` kwenye
+> `CELERY_BEAT_SCHEDULE`). Bila hivyo, Celery huzituma kwenye foleni yake ya
+> default (`celery`) ambayo **hakuna worker anayeisikiliza** — kazi hukaa
+> brokerni na hazifanyiki. Workers huendesha `--queues=default,emails`.
+
+**Kuchunguza kujaza kiotomatiki** (bila kusubiri beat):
+```bash
+python manage.py ess_auto_fill              # onyesho: nani yuko tayari leo + sababu
+python manage.py ess_auto_fill --profile 12 # mwalimu mmoja pekee
+python manage.py ess_auto_fill --execute    # endesha kujaza kweli sasa
+```
+
 ### 🛠️ Background services (workers + beat)
 
 Web service haitoshelezi ESS/resources peke yake — inahitaji **worker**, **worker

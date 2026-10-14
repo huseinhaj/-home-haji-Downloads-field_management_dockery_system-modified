@@ -72,6 +72,36 @@ def _live_only_subtasks(prof) -> str:
     return ','.join(str(i) for i in live)
 
 
+def auto_fill_decision(prof, today, cal_win, day_start, day_end):
+    """(ready, reason) kwa mwalimu mmoja. reason ni '' kama yuko tayari.
+
+    Hukumu ile ile hutumika kwenye auto_fill_due NA amri ya usimamizi
+    `ess_auto_fill` (ili maamuzi yasitofautiane). Sababu zinazoweza
+    kutokea: 'disabled', 'no-window', 'closed', 'not-fill-day', 'already',
+    'locked'.
+    """
+    from .compute import profile_fill_entries
+    from .locks import is_locked
+    from .models import EssFillRun
+
+    if not prof.auto_fill_enabled:
+        return False, 'disabled'
+    open_d, close_d = cal_win or (prof.school_open, prof.school_close)
+    if not (open_d and close_d):
+        return False, 'no-window'
+    if not (open_d <= today <= close_d):
+        return False, 'closed'
+    if not _fill_day(today.weekday(), profile_fill_entries(prof)):
+        return False, 'not-fill-day'
+    if EssFillRun.objects.filter(profile=prof, kind='fill') \
+            .exclude(status='error') \
+            .filter(started__gte=day_start, started__lt=day_end).exists():
+        return False, 'already'
+    if is_locked(prof.id):
+        return False, 'locked'
+    return True, ''
+
+
 @shared_task(bind=True, time_limit=120, soft_time_limit=100)
 def auto_fill_due(self):
     """Jaza kiotomatiki kwa kila mwalimu (dirisha na mzunguko kutoka mtaala).
@@ -79,8 +109,7 @@ def auto_fill_due(self):
     Dirisha la mwaka hutoka kalenda ya admin kama ipo, vinginevyo tarehe za
     wasifu. Siku za kujaza huzagwa kutoka vipindi vya mtaala vya somo
     (fallback entries_per_week). (queue='essfill')."""
-    from .compute import calendar_window, profile_fill_entries
-    from .locks import is_locked
+    from .compute import calendar_window
     from .models import EssFillRun, TeacherProfile
 
     today = _today_eat()
@@ -92,26 +121,9 @@ def auto_fill_due(self):
     if not cal_win:
         qs = qs.exclude(school_open=None).exclude(school_close=None)
     for prof in qs:
-        if not prof.auto_fill_enabled:
-            skipped.append({'id': prof.id, 'why': 'disabled'})
-            continue
-        open_d, close_d = cal_win or (prof.school_open, prof.school_close)
-        if not (open_d and close_d):
-            skipped.append({'id': prof.id, 'why': 'no-window'})
-            continue
-        if not (open_d <= today <= close_d):
-            skipped.append({'id': prof.id, 'why': 'closed'})
-            continue
-        if not _fill_day(today.weekday(), profile_fill_entries(prof)):
-            skipped.append({'id': prof.id, 'why': 'not-fill-day'})
-            continue
-        if EssFillRun.objects.filter(profile=prof, kind='fill') \
-                .exclude(status='error') \
-                .filter(started__gte=day_start, started__lt=day_end).exists():
-            skipped.append({'id': prof.id, 'why': 'already'})
-            continue
-        if is_locked(prof.id):
-            skipped.append({'id': prof.id, 'why': 'locked'})
+        ready, why = auto_fill_decision(prof, today, cal_win, day_start, day_end)
+        if not ready:
+            skipped.append({'id': prof.id, 'why': why})
             continue
         run = EssFillRun.objects.create(
             profile=prof, only_subtasks=_live_only_subtasks(prof))
