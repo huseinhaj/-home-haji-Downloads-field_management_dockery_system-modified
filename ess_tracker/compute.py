@@ -266,17 +266,21 @@ def calendar_target_pct(leo: date | None = None) -> float | None:
 
 
 def profile_progress_pct(profile, tasks=None) -> float | None:
-    """Wastani wa asilimia ya maendeleo ya sub-task zote za mwalimu.
+    """Wastani wa maendeleo HALISI ya sub-task za mwalimu (kwa alerts).
 
-    Hutumika kulinganisha na asilimia ya kalenda (alerts). Hurejesha None
-    kama hakuna sub-task yenye kipimo.
+    Hutumia asilimia ya ESS official ikiwa imesomwa, vinginevyo maendeleo
+    yaliyoandikwa (actual). Hutumika kulinganisha na asilimia ya kalenda.
+    Hurejesha None kama hakuna sub-task yenye kipimo.
     """
     if tasks is None:
         tasks = profile.tasks.all()
     vals = []
     for task in tasks:
         for st in task.subtasks.all():
-            pct, _src = pct_auto_for(st)
+            if st.official_pct is not None:
+                vals.append(float(st.official_pct))
+                continue
+            pct, _src = pct_for(st)
             if pct is not None:
                 vals.append(float(pct))
     if not vals:
@@ -408,13 +412,18 @@ def expected_for(st: SubTask) -> Decimal | None:
 
 
 def expected_pct(st: SubTask, leo: date | None = None) -> float | None:
-    """Asilimia inayotarajiwa kwa sasa kwa ratiba ya mstari mnyoofu.
+    """Asilimia inayotarajiwa kwa sasa.
 
-    Linear = wiki zilizopita / wiki zote x 100. Sub-task ya mwaka (annual)
-    hutarajiwa 100%. Rudi None kama hakuna dirisha la muda.
+    Kama kalenda ya admin ina lengo la mwezi, hiyo hutumika (kalenda ya mwaka
+    ya e-Utendaji); vinginevyo ratiba ya mstari mnyoofu = wiki zilizopita /
+    wiki zote x 100. Sub-task ya mwaka (annual) hutarajiwa 100%. Rudi None
+    kama hakuna dirisha la muda.
     """
     if st.mode == 'annual':
         return 100.0
+    cal = calendar_target_pct(leo)
+    if cal is not None:
+        return round(min(100.0, max(0.0, float(cal))), 2)
     tw = subtask_total_weeks(st)
     if not tw or tw <= 0:
         return None
@@ -607,18 +616,27 @@ def entry_fraction(st: SubTask, leo: date | None = None) -> float:
     return max(0.0, min(1.0, max(made, expected_now) / total))
 
 
-def pct_auto_for(st: SubTask) -> tuple[float | None, str]:
+def pct_auto_for(st: SubTask, leo: date | None = None) -> tuple[float | None, str]:
     """Asilimia ya 'Jaza' bila mwalimu kuandika kitu.
 
     - Sub-task ya mwaka (maazimio): 100%.
-    - Nyingine: ratiba ya viingilio (entries_per_week) au actual kama
+    - Kalenda ya admin ikiwa na lengo la mwezi: hilo lengo hutumika (kalenda
+      ya mwaka ya e-Utendaji). Chanzo: 'calendar'.
+    - Vinginevyo: ratiba ya viingilio (mstari mnyoofu) au actual kama
       aliandika zaidi ya ratiba. Chanzo: 'annual' | 'schedule' | 'topics'.
     """
     if st.mode == 'annual':
         return 100.0, 'annual'
     target = target_for(st)
     actual = actual_for(st)
-    frac = entry_fraction(st)
+    cal = calendar_target_pct(leo)
+    if cal is not None:
+        if target > 0:
+            planned = target * _dec(cal) / _dec(100)
+            eff = actual if actual > planned else planned
+            return min(100.0, round(float(eff) / float(target) * 100.0, 2)), 'calendar'
+        return min(100.0, round(float(cal), 2)), 'calendar'
+    frac = entry_fraction(st, leo)
     if target > 0:
         planned = target * _dec(round(frac, 6))
         eff = actual if actual > planned else planned
