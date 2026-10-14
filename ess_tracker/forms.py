@@ -101,15 +101,16 @@ class ProfileForm(forms.ModelForm):
     entries_per_week = forms.ChoiceField(
         label='Mfumo ujaze maendeleo yako mara ngapi kwa wiki?',
         required=False,
-        choices=[(1, 'Mara 1 kwa wiki'), (2, 'Mara 2 kwa wiki'),
-                 (3, 'Mara 3 kwa wiki'), (4, 'Mara 4 kwa wiki'),
-                 (5, 'Mara 5 kwa wiki')],
+        choices=[(1, 'Mara 1 kwa wiki (Jumatatu)'),
+                 (2, 'Mara 2 kwa wiki (Jumatatu, Alhamisi)'),
+                 (3, 'Mara 3 kwa wiki (Jumatatu, Jumatano, Ijumaa)'),
+                 (4, 'Mara 4 kwa wiki (Jumatatu, Jumanne, Alhamisi, Ijumaa)'),
+                 (5, 'Mara 5 kwa wiki (Jumatatu–Ijumaa)')],
         widget=forms.Select(attrs={'class': 'form-select'}),
-        help_text='Kwa kawaida idadi ya maingizo kwa wiki hutoka kwenye MTAALA '
-                  '(vipindi vya somo kwa wiki). Chaguo hili hutumika kama '
-                  'fallback kwa somo lisilojulikana kwenye mtaala. Siku za '
-                  'kujaza huzagwa kiotomatiki (mf. mara 3 = Jumatatu, '
-                  'Jumatano, Ijumaa).')
+        help_text='Idadi ya siku mfumo utakujazia kwa wiki. Siku huzagwa '
+                  'kiotomatiki (mf. mara 3 = Jumatatu, Jumatano, Ijumaa). '
+                  'Asilimia/increment hutumia vipindi vya mtaala; ratiba ya '
+                  'siku hutumia chaguo hili.')
 
     auto_subtasks = forms.ModelMultipleChoiceField(
         label='Sub-task za kujaza kiotomatiki',

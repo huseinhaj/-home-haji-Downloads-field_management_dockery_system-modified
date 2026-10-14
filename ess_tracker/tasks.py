@@ -23,6 +23,16 @@ def fill_weekdays(entries=3):
     n = max(1, min(5, n))
     return WEEKDAY_SPREAD[n]
 
+
+# Majina ya siku (Kiswahili) kwa weekday int (0=Jumatatu ... 6=Jumapili).
+WEEKDAY_NAMES = ('Jumatatu', 'Jumanne', 'Jumatano', 'Alhamisi', 'Ijumaa',
+                 'Jumamosi', 'Jumapili')
+
+
+def fill_day_names(entries=3):
+    """Majina ya siku za kujaza kutoka entries_per_week (mf. 'Jumatatu, Jumatano, Ijumaa')."""
+    return [WEEKDAY_NAMES[d] for d in fill_weekdays(entries)]
+
 # Saa za Tanzania (EAT). TIME_ZONE ya Django ni UTC; hesabu za siku za kujaza
 # zinahitaji tarehe ya EAT ili usiku wa manane usisababishe kukosa/kuongeza siku.
 EAT = None  # hupangwa kwa lazy kwenye _eat_tz()

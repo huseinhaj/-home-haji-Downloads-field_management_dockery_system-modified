@@ -130,11 +130,13 @@ def ess_home(request):
             .aggregate(t=Sum('amount'))['t'] or 0,
         })
     latest_run = profile.fill_runs.first()
+    from .tasks import fill_day_names
     return render(request, 'ess_tracker/ess_home.html', {
         'profile': profile,
         'tasks': tasks,
         'latest_run': latest_run,
         'behind_count': behind_count,
+        'fill_days': fill_day_names(profile.entries_per_week),
     })
 
 

@@ -29,6 +29,7 @@
   <b>{{ profile.school_open|date:'d M Y' }}</b> &rarr;
   <b>{{ profile.school_close|date:'d M Y' }}</b>
   &middot; Kujaziwa <b>{{ profile.entries_per_week }} mara kwa wiki</b>
+  {% if fill_days %}(<b>{{ fill_days|join:", " }}</b>){% endif %}
   &middot; <a href="{% url 'ess_tracker:ess_profile' %}" class="text-decoration-none">Badilisha</a>
 </div>
 {% endif %}
