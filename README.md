@@ -132,10 +132,20 @@ Wasifu wenye `auto_fill_enabled=True` + ESS username/password.
 
 **Kuchunguza kujaza kiotomatiki** (bila kusubiri beat):
 ```bash
-python manage.py ess_auto_fill              # onyesho: nani yuko tayari leo + sababu
-python manage.py ess_auto_fill --profile 12 # mwalimu mmoja pekee
-python manage.py ess_auto_fill --execute    # endesha kujaza kweli sasa
+python manage.py ess_auto_fill               # onyesho: nani yuko tayari leo + sababu
+python manage.py ess_auto_fill --profile 12  # mwalimu mmoja pekee
+python manage.py ess_auto_fill --execute     # weka foleni (essfill) — inahitaji worker
+python manage.py ess_auto_fill --execute --inline  # endesha HUMU (bila worker/beat)
 ```
+
+> **Njia rahisi: Railway Cron Job** (bila beat/worker). Unda service ya aina
+> **Cron Job** kwenye Railway, start command:
+> ```sh
+> sh -c 'export $(cat /app/.geoenv 2>/dev/null | xargs); python manage.py ess_auto_fill --execute --inline'
+> ```
+> Schedule (UTC; sisi tunatumia EAT=UTC+3): `30 3 * * *` = **06:30 EAT** kila
+> siku. `--inline` hujaza moja kwa moja ndani ya cron, hivyo huhitaji `beat`
+> wala `worker`.
 
 **Historia ya kujaza** (`/ess/fill/log/`) inaonyesha kila run ikiwa na safu
 **Aina** (`kind`: Kujaza/Sawazisha/Tuma/Soma) na **Chanzo** (`source`:

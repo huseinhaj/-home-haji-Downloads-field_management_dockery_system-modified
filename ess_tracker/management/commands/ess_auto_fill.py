@@ -20,6 +20,9 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--execute', action='store_true',
                             help='Endesha kujaza sasa (default: onyesho pekee).')
+        parser.add_argument('--inline', action='store_true',
+                            help='Kwa --execute: endesha kujaza HUMU ndani (bila '
+                                 'worker/beat). Nzuri kwa Railway Cron Job.')
         parser.add_argument('--profile', type=int,
                             help='Profile ID moja pekee (kwa uchunguzi).')
 
@@ -67,6 +70,54 @@ class Command(BaseCommand):
             return
         if not ready:
             return
+
+        if opts['inline']:
+            self._run_inline(ready)
+            return
+
         res = tasks.auto_fill_due.apply().get()
         self.stdout.write(self.style.SUCCESS(
             f'Imeanzisha: {res.get("triggered")}'))
+
+    def _run_inline(self, ready):  # noqa: D401
+        """Endesha kujaza HUMU ndani (bila broker/worker) kwa kila mwalimu tayari.
+
+        Hutumika na Railway Cron Job: service moja inaendesha amri hii kwa
+        ratiba, bila kuhitaji beat/worker/worker_fill.
+        """
+        from django.utils import timezone
+
+        from ess_tracker.essfill import run_fill
+        from ess_tracker.locks import profile_lock
+        from ess_tracker.models import EssFillRun
+        from ess_tracker.runstate import reap_stale_runs
+
+        reap_stale_runs()
+        done = []
+        for prof in ready:
+            run = EssFillRun.objects.create(
+                profile=prof, only_subtasks=tasks._live_only_subtasks(prof),
+                source='auto')
+            with profile_lock(prof.id) as got:
+                if not got:
+                    run.status = 'error'
+                    run.finished = timezone.now()
+                    run.log = 'Lock ilikuwa inashikiliwa; kurukwa.'
+                    run.save()
+                    self.stdout.write(f'  #{prof.id} — lock, imerukwa')
+                    continue
+                try:
+                    res = run_fill(prof.id, run.id)
+                    done.append(prof.id)
+                    self.stdout.write(self.style.SUCCESS(
+                        f'  #{prof.id} — saved={res.get("saved")} '
+                        f'skipped={res.get("skipped")} '
+                        f'not_found={res.get("not_found")}'))
+                except Exception as exc:  # noqa: BLE001
+                    run.status = 'error'
+                    run.finished = timezone.now()
+                    run.log = (run.log + f'\n{exc}') if run.log else str(exc)
+                    run.save()
+                    self.stderr.write(f'  #{prof.id} — HITILAFU: {exc}')
+        self.stdout.write(self.style.SUCCESS(
+            f'Imekamilika (inline): {len(done)}/{len(ready)}'))
