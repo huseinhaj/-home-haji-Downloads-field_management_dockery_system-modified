@@ -86,12 +86,35 @@ def _details_rows(page):
     return [r for r in t.query_selector_all('tbody tr') if _row_cells(r)]
 
 
+def _wait_for_main_rows(page, timeout_s=20):
+    """Subiri jedwali kuu lipate safu halisi.
+
+    ESS ni Angular: baada ya kufika department-report, jedwali huonekana kwanza
+    likiwa tupu ('No data to display') kisha data hupakiwa baadaye. Kutokana na
+    hii, Run #55 ilisoma safu ya kiholela na kusema 'no data' wakati kuna safu.
+    """
+    rows = _main_rows(page)
+    deadline = time.time() + timeout_s
+    while not rows and time.time() < deadline:
+        page.wait_for_timeout(700)
+        rows = _main_rows(page)
+    return rows
+
+
 def _row_cells(row):
     try:
         cells = row.query_selector_all('td')
     except Exception:
         return []
-    return [c for c in cells if (c.inner_text() or '').strip()]
+    cells = [c for c in cells if (c.inner_text() or '').strip()]
+    if not cells:
+        return []
+    # Puuza safu ya kiholela ya Angular Material "No data to display" (huja kama
+    # tbody tr ya kawaida na ingehesabiwa kama safu halisi).
+    joined = ' '.join(_normalize(c.inner_text()).lower() for c in cells)
+    if 'no data' in joined or 'hakuna data' in joined:
+        return []
+    return cells
 
 
 def _row_signature(row) -> str:
@@ -421,6 +444,8 @@ def run_approve(profile_id: int, run_id: int, dry_run: bool = False) -> dict:
             while page_no < 500:
                 page_no += 1
                 rows = _main_rows(page)
+                if not rows:
+                    rows = _wait_for_main_rows(page, 20)
                 if not rows:
                     if _next_page(page):
                         attempted.clear()
