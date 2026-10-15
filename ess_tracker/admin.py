@@ -114,3 +114,24 @@ class EssFillRunAdmin(admin.ModelAdmin):
     list_display = ('profile', 'started', 'finished', 'kind', 'source', 'status',
                     'saved', 'skipped', 'not_found')
     list_filter = ('status', 'kind', 'source')
+
+
+# Mradi unatumia `field_app.admin.custom_admin_site` kwa `/admin/`, sio default
+# `admin.site`. Bila kusajili hapa, models za ESS (TeacherProfile, n.k.)
+# hazionekani kwenye ukurasa wa admin. Sajili pia kwenye custom site.
+try:
+    from field_app.admin import custom_admin_site
+except Exception:  # noqa: BLE001 — endelea hata kama field_app haipo
+    custom_admin_site = None
+
+if custom_admin_site is not None:
+    for _model, _model_admin in (
+        (AcademicCalendar, AcademicCalendarAdmin),
+        (TeacherProfile, TeacherProfileAdmin),
+        (Task, TaskAdmin),
+        (SubTask, SubTaskAdmin),
+        (WeekEntry, WeekEntryAdmin),
+        (EssFillRun, EssFillRunAdmin),
+    ):
+        if not custom_admin_site._registry.get(_model):
+            custom_admin_site.register(_model, _model_admin)
