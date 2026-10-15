@@ -231,12 +231,6 @@ def run_approve_inline(profiles=None, log=None, dry_run=False, only_due=False):
 
     Hurudisha {'date', 'verified', 'processed', 'failed', 'profiles'}.
     """
-    from django.utils import timezone
-
-    from .essapprove import run_approve
-    from .locks import profile_lock
-    from .models import EssFillRun, TeacherProfile
-
     def _log(msg):
         if log:
             try:
@@ -245,15 +239,65 @@ def run_approve_inline(profiles=None, log=None, dry_run=False, only_due=False):
                 pass
 
     if profiles is None:
+        from .models import TeacherProfile
         base = TeacherProfile.objects.filter(
             approver_enabled=True, ess_ready=True).select_related('user')
         profiles = [p for p in base if (not only_due) or approve_due_for(p)]
 
+    profiles = list(profiles)
     verified = processed = failed = 0
     done = []
-    for prof in profiles:
-        run = EssFillRun.objects.create(
-            profile=prof, kind='approve', source='auto')
+    conc = _approve_concurrency()
+
+    if conc > 1 and len(profiles) > 1:
+        _log(f'  [concurrency={conc}] wakuu {len(profiles)} — sambamba')
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        with ThreadPoolExecutor(max_workers=conc) as ex:
+            futs = {ex.submit(_approve_one, p, dry_run, _log): p
+                    for p in profiles}
+            for fut in as_completed(futs):
+                v, pr, f, ok = fut.result()
+                verified += v
+                processed += pr
+                failed += f
+                if ok:
+                    done.append(futs[fut].id)
+    else:
+        for prof in profiles:
+            v, pr, f, ok = _approve_one(prof, dry_run, _log)
+            verified += v
+            processed += pr
+            failed += f
+            if ok:
+                done.append(prof.id)
+
+    return {'date': _today_eat().isoformat(), 'verified': verified,
+            'processed': processed, 'failed': failed, 'profiles': done}
+
+
+def _approve_concurrency() -> int:
+    """Idadi ya wakuu wanaoidhinishwa sambamba (env ESS_APPROVE_CONCURRENCY)."""
+    import os
+    try:
+        n = int(os.environ.get('ESS_APPROVE_CONCURRENCY', '3'))
+    except (TypeError, ValueError):
+        n = 3
+    return max(1, min(n, 8))
+
+
+def _approve_one(prof, dry_run, _log):
+    """Idhinisha mkuu mmoja (thread salama). Hurudi (verified, processed,
+    failed, ok)."""
+    from django.db import connection
+    from django.utils import timezone
+
+    from .essapprove import run_approve
+    from .locks import profile_lock
+    from .models import EssFillRun
+
+    run = EssFillRun.objects.create(
+        profile=prof, kind='approve', source='auto')
+    try:
         with profile_lock(prof.id) as got:
             if not got:
                 run.status = 'error'
@@ -261,25 +305,27 @@ def run_approve_inline(profiles=None, log=None, dry_run=False, only_due=False):
                 run.log = 'Lock ilikuwa inashikiliwa; kurukwa.'
                 run.save()
                 _log(f'  #{prof.id} — lock, imerukwa')
-                continue
+                return (0, 0, 0, False)
             try:
                 res = run_approve(prof.id, run.id, dry_run=dry_run)
-                verified += res.get('verified', 0)
-                processed += res.get('processed', 0)
-                failed += res.get('failed', 0)
-                done.append(prof.id)
                 _log(f'  #{prof.id} — verified={res.get("verified", 0)} '
                      f'processed={res.get("processed", 0)} '
                      f'failed={res.get("failed", 0)}')
+                return (res.get('verified', 0), res.get('processed', 0),
+                        res.get('failed', 0), True)
             except Exception as exc:  # noqa: BLE001
-                failed += 1
                 run.status = 'error'
                 run.finished = timezone.now()
                 run.log = (run.log + f'\n{exc}') if run.log else str(exc)
                 run.save()
                 _log(f'  #{prof.id} — HITILAFU: {exc}')
-    return {'date': _today_eat().isoformat(), 'verified': verified,
-            'processed': processed, 'failed': failed, 'profiles': done}
+                return (0, 0, 1, False)
+    finally:
+        # Funga muunganisho wa DB wa thread hii (ThreadPoolExecutor).
+        try:
+            connection.close()
+        except Exception:  # noqa: BLE001
+            pass
 
 
 def approve_interval_days(profile) -> int:

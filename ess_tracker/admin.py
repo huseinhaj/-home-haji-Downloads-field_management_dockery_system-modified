@@ -65,6 +65,17 @@ class TeacherProfileAdmin(admin.ModelAdmin):
     list_filter = ('approver_enabled',)
     search_fields = ('full_name', 'ess_username', 'user__email')
     readonly_fields = ('ess_password', 'ess_ready')
+    actions = ('enable_approver', 'disable_approver')
+
+    @admin.action(description='Washa kuidhinisha kwa waliochaguliwa')
+    def enable_approver(self, request, queryset):
+        n = queryset.update(approver_enabled=True)
+        self.message_user(request, f'Wakuu {n} wamewashwa kuidhinisha.')
+
+    @admin.action(description='Zima kuidhinisha kwa waliochaguliwa')
+    def disable_approver(self, request, queryset):
+        n = queryset.update(approver_enabled=False)
+        self.message_user(request, f'Wakuu {n} wamezimwa kuidhinisha.')
     fieldsets = (
         (None, {'fields': ('user', 'full_name', 'phone', 'school')}),
         ('ESS (e-Tendaji)', {'fields': ('ess_username', 'new_ess_password',
