@@ -64,6 +64,12 @@ h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
   display:block;text-decoration:none;font-weight:600;}
 .alert a{color:inherit;text-decoration:underline;}
 .note{font-size:12px;color:var(--muted);margin-top:10px;text-align:center;}
+.sect{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+  font-family:'Poppins',sans-serif;font-weight:700;display:flex;align-items:center;gap:7px;margin:0 0 4px;}
+.sect-sub{font-size:12px;color:var(--muted);margin:0 0 13px;line-height:1.55;}
+.divider{margin-top:22px;padding-top:20px;border-top:1px solid var(--border);}
+.btn.mini{width:auto;display:inline-block;padding:9px 16px;font-size:12.5px;margin-top:10px;}
+.btn.mini i{margin-right:6px;}
 /* runs */
 .runs{margin-top:22px;padding-top:18px;border-top:1px solid var(--border);}
 .runs h5{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
@@ -155,6 +161,11 @@ h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
       </a>
       {% endif %}
 
+      <div class="sect"><i class="fas fa-check-double"></i>{% if LANG == 'sw' %}Hatua kuu — idhinisha{% else %}Main step — approve{% endif %}</div>
+      <div class="sect-sub">
+        {% if LANG == 'sw' %}Mfumo huingia ESS kwa akaunti yako na kuthibitisha (Verify) description zote zilizowasilishwa (SUBMITTED) na walimu walio chini yako.{% else %}The system logs into ESS with your account and verifies all SUBMITTED descriptions of teachers under you.{% endif %}
+      </div>
+
       <form method="post" action="{% url 'ess_tracker:ess_approve_now' %}">
         {% csrf_token %}
         <button class="btn" type="submit" {% if not profile.ess_ready or not profile.approver_enabled %}disabled{% endif %}
@@ -162,23 +173,29 @@ h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
           <i class="fas fa-check-double"></i>{% if LANG == 'sw' %}Idhinisha maendeleo{% else %}Approve progress{% endif %}
         </button>
       </form>
-      <form method="post" action="{% url 'ess_tracker:ess_approve_now' %}">
-        {% csrf_token %}
-        <input type="hidden" name="dry_run" value="1">
-        <button class="btn ghost" type="submit" {% if not profile.ess_ready or not profile.approver_enabled %}disabled{% endif %}
-                onclick="return confirm('Onyesho pekee (dry-run): haitabofya Verify. Endelea?')">
-          <i class="fas fa-eye"></i>{% if LANG == 'sw' %}Onyesho (dry-run){% else %}Preview (dry-run){% endif %}
-        </button>
-      </form>
       <div class="note">
-        {% if LANG == 'sw' %}Huidhinisha description zilizowasilishwa (SUBMITTED) na walimu walio chini yako.{% else %}Verifies SUBMITTED descriptions of teachers under you.{% endif %}
+        {% if LANG == 'sw' %}Huidhinisha description zilizowasilishwa na walimu walio chini yako.{% else %}Verifies SUBMITTED descriptions of teachers under you.{% endif %}
+      </div>
+      <div style="text-align:center;">
+        <form method="post" action="{% url 'ess_tracker:ess_approve_now' %}">
+          {% csrf_token %}
+          <input type="hidden" name="dry_run" value="1">
+          <button class="btn ghost mini" type="submit" {% if not profile.ess_ready or not profile.approver_enabled %}disabled{% endif %}
+                  onclick="return confirm('Onyesho pekee (dry-run): haitabofya Verify. Endelea?')">
+            <i class="fas fa-eye"></i>{% if LANG == 'sw' %}Onyesho tu — haithibitishi{% else %}Preview only — no changes{% endif %}
+          </button>
+        </form>
       </div>
 
       {% if profile.approver_enabled %}
-      <div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--border);">
-        <h5 style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">
-          <i class="fas fa-calendar-week me-1"></i>{% if LANG == 'sw' %}Kuidhinisha kiotomatiki{% else %}Auto-approve{% endif %}
+      <div class="divider">
+        <h5 class="sect">
+          <i class="fas fa-calendar-week"></i>{% if LANG == 'sw' %}Kuidhinisha kiotomatiki{% else %}Auto-approve{% endif %}
         </h5>
+        <div class="sect-sub">
+          {% if LANG == 'sw' %}Chagua kipindi. Mfumo huzinduliwa kila siku 18:00 EAT (baada ya saa za kazi) na hufanya approve tu kipindi kinapofika.{% else %}Choose an interval. The system runs daily at 18:00 EAT (after working hours) and approves only when the interval is due.{% endif %}
+          {% if approve_next_due %} {% if LANG == 'sw' %}Ijayo:{% else %}Next:{% endif %} <b>{{ approve_next_due|date:'d M Y' }}</b>.{% endif %}
+        </div>
         <form method="post" action="{% url 'ess_tracker:ess_approve_schedule' %}">
           {% csrf_token %}
           <div style="display:flex;gap:10px;align-items:stretch;">
@@ -187,21 +204,17 @@ h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
               <option value="1" {% if profile.auto_approve_weeks == 1 %}selected{% endif %}>{% if LANG == 'sw' %}Kila wiki{% else %}Every week{% endif %}</option>
               <option value="2" {% if profile.auto_approve_weeks == 2 %}selected{% endif %}>{% if LANG == 'sw' %}Kila wiki mbili{% else %}Every two weeks{% endif %}</option>
             </select>
-            <button class="btn" type="submit" style="width:auto;padding:10px 18px;text-transform:none;">
+            <button class="btn mini" type="submit" style="margin-top:0;">
               <i class="fas fa-floppy-disk"></i>{% if LANG == 'sw' %}Hifadhi{% else %}Save{% endif %}
             </button>
           </div>
         </form>
-        <div class="note">
-          {% if LANG == 'sw' %}Mfumo huzinduliwa kila siku 18:00 EAT (baada ya saa za kazi).{% else %}Runs daily at 18:00 EAT (after working hours).{% endif %}
-          {% if approve_next_due %} {% if LANG == 'sw' %}Ijayo:{% else %}Next:{% endif %} {{ approve_next_due|date:'d M Y' }}.{% endif %}
-        </div>
       </div>
       {% endif %}
 
       {% if runs %}
-      <div class="runs">
-        <h5><i class="fas fa-clock-rotate-left me-1"></i>{% if LANG == 'sw' %}Historia ya uidhinishaji{% else %}Approval history{% endif %}</h5>
+      <div class="divider runs">
+        <h5 class="sect"><i class="fas fa-clock-rotate-left"></i>{% if LANG == 'sw' %}Historia ya uidhinishaji{% else %}Approval history{% endif %}</h5>
         {% for r in runs %}
         <div class="run-row">
           <div>

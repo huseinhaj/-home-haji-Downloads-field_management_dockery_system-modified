@@ -1,57 +1,115 @@
 {% extends 'ess_tracker/ess_base.html' %}
 {% block title %}Nyumbani — e-Tendaji{% endblock %}
 {% block content %}
-<div class="page-head d-flex flex-wrap justify-content-between align-items-end gap-2">
-  <div>
-    <h4>e-Tendaji — {{ profile.full_name|default:profile.ess_username }}</h4>
-    <div class="sub">Bofya <b>Jaza ESS sasa</b> chini — tunahesabu na kuwasilisha maendeleo yako yote kiotomatiki. Hakuna cha kuandika.</div>
-  </div>
-  <a href="{% url 'ess_tracker:ess_csv' %}" class="btn btn-sm btn-outline-secondary text-decoration-none">
-    <i class="fas fa-file-csv me-1"></i>Ingiza kwa CSV</a>
+<style>
+  .sec-title{font-family:'Poppins',sans-serif;font-weight:700;color:#16308c;font-size:15px;
+    display:flex;align-items:center;gap:8px;margin:0 0 3px;}
+  .sec-sub{font-size:12.5px;color:var(--muted);margin:0 0 14px;line-height:1.5;}
+  .wrap{max-width:960px;margin:0 auto;}
+  .tool{display:flex;gap:12px;align-items:flex-start;padding:13px 0;border-bottom:1px solid #EEF2F8;}
+  .tool:last-child{border-bottom:none;padding-bottom:0;}
+  .tool .ic{width:38px;height:38px;border-radius:9px;background:#F0F5FF;color:#1F41BB;
+    display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+  .tool .tx{flex:1;min-width:0;}
+  .tool .tx b{font-family:'Poppins',sans-serif;font-size:13.5px;color:#1f2937;display:block;}
+  .tool .tx p{font-size:12px;color:var(--muted);margin:2px 0 0;}
+  .tool .btn{white-space:nowrap;flex-shrink:0;}
+  @media (max-width:520px){
+    .tool{flex-wrap:wrap;}
+    .tool .btn{width:100%;}
+  }
+</style>
+
+<div class="page-head wrap">
+  <h4>e-Tendaji — {{ profile.full_name|default:profile.ess_username }}</h4>
+  <div class="sub">Jaza na fuatilia maendeleo yako ya ESS. Kitufe kikubwa hapa chini hufanya kazi yote — hakuna cha kuandika.</div>
 </div>
 
+<!-- ══ 1. HALI / TAARIFA ══ -->
+<div class="wrap">
 {% if not profile.ess_ready %}
-<div class="alert alert-warning small" style="max-width:960px;margin:0 auto 16px;">
-  Unaweza kurekodi data lakini <b>huwezi kujaza ESS</b> mpaka uweke <b>username na password</b> zako za ESS kwenye
-  <a href="{% url 'ess_tracker:ess_profile' %}">Wasifu</a>.
+<div class="alert alert-warning small">
+  <i class="fas fa-key me-1"></i>Bado <b>huwezi kujaza ESS</b>. Weka <b>username na password</b> zako za ESS kwenye
+  <a href="{% url 'ess_tracker:ess_profile' %}" class="fw-bold">Wasifu</a>.
 </div>
 {% endif %}
 
 {% if not profile.school_open or not profile.school_close %}
-<div class="alert alert-info small mb-2" style="max-width:960px;margin:0 auto 16px;">
-  <i class="fas fa-calendar me-1"></i>Weka <b>tarehe ya kufungulia na kufunga shule</b> (na mara ngapi kwa wiki)
-  kwenye <a href="{% url 'ess_tracker:ess_profile' %}">Wasifu</a> ili mfumo uhesabu maendeleo yako ya mwaka mzima
-  na ujae <b>kiotomatiki</b> mpaka sub-tasks zote zifikie <b>100%</b> tarehe ya kufunga.
+<div class="alert alert-info small">
+  <i class="fas fa-calendar me-1"></i>Weka <b>tarehe ya kufungulia na kufunga shule</b> kwenye
+  <a href="{% url 'ess_tracker:ess_profile' %}" class="fw-bold">Wasifu</a> ili mfumo uhesabu maendeleo ya mwaka mzima
+  na ujae kiotomatiki mpaka <b>100%</b>.
 </div>
 {% else %}
-<div class="alert alert-success small mb-2" style="max-width:960px;margin:0 auto 16px;">
-  <i class="fas fa-calendar-check me-1"></i>Kalenda ya shule:
-  <b>{{ profile.school_open|date:'d M Y' }}</b> &rarr;
-  <b>{{ profile.school_close|date:'d M Y' }}</b>
-  &middot; Kujaziwa <b>{{ profile.entries_per_week }} mara kwa wiki</b>
-  {% if fill_days %}(<b>{{ fill_days|join:", " }}</b>){% endif %}
-  &middot; <a href="{% url 'ess_tracker:ess_profile' %}" class="text-decoration-none">Badilisha</a>
+<div class="alert alert-success small d-flex flex-wrap justify-content-between align-items-center gap-2">
+  <span><i class="fas fa-calendar-check me-1"></i>Kalenda ya shule:
+    <b>{{ profile.school_open|date:'d M Y' }}</b> &rarr; <b>{{ profile.school_close|date:'d M Y' }}</b>
+    &middot; kujaziwa <b>{{ profile.entries_per_week }} mara kwa wiki</b>
+    {% if fill_days %}({{ fill_days|join:", " }}){% endif %}</span>
+  <a href="{% url 'ess_tracker:ess_profile' %}" class="btn btn-sm btn-outline-secondary">Badilisha</a>
 </div>
 {% endif %}
 
 {% if behind_count %}
-<div class="alert alert-danger small mb-2" style="max-width:960px;margin:0 auto 16px;">
+<div class="alert alert-danger small">
   <i class="fas fa-triangle-exclamation me-1"></i>
-  <b>Sub-task {{ behind_count }}</b> {{ behind_count|pluralize }} zipo <b>chini ya tarajio</b> la muda
-  (ratiba ya mstari mnyoofu). Bofya <b>Jaza</b> au ongeza viingilio kwenye
-  <a href="{% url 'ess_tracker:ess_week' %}" class="text-decoration-none">Rekodi wiki</a>.
+  <b>Sub-task {{ behind_count }}</b> zipo <b>chini ya tarajio</b> la muda. Ongeza viingilio kwenye
+  <a href="{% url 'ess_tracker:ess_week' %}" class="fw-bold">Rekodi wiki</a> au endelea kujaza.
 </div>
 {% endif %}
 
 {% if latest_run and latest_run.status == 'running' %}
-<a class="alert alert-info d-block small mb-3 text-decoration-none" style="max-width:960px;margin-left:auto;margin-right:auto;"
+<a class="alert alert-info d-block small text-decoration-none"
    href="{% url 'ess_tracker:ess_fill_status' latest_run.id %}">
   <i class="fas fa-spinner fa-spin me-2"></i>Kujaza kunafanyika — bonyeza hapa kuangalia...
 </a>
 {% endif %}
+</div>
+
+<!-- ══ 2. HATUA KUU: JAZA ══ -->
+<div class="card shadow-sm wrap mb-4">
+  <div class="card-body text-center py-4">
+    <div class="sec-title justify-content-center"><i class="fas fa-cloud-upload-alt"></i>Hatua kuu — Jaza ESS</div>
+    <p class="sec-sub" style="max-width:620px;margin-left:auto;margin-right:auto;">
+      Bofya kitufe. Mfumo huingia ESS kwa akaunti yako na kuwasilisha maendeleo yote
+      (maazimio, nukuu, maandalio, zana, vipindi, tathmini, majaribio).
+    </p>
+    <form id="jaza-form" method="post" action="{% url 'ess_tracker:ess_fill' %}">
+      {% csrf_token %}
+      <button class="btn btn-success btn-lg px-5" {% if not profile.ess_ready %}disabled{% endif %}
+              onclick="return confirm('Kujaza ESS kunahitaji login ya akaunti yako ya ESS. Endelea?')">
+        <i class="fas fa-cloud-upload-alt me-2"></i>Jaza ESS sasa
+      </button>
+      <div class="mt-2">
+        <button class="btn btn-sm btn-outline-success" type="submit" {% if not profile.ess_ready %}disabled{% endif %}
+                formaction="{% url 'ess_tracker:ess_save_auto_choice' %}" formnovalidate
+                onclick="return confirm('Hifadhi sub-task ulizochagua kwa KUJAZA KIOTOMATIKI (kila siku)? Zile usizochagua hazitaguswa.')">
+          <i class="fas fa-floppy-disk me-1"></i>Hifadhi kwa kiotomatiki (kila siku)
+        </button>
+        {% with chosen=profile.auto_subtask_ids %}
+        <div class="small text-muted mt-2">
+          {% if chosen %}<span class="badge bg-success">Kiotomatiki kitajaza sub-task {{ chosen|length }} ulizochagua</span>
+          {% else %}<span class="badge bg-secondary">Kiotomatiki kitajaza ZOTE</span>{% endif %}
+        </div>
+        {% endwith %}
+      </div>
+      <div class="small text-muted mt-2" style="max-width:640px;margin-left:auto;margin-right:auto;">
+        <b>Jaza ESS sasa</b> = wasilisha mara moja. &nbsp;<b>Hifadhi kwa kiotomatiki</b> = mfumo ujaze kila siku.
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══ 3. MAENDELEO (SUB-TASKS) ══ -->
+<div class="wrap mb-2">
+  <div class="sec-title"><i class="fas fa-list-check"></i>Maendeleo yako (sub-tasks)</div>
+  <div class="sec-sub">
+    Tiki sub-task unazotaka kujaza, au acha wote — usipochagua lolote tunajaza <b>zote</b>.
+  </div>
+</div>
 
 {% for item in tasks %}
-<div class="card shadow-sm mb-4" style="max-width:960px;margin:0 auto 22px;">
+<div class="card shadow-sm mb-4 wrap">
   <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
     <div>
       <span class="text-uppercase fw-bold">{{ item.task.somo }}</span>
@@ -99,9 +157,6 @@
               </div>
               <span class="small fw-bold">{{ s.send_pct_str|default:'—' }}</span>
             </div>
-            {% if s.will_skip %}<div class="text-muted" style="font-size:.7rem"><i class="fas fa-forward me-1"></i>itaskip — ESS tayari {{ s.ess_pct_str }}</div>{% endif %}
-            {% if s.increment_str %}<div class="text-muted" style="font-size:.7rem">kila kiingilio +{{ s.increment_str }}</div>{% endif %}
-            {% if s.by_calendar %}<div class="text-muted" style="font-size:.7rem"><i class="fas fa-calendar-week me-1"></i>kufuata kalenda{% if s.expected_pct_str %} ({{ s.expected_pct_str }}){% endif %}</div>{% endif %}
             {% if s.ess_pct_str %}
             <div class="mt-1">
               <span class="badge bg-primary" title="Asilimia halisi kutoka ESS official{% if s.ess_at %} — ilisomwa {{ s.ess_at|date:'d M Y H:i' }}{% endif %}">
@@ -117,6 +172,9 @@
                 <i class="fas fa-check me-1"></i>Sawa na tarajio {{ s.expected_pct_str }}</span>
               {% endif %}
             {% endif %}
+            {% if s.will_skip %}<div class="text-muted" style="font-size:.7rem"><i class="fas fa-forward me-1"></i>itaskip — ESS tayari {{ s.ess_pct_str }}</div>{% endif %}
+            {% if s.increment_str %}<div class="text-muted" style="font-size:.7rem">kila kiingilio +{{ s.increment_str }}</div>{% endif %}
+            {% if s.by_calendar %}<div class="text-muted" style="font-size:.7rem"><i class="fas fa-calendar-week me-1"></i>kufuata kalenda{% if s.expected_pct_str %} ({{ s.expected_pct_str }}){% endif %}</div>{% endif %}
             {% if s.plan and s.plan.remaining > 0 %}
               {% if s.plan.impossible %}
               <div class="text-danger fw-semibold" style="font-size:.72rem">
@@ -142,79 +200,76 @@
   </div>
 </div>
 {% empty %}
-<div class="alert alert-info text-center" style="max-width:960px;margin:0 auto 16px;">
-  Bado hakuna Task. Bofya <a href="{% url 'ess_tracker:ess_task_new' %}">Task mpya</a> kuanza.
+<div class="alert alert-info text-center wrap">
+  Bado hakuna Task. Bofya <a href="{% url 'ess_tracker:ess_task_new' %}" class="fw-bold">Task mpya</a> kuanza.
 </div>
 {% endfor %}
 
-<div class="card shadow-sm" style="max-width:960px;margin:0 auto;">
-  <div class="card-body text-center">
-    <form id="jaza-form" method="post" action="{% url 'ess_tracker:ess_fill' %}">
-      {% csrf_token %}
-      <button class="btn btn-success btn-lg px-4" {% if not profile.ess_ready %}disabled{% endif %}
-              onclick="return confirm('Kujaza ESS kunahitaji login ya akaunti yako ya ESS. Endelea?')">
-        <i class="fas fa-cloud-upload-alt me-2"></i>Jaza
-      </button>
-      <button class="btn btn-outline-success btn-lg px-4 ms-2" type="submit"
-              formaction="{% url 'ess_tracker:ess_save_auto_choice' %}" formnovalidate
-              onclick="return confirm('Hifadhi sub-task ulizochagua kwa KUJAZA KIOTOMATIKI (beat)? Zile usizochagua hazitaguswa.')">
-        <i class="fas fa-floppy-disk me-2"></i>Hifadhi kwa kiotomatiki
-      </button>
-      <div class="small text-muted mt-1">
-        Umechagua sub-task hapo juu? <b>Jaza</b> = jaza <b>sasa</b> zilizochaguliwa.
-        <b>Hifadhi kwa kiotomatiki</b> = beat ijaze <b>zilizochaguliwa</b> kila siku.
-        Usipochagua = tunajaza <b>zote</b>.
-      </div>
-      {% with chosen=profile.auto_subtask_ids %}
-      <div class="small mt-1">
-        {% if chosen %}
-        <span class="badge bg-success">Beat itajaza sub-task {{ chosen|length }} uliyochagua</span>
-        {% else %}
-        <span class="badge bg-secondary">Beat itajaza ZOTE</span>
-        {% endif %}
-      </div>
-      {% endwith %}
-      <a href="{% url 'ess_tracker:ess_fill_log' %}" class="btn btn-outline-secondary ms-2">Historia ya kujaza</a>
-    </form>
-    <form method="post" action="{% url 'ess_tracker:ess_sync_names' %}" class="mt-2"
-          onsubmit="return confirm('Vuta inachukua task/sub-task kutoka ESS official (zisizopo local zitaundwa) na kusawazisha majina. Endelea?')">
-      {% csrf_token %}
-      <button class="btn btn-outline-primary" {% if not profile.ess_ready %}disabled{% endif %}>
-        <i class="fas fa-down-long me-2"></i>Vuta kutoka ESS (ESS &rarr; local)
-      </button>
-    </form>
-    <form method="post" action="{% url 'ess_tracker:ess_push_names' %}" class="mt-2"
-          onsubmit="return confirm('Kutuma kunabadilisha majina ya sub-task KWENYE ESS official kutoka yaliyo local (yanayotofautiana). Endelea?')">
-      {% csrf_token %}
-      <button class="btn btn-outline-warning" {% if not profile.ess_ready %}disabled{% endif %}>
-        <i class="fas fa-cloud-upload-alt me-2"></i>Sahihisha majina kwenye ESS (local &rarr; ESS)
-      </button>
-    </form>
-    <form method="post" action="{% url 'ess_tracker:ess_read_pcts' %}" class="mt-2"
-          onsubmit="return confirm('Kusoma kunavuta asilimia HALISI za kila sub-task kutoka ESS official (hakuna kubadilisha chochote). Endelea?')">
-      {% csrf_token %}
-      <button class="btn btn-outline-info" {% if not profile.ess_ready %}disabled{% endif %}>
-        <i class="fas fa-cloud-arrow-down me-2"></i>Soma asilimia kutoka ESS
-      </button>
-    </form>
-    <small class="text-muted d-block mt-2">
-      Huna haja ya kuandika kitu — tunajaza maendeleo yote (maazimio, nukuu, maandalio, zana, vipindi,
-      tathmini, majaribio) kwenye ESS kwa akaunti yako. Ukitaka kuweka idadi halisi uliyofanya,
-      unaweza hiari kwenye <a href="{% url 'ess_tracker:ess_week' %}">Rekodi wiki</a>.
-    </small>
+<!-- ══ 4. ZANA ZA ZIADA ══ -->
+<div class="card shadow-sm wrap mb-4">
+  <div class="card-body">
+    <div class="sec-title"><i class="fas fa-toolbox"></i>Zana za ziada (si lazima)</div>
+    <div class="sec-sub">Vitendo vya hiari kwa wanaotaka kulinganisha au kurekebisha data na ESS.</div>
 
-    {% if profile.approver_enabled %}
-    <hr class="my-4">
-    <div class="text-center">
-      <div class="fw-bold mb-2"><i class="fas fa-user-check me-2"></i>Uhidhinishaji (mkuu/kiongozi)</div>
-      <a href="{% url 'ess_tracker:ess_approve' %}" class="btn btn-primary">
-        <i class="fas fa-check-double me-2"></i>Fungua ukurasa wa kuidhinisha
-      </a>
-      <div class="small text-muted mt-1">
-        Huidhinisha description zilizowasilishwa (SUBMITTED) na walimu walio chini yako.
-      </div>
+    <div class="tool">
+      <div class="ic"><i class="fas fa-cloud-arrow-down"></i></div>
+      <div class="tx"><b>Vuta kutoka ESS (ESS &rarr; local)</b>
+        <p>Chukua task/sub-task kutoka ESS official na kusawazisha majina.</p></div>
+      <form method="post" action="{% url 'ess_tracker:ess_sync_names' %}"
+            onsubmit="return confirm('Vuta inachukua task/sub-task kutoka ESS official (zisizopo local zitaundwa). Endelea?')">
+        {% csrf_token %}
+        <button class="btn btn-sm btn-outline-primary" {% if not profile.ess_ready %}disabled{% endif %}>Vuta</button>
+      </form>
     </div>
-    {% endif %}
+
+    <div class="tool">
+      <div class="ic"><i class="fas fa-cloud-upload-alt"></i></div>
+      <div class="tx"><b>Sahihisha majina kwenye ESS (local &rarr; ESS)</b>
+        <p>Badilisha majina ya sub-task kwenye ESS official kutoka yaliyo local.</p></div>
+      <form method="post" action="{% url 'ess_tracker:ess_push_names' %}"
+            onsubmit="return confirm('Kutuma kunabadilisha majina ya sub-task KWENYE ESS official. Endelea?')">
+        {% csrf_token %}
+        <button class="btn btn-sm btn-outline-warning" {% if not profile.ess_ready %}disabled{% endif %}>Sahihisha</button>
+      </form>
+    </div>
+
+    <div class="tool">
+      <div class="ic"><i class="fas fa-cloud-arrow-down"></i></div>
+      <div class="tx"><b>Soma asilimia kutoka ESS</b>
+        <p>Vuta asilimia halisi za kila sub-task kutoka ESS (hakuna kubadilisha).</p></div>
+      <form method="post" action="{% url 'ess_tracker:ess_read_pcts' %}"
+            onsubmit="return confirm('Kusoma kunavuta asilimia HALISI kutoka ESS official (hakuna kubadilisha). Endelea?')">
+        {% csrf_token %}
+        <button class="btn btn-sm btn-outline-info" {% if not profile.ess_ready %}disabled{% endif %}>Soma</button>
+      </form>
+    </div>
+
+    <div class="tool">
+      <div class="ic"><i class="fas fa-clock-rotate-left"></i></div>
+      <div class="tx"><b>Historia ya kujaza</b>
+        <p>Angalia rekodi za kujaza zilizopita na matokeo yake.</p></div>
+      <a href="{% url 'ess_tracker:ess_fill_log' %}" class="btn btn-sm btn-outline-secondary">Fungua</a>
+    </div>
+
+    <div class="tool">
+      <div class="ic"><i class="fas fa-file-csv"></i></div>
+      <div class="tx"><b>Ingiza kwa CSV</b>
+        <p>Pakia data ya maendeleo kutoka faili la CSV.</p></div>
+      <a href="{% url 'ess_tracker:ess_csv' %}" class="btn btn-sm btn-outline-secondary">Ingiza</a>
+    </div>
   </div>
 </div>
+
+<!-- ══ 5. UIDHINISHAJI (kwa wakuu) ══ -->
+{% if profile.approver_enabled %}
+<div class="card shadow-sm wrap">
+  <div class="card-body">
+    <div class="sec-title"><i class="fas fa-user-check"></i>Uhidhinishaji (mkuu / kiongozi)</div>
+    <div class="sec-sub">Idhinisha description zilizowasilishwa (SUBMITTED) na walimu walio chini yako.</div>
+    <a href="{% url 'ess_tracker:ess_approve' %}" class="btn btn-primary">
+      <i class="fas fa-check-double me-2"></i>Fungua ukurasa wa kuidhinisha
+    </a>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
