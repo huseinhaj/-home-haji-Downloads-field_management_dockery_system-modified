@@ -130,6 +130,10 @@ h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
       <div class="alt">
         {% if LANG == 'sw' %}Hujasajiliwa?{% else %}Not Registered?{% endif %}
         <a href="{% url 'ess_tracker:ess_register' %}">{% if LANG == 'sw' %}Bofya hapa kusajili{% else %}Click here to register{% endif %}</a>
+        <div style="margin-top:8px;">
+          {% if LANG == 'sw' %}Password yako haisomiki?{% else %}Password not readable?{% endif %}
+          <a href="{% url 'ess_tracker:ess_recover' %}">{% if LANG == 'sw' %}Weka password upya{% else %}Reset password{% endif %}</a>
+        </div>
       </div>
     </div>
   </div>

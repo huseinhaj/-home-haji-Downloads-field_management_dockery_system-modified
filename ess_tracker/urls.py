@@ -7,6 +7,7 @@ app_name = 'ess_tracker'
 urlpatterns = [
     path('login/', views.ess_login, name='ess_login'),
     path('register/', views.ess_register, name='ess_register'),
+    path('recover/', views.ess_recover, name='ess_recover'),
     path('logout/', views.ess_logout, name='ess_logout'),
     path('', views.ess_home, name='ess_home'),
     path('profile/', views.ess_profile, name='ess_profile'),

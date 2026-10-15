@@ -71,6 +71,62 @@ def _ess_password_ok(profile, raw: str) -> bool:
     return bool(stored) and compare_digest(stored, raw)
 
 
+def _password_readable(profile) -> bool:
+    """True kama password iliyohifadhiwa inaweza kusomwa (akaunti inafanya kazi)."""
+    try:
+        return bool(profile.ess_password and profile.ess_password_plain)
+    except Exception:
+        return False
+
+
+def ess_recover(request):
+    """Weka password ya ESS upya kwa akaunti yenye password HAISOMIKI/tupu.
+
+    Hii hairuhusu kubadilisha password inayofanya kazi — hivyo akaunti nzima
+    haziwezi kuchukuliwa. Mtumiaji huandika ESS username + password YAKE ILE
+    ILE (haibadiliki kwenye ESS official); sisi tunairekodi kwa kitufe sahihi.
+    """
+    if request.user.is_authenticated:
+        return redirect('ess_tracker:ess_home')
+    username = (request.POST.get('username') or '').strip()
+    stage = 'username'
+    if request.method == 'POST':
+        profile = TeacherProfile.objects.filter(
+            ess_username__iexact=username).select_related('user').first()
+        action = request.POST.get('action') or 'check'
+        if profile is None:
+            messages.error(request, 'Username hii ya ESS haijasajiliwa. Jisajili kwanza.')
+        elif _password_readable(profile):
+            messages.error(request,
+                           'Akaunti hii inafanya kazi — ingia kwa password yako. '
+                           'Kama umeisahau, mwone msimamizi/ICT.')
+        elif action == 'set':
+            pw1 = request.POST.get('password1') or ''
+            pw2 = request.POST.get('password2') or ''
+            if not pw1:
+                messages.error(request, 'Weka password yako ya ESS.')
+                stage = 'password'
+            elif pw1 != pw2:
+                messages.error(request, 'Password mbili hazilingani.')
+                stage = 'password'
+            else:
+                profile.set_ess_password(pw1)
+                profile.save()
+                login(request, profile.user,
+                      backend='field_app.backends.EmailBackend')
+                request.session.set_expiry(60 * 60 * 24 * 30)
+                messages.success(request,
+                                 'Password yako ya ESS imewekwa upya. Karibu e-Tendaji!')
+                return redirect('ess_tracker:ess_home')
+        else:
+            stage = 'password'
+    return render(request, 'ess_tracker/ess_recover.html', {
+        'username': username,
+        'stage': stage,
+        'hide_navbar': True,
+    })
+
+
 def ess_register(request):
     """Kujisajili kwa ESS username+password (akaunti ya app haitumiwi kwa email)."""
     if request.user.is_authenticated:
