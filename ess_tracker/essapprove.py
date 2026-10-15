@@ -296,27 +296,32 @@ def _on_dept(page) -> bool:
     return _find_main_table(page) is not None or bool(_main_rows(page))
 
 
-def _verify_submitted_in_details(page, emit, dry_run=False) -> int:
-    """Kwenye panel iliyo wazi, verify kila safu yenye SUBMITTED. Hurudi idadi."""
+def _verify_submitted_in_details(page, emit, dry_run=False):
+    """Kwenye panel iliyo wazi, verify kila safu yenye SUBMITTED.
+
+    Hurudi (verified, remaining) ambapo `remaining` ni orodha ya safu
+    zilizosalia SUBMITTED (hazikuweza kuthibitishwa) — ili mfumo uweze
+    kuonyesha zilizosalia badala ya kuziacha kimya.
+    """
     verified = 0
-    for _ in range(200):
+    remaining = []
+    for _ in range(500):
         rows = _details_rows(page)
-        target = None
-        for r in rows:
-            if _details_status(r) == 'SUBMITTED':
-                target = r
-                break
-        if target is None:
+        sub = [r for r in rows if _details_status(r) == 'SUBMITTED']
+        if not sub:
             break
+        target = sub[0]
         sig = _row_signature(target)
         if not _open_more_menu(page, target):
             emit(f'  !! sikuweza kufungua menyu ya safu: {sig[:70]}')
+            remaining.extend(_row_signature(r) for r in sub)
             break
         page.wait_for_timeout(1000)
         items = _menu_item_texts(page)
         if not any('verify' in it for it in items):
             emit(f'  = hakuna Verify kwenye menyu {items} — naruka')
             _close_menus(page)
+            remaining.extend(_row_signature(r) for r in sub)
             break
         if dry_run:
             emit(f'  [DRY-RUN] ningefanya Verify: {sig[:80]}')
@@ -327,13 +332,14 @@ def _verify_submitted_in_details(page, emit, dry_run=False) -> int:
         if not _click_menu_item(page, 'Verify'):
             emit('  !! sikuweza kubofya Verify')
             _close_menus(page)
+            remaining.extend(_row_signature(r) for r in sub)
             break
         page.wait_for_timeout(1200)
         _confirm_swal(page)
         page.wait_for_timeout(1500)
         verified += 1
         emit(f'  -> Verify OK: {sig[:80]}')
-    return verified
+    return verified, remaining
 
 
 def _close_menus(page):
@@ -344,33 +350,40 @@ def _close_menus(page):
         pass
 
 
-def _process_main_row(page, row, emit, dry_run=False) -> int:
-    """Fungua 'Approve Progress' ya safu moja na verify SUBMITTED zake."""
+def _process_main_row(page, row, emit, dry_run=False):
+    """Fungua 'Approve Progress' ya safu moja na verify SUBMITTED zake.
+
+    Hurudi (verified, remaining).
+    """
     if not _open_more_menu(page, row):
-        return 0
+        return 0, []
     page.wait_for_timeout(1000)
     items = _menu_item_texts(page)
-    if not any('approve progress' in it for it in items):
+    if not any('approve' in it for it in items):
         _close_menus(page)
-        return 0
-    if not _click_menu_item(page, 'Approve Progress'):
+        return 0, []
+    if not _click_menu_item(page, 'Approve Progress') \
+            and not _click_menu_item(page, 'Approve'):
+        emit('  !! sikuweza kubofya Approve Progress')
         _close_menus(page)
-        return 0
+        return 0, []
     page.wait_for_timeout(4000)
     if _find_details_table(page) is None:
         emit('  = hakuna jedwali la Activity Progress Details')
         _close_details(page)
-        return 0
-    n = _verify_submitted_in_details(page, emit, dry_run=dry_run)
+        return 0, []
+    n, remaining = _verify_submitted_in_details(page, emit, dry_run=dry_run)
     _close_details(page)
     page.wait_for_timeout(1200)
-    return n
+    return n, remaining
 
 
 def _next_page(page) -> bool:
     for sel in ('.mat-mdc-paginator-navigation-next',
+                '.mat-paginator-navigation-next',
                 'button[aria-label="Next page"]',
-                'button[aria-label="Next Page"]'):
+                'button[aria-label="Next Page"]',
+                'button[aria-label="Next"]'):
         try:
             el = page.query_selector(sel)
             if el and el.is_visible():
@@ -412,6 +425,7 @@ def run_approve(profile_id: int, run_id: int, dry_run: bool = False) -> dict:
 
     emit(('[DRY-RUN] ' if dry_run else '') + 'Kuanza kuidhinisha (verify) ESS...')
     verified = processed = failed = 0
+    remaining_all = []
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(
@@ -467,8 +481,10 @@ def run_approve(profile_id: int, run_id: int, dry_run: bool = False) -> dict:
                 if page_no <= 1 or page_no % 5 == 0:
                     emit(f'Safu {len(attempted)}: {sig[:70]}')
                 try:
-                    n = _process_main_row(page, row, emit, dry_run=dry_run)
+                    n, rem = _process_main_row(page, row, emit, dry_run=dry_run)
                     verified += n
+                    if rem:
+                        remaining_all.extend(rem)
                     if n:
                         _set_progress(run_id, saved=verified)
                 except Exception as exc:  # noqa: BLE001
@@ -482,11 +498,25 @@ def run_approve(profile_id: int, run_id: int, dry_run: bool = False) -> dict:
                 # DOM hupangwa upya baada ya verify — tunarudi kwenye orodha.
                 page.wait_for_timeout(600)
 
-            # Angalia kama bado kuna SUBMITTED (labda kurasa zilizosalia).
+            # Puuza marudio ya orodha ya zilizosalia.
+            uniq = []
+            seen = set()
+            for s in remaining_all:
+                key = (s or '')[:120]
+                if key and key not in seen:
+                    seen.add(key)
+                    uniq.append(s)
             emit(f'Zilizoidhinishwa: {verified}, safu zilizochunguzwa: {processed}, '
                  f'hitilafu: {failed}')
+            if uniq:
+                emit(f'HAZIJATHIBITISHWA ({len(uniq)}):')
+                for s in uniq[:80]:
+                    emit('  - ' + s[:100])
+            else:
+                emit('HAZIJATHIBITISHWA (0): kila kitu kimeidhinishwa.')
             result = {'status': 'done', 'verified': verified,
-                      'processed': processed, 'failed': failed}
+                      'processed': processed, 'failed': failed,
+                      'remaining': len(uniq)}
     except Exception as exc:  # noqa: BLE001
         result = {'status': 'error', 'msg': str(exc)}
 
