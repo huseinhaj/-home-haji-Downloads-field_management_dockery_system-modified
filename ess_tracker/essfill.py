@@ -2579,8 +2579,9 @@ def subtask_snapshot(task) -> list[dict]:
         # tayari ipo juu/sawa.
         target = target_for(st)
         if target and target > 0 and pct is not None:
-            planned = int(target * pct / 100.0)
-            send_pct = round(100.0 * planned / target, 2)
+            tf = float(target)
+            planned = int(tf * pct / 100.0)
+            send_pct = round(100.0 * planned / tf, 2)
         else:
             send_pct = pct
         will_skip = (ess_val is not None and send_pct is not None
