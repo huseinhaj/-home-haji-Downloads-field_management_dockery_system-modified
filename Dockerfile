@@ -34,15 +34,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     gdal-bin \
     libgdal36 \
-    libgeos-c1v5 \
+    libgeos-c1t64 \
     # nginx — routes /ttc/ (TTC Student Portal) inside the same container
     nginx \
     # ffmpeg for audio processing (faster-whisper)
     ffmpeg \
     # Chromium / Playwright runtime deps
-    libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+    libnss3 libnspr4 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libdrm2 \
     libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
-    libgbm1 libasound2 libpango-1.0-0 libcairo2 libx11-6 libx11-xcb1 \
+    libgbm1 libasound2t64 libpango-1.0-0 libcairo2 libx11-6 libx11-xcb1 \
     libxcb1 libxext6 libxshmfence1 fonts-liberation \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
