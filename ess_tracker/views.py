@@ -47,7 +47,13 @@ def ess_login(request):
         if profile is None:
             messages.error(request, 'Username hii ya ESS haijasajiliwa. Jisajili kwanza.')
         elif not _ess_password_ok(profile, password):
-            messages.error(request, 'Password si sahihi. Jaribu tena.')
+            if profile.ess_password and not profile.ess_password_plain:
+                messages.error(
+                    request,
+                    'Password yako ya ESS haisomiki (kitufe cha usimbaji kimebadilika). '
+                    'Mwone msimamizi/ICT akuwekee password upya.')
+            else:
+                messages.error(request, 'Password si sahihi. Jaribu tena.')
         else:
             login(request, profile.user, backend='field_app.backends.EmailBackend')
             request.session.set_expiry(60 * 60 * 24 * 30)  # wiki 4 — ingia mara moja

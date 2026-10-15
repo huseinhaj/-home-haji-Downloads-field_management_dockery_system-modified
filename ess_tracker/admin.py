@@ -1,3 +1,4 @@
+from django import forms
 from django.contrib import admin
 
 from .models import (AcademicCalendar, EssFillRun, MonthlyTarget, SubTask,
@@ -29,12 +30,50 @@ class AcademicCalendarAdmin(admin.ModelAdmin):
     inlines = [WeeklyTargetInline, MonthlyTargetInline]
 
 
+class TeacherProfileAdminForm(forms.ModelForm):
+    """Fomu ya admin inayoweka password ya ESS kwa usimbaji sahihi.
+
+    Badala ya ku-edit token ya `ess_password` (ambayo ni ya siri), admin
+    huandika password mpya kwenye `new_ess_password`; tutaisimba kiotomatiki.
+    """
+
+    new_ess_password = forms.CharField(
+        label='Weka password mpya ya ESS',
+        required=False,
+        widget=forms.PasswordInput(render_value=False),
+        help_text='Jaza tu kubadilisha password. Ikiacha tupu, iliyopo haitabadilika.')
+
+    class Meta:
+        model = TeacherProfile
+        fields = '__all__'
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        raw = self.cleaned_data.get('new_ess_password')
+        if raw:
+            obj.set_ess_password(raw)
+        if commit:
+            obj.save()
+        return obj
+
+
 @admin.register(TeacherProfile)
 class TeacherProfileAdmin(admin.ModelAdmin):
+    form = TeacherProfileAdminForm
     list_display = ('full_name', 'user', 'school', 'ess_username', 'ess_ready',
                     'approver_enabled')
     list_filter = ('approver_enabled',)
     search_fields = ('full_name', 'ess_username', 'user__email')
+    readonly_fields = ('ess_password', 'ess_ready')
+    fieldsets = (
+        (None, {'fields': ('user', 'full_name', 'phone', 'school')}),
+        ('ESS (e-Tendaji)', {'fields': ('ess_username', 'new_ess_password',
+                                        'ess_password', 'ess_ready')}),
+        ('Ratiba ya shule', {'fields': ('school_open', 'school_close',
+                                        'entries_per_week', 'holidays')}),
+        ('Kujaza / Uidhinishaji', {'fields': ('auto_subtasks', 'auto_fill_enabled',
+                                              'approver_enabled')}),
+    )
 
 
 @admin.register(Task)
