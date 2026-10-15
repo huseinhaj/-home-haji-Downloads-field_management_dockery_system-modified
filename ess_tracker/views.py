@@ -456,6 +456,24 @@ def _run_in_thread(profile_id, run_id):
     run_fill(profile_id, run_id)
 
 
+@login_required(login_url=ESS_LOGIN_URL)
+def ess_approve_page(request):
+    """Ukurasa wa kuidhinisha (verify) — muonekano kama ess_login."""
+    profile = _me(request)
+    if profile is None:
+        return redirect('ess_tracker:ess_profile')
+    from .runstate import reap_stale_runs
+    reap_stale_runs(profile)
+    runs = profile.fill_runs.filter(kind='approve')[:15]
+    running_run = profile.fill_runs.filter(kind='approve', status='running').first()
+    return render(request, 'ess_tracker/ess_approve.html', {
+        'profile': profile,
+        'runs': runs,
+        'running_run': running_run,
+        'hide_navbar': True,
+    })
+
+
 @login_required
 @require_POST
 def ess_approve_now(request):
@@ -469,7 +487,7 @@ def ess_approve_now(request):
     if not profile.approver_enabled:
         messages.error(request, 'Akaunti hii haijawezeshwa kuidhinisha. '
                                 'Iwashe kwenye wasifu (approver_enabled).')
-        return redirect('ess_tracker:ess_home')
+        return redirect('ess_tracker:ess_approve')
     from .runstate import reap_stale_runs
     reap_stale_runs(profile)
     existing = profile.fill_runs.filter(kind='approve', status='running').first()

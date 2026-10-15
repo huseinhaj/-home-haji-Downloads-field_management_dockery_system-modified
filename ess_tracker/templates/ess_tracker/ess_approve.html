@@ -1,0 +1,210 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="{% if LANG == 'sw' %}sw{% else %}en{% endif %}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>e-Tendaji — {% if LANG == 'sw' %}Uidhinishaji{% else %}Approval{% endif %}</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+:root{--primary:#1F41BB;--primary-dk:#16308c;--accent:#2D5AFF;--body-bg:#F0F5F9;
+  --text:#212529;--muted:#5A6B7E;--border:#dee2e6;--danger:#df0029;--success:#4CAF50;}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;}
+body{font-family:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:14px;
+  background:var(--body-bg);color:var(--text);display:flex;flex-direction:column;min-height:100vh;}
+h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
+/* blue header */
+.app-header{background:linear-gradient(135deg,var(--primary),var(--primary-dk));padding:12px 26px;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;color:#fff;}
+.brand{display:flex;align-items:center;gap:14px;}
+.brand img{width:52px;height:52px;flex-shrink:0;}
+.brand-txt h1{font-size:15px;font-weight:600;color:#F8F9FA;margin:0;}
+.brand-txt p{font-size:11px;font-weight:400;color:rgba(255,255,255,.82);margin:1px 0 0;line-height:1.25;}
+.head-right{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.head-flag{height:44px;width:auto;border-radius:3px;box-shadow:0 2px 8px rgba(0,0,0,.25);}
+.lang-row{display:flex;gap:3px;}
+.lang-a{font-size:11px;font-weight:700;text-decoration:none;padding:5px 10px;border-radius:4px;
+  color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.25);}
+.lang-a.on{background:#fff;color:var(--primary);border-color:#fff;}
+.lang-a.off:hover{color:#fff;background:rgba(255,255,255,.12);}
+/* main */
+.main{flex:1;display:flex;align-items:center;justify-content:center;padding:30px 16px;}
+.card{width:100%;max-width:560px;background:#fff;border-radius:12px;
+  box-shadow:0 6px 30px rgba(31,65,187,.15);overflow:hidden;}
+.card-body{padding:34px 34px 26px;}
+.portal{text-align:center;margin-bottom:22px;}
+.portal h2{font-size:23px;font-weight:600;color:var(--primary);margin-bottom:4px;}
+.portal .welcome{font-size:17px;font-weight:600;color:var(--text);}
+.portal .sub{font-size:13px;color:var(--muted);margin-top:4px;}
+/* approver chip */
+.approver{display:flex;align-items:center;gap:12px;background:#F5F8FF;border:1px solid #dbe4fb;
+  border-radius:9px;padding:12px 14px;margin-bottom:18px;}
+.approver>.ic{width:42px;height:42px;border-radius:50%;background:var(--primary);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.approver b{font-size:14.5px;color:var(--text);font-family:'Poppins',sans-serif;}
+.approver .meta{font-size:12px;color:var(--muted);margin-top:2px;}
+/* buttons */
+.btn{width:100%;background:var(--primary);color:#fff;border:none;border-radius:7px;padding:14px;
+  font-size:15px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;letter-spacing:.6px;
+  text-transform:uppercase;transition:background .13s;text-decoration:none;display:block;text-align:center;}
+.btn:hover{background:var(--primary-dk);color:#fff;}
+.btn i{margin-right:7px;}
+.btn.ghost{background:#fff;color:var(--primary);border:1.5px solid var(--primary);}
+.btn.ghost:hover{background:#F5F8FF;color:var(--primary-dk);}
+.btn[disabled]{opacity:.5;cursor:not-allowed;}
+.btn+.btn{margin-top:12px;}
+.alert{border-radius:6px;padding:10px 12px;font-size:12.5px;margin-bottom:16px;}
+.alert.err{background:#FEE2E2;color:var(--danger);border:1px solid #FECACA;}
+.alert.ok{background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;}
+.alert.warn{background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;}
+.alert.running{background:#E0F2FE;color:#075985;border:1px solid #BAE6FD;
+  display:block;text-decoration:none;font-weight:600;}
+.alert a{color:inherit;text-decoration:underline;}
+.note{font-size:12px;color:var(--muted);margin-top:10px;text-align:center;}
+/* runs */
+.runs{margin-top:22px;padding-top:18px;border-top:1px solid var(--border);}
+.runs h5{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+  margin-bottom:10px;font-family:'Poppins',sans-serif;}
+.run-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:9px 0;border-bottom:1px solid #eef1f6;font-size:12.5px;}
+.run-row:last-child{border-bottom:none;}
+.run-row .id{font-weight:700;color:var(--text);}
+.run-row .when{color:var(--muted);font-size:11.5px;}
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+.badge.done{background:#DCFCE7;color:#166534;}
+.badge.error{background:#FEE2E2;color:var(--danger);}
+.badge.running{background:#E0F2FE;color:#075985;}
+.run-row a.link{color:var(--primary);font-weight:700;text-decoration:none;}
+.run-row a.link:hover{text-decoration:underline;}
+.alt{text-align:center;margin-top:20px;padding-top:18px;border-top:1px solid var(--border);font-size:13px;color:var(--muted);}
+.alt a{color:var(--primary);font-weight:700;text-decoration:none;}
+.alt a:hover{text-decoration:underline;}
+.app-foot{background:#fff;border-top:1px solid var(--border);padding:14px;text-align:center;
+  font-size:11.5px;color:var(--muted);flex-shrink:0;font-family:'Poppins',sans-serif;}
+.app-foot a{color:var(--primary);text-decoration:none;}
+@media (max-width:520px){.card-body{padding:26px 20px;}}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand">
+    <img src="{% static 'ess/arm.png' %}" alt="Tanzania">
+    <div class="brand-txt">
+      <h1>United Republic of Tanzania</h1>
+      <p>President's Office Public Service<br>Management and Good Governance</p>
+    </div>
+  </div>
+  <div class="head-right">
+    {% include 'ess_tracker/_ess_install.html' %}
+    <img class="head-flag" src="{% static 'ess/flag.png' %}" alt="Tanzania flag">
+    <div class="lang-row">
+      <a class="lang-a {% if LANG == 'sw' %}on{% else %}off{% endif %}" href="{% url 'set_language' %}?lang=sw&next={{ request.path }}">SW</a>
+      <a class="lang-a {% if LANG == 'en' %}on{% else %}off{% endif %}" href="{% url 'set_language' %}?lang=en&next={{ request.path }}">EN</a>
+    </div>
+  </div>
+</header>
+
+<div class="main">
+  <div class="card">
+    <div class="card-body">
+      <div class="portal">
+        <h2>e-Tendaji</h2>
+        <div class="welcome">{% if LANG == 'sw' %}Uidhinishaji{% else %}Approval{% endif %}</div>
+        <div class="sub">{% if LANG == 'sw' %}Thibitisha maendeleo yaliyowasilishwa na walimu{% else %}Verify progress submitted by teachers{% endif %}</div>
+      </div>
+
+      <div class="approver">
+        <div class="ic"><i class="fas fa-user-check"></i></div>
+        <div>
+          <b>{{ profile.full_name|default:profile.ess_username }}</b>
+          <div class="meta">
+            {{ profile.ess_username }}
+            {% if profile.school %} &middot; {{ profile.school.name }}{% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% if messages %}
+        {% for m in messages %}
+        <div class="alert {% if m.tags == 'success' %}ok{% elif m.tags == 'warning' %}warn{% else %}err{% endif %}">{{ m }}</div>
+        {% endfor %}
+      {% endif %}
+
+      {% if not profile.ess_ready %}
+      <div class="alert warn">
+        <i class="fas fa-triangle-exclamation me-1"></i>
+        Weka kwanza <b>username na password</b> zako za ESS kwenye
+        <a href="{% url 'ess_tracker:ess_profile' %}">Wasifu</a> ili uweze kuidhinisha.
+      </div>
+      {% elif not profile.approver_enabled %}
+      <div class="alert warn">
+        <i class="fas fa-lock me-1"></i>
+        Akaunti hii <b>haijawezeshwa kuidhinisha</b>. Omba msimamizi akuwashe
+        (<code>approver_enabled</code>).
+      </div>
+      {% endif %}
+
+      {% if running_run %}
+      <a class="alert running" href="{% url 'ess_tracker:ess_fill_status' running_run.id %}">
+        <i class="fas fa-spinner fa-spin me-1"></i>
+        Uidhinishaji unaendelea — bonyeza kuangalia (Run #{{ running_run.id }})
+      </a>
+      {% endif %}
+
+      <form method="post" action="{% url 'ess_tracker:ess_approve_now' %}">
+        {% csrf_token %}
+        <button class="btn" type="submit" {% if not profile.ess_ready or not profile.approver_enabled %}disabled{% endif %}
+                onclick="return confirm('Kuidhinisha (verify) maendeleo yote SUBMITTED ya walimu kwa akaunti yako ya ESS. Endelea?')">
+          <i class="fas fa-check-double"></i>{% if LANG == 'sw' %}Idhinisha maendeleo{% else %}Approve progress{% endif %}
+        </button>
+      </form>
+      <form method="post" action="{% url 'ess_tracker:ess_approve_now' %}">
+        {% csrf_token %}
+        <input type="hidden" name="dry_run" value="1">
+        <button class="btn ghost" type="submit" {% if not profile.ess_ready or not profile.approver_enabled %}disabled{% endif %}
+                onclick="return confirm('Onyesho pekee (dry-run): haitabofya Verify. Endelea?')">
+          <i class="fas fa-eye"></i>{% if LANG == 'sw' %}Onyesho (dry-run){% else %}Preview (dry-run){% endif %}
+        </button>
+      </form>
+      <div class="note">
+        {% if LANG == 'sw' %}Huidhinisha description zilizowasilishwa (SUBMITTED) na walimu walio chini yako.{% else %}Verifies SUBMITTED descriptions of teachers under you.{% endif %}
+      </div>
+
+      {% if runs %}
+      <div class="runs">
+        <h5><i class="fas fa-clock-rotate-left me-1"></i>{% if LANG == 'sw' %}Historia ya uidhinishaji{% else %}Approval history{% endif %}</h5>
+        {% for r in runs %}
+        <div class="run-row">
+          <div>
+            <span class="id">#{{ r.id }}</span>
+            <span class="when"> &middot; {{ r.started|date:'d M Y H:i' }}</span>
+          </div>
+          <div class="d-flex align-items-center gap-3" style="display:flex;align-items:center;gap:12px;">
+            <span class="badge {% if r.status == 'done' %}done{% elif r.status == 'error' %}error{% else %}running{% endif %}">{{ r.get_status_display }}</span>
+            <span>{% if r.saved %}<i class="fas fa-check text-success me-1"></i>{{ r.saved }}{% endif %}</span>
+            <a class="link" href="{% url 'ess_tracker:ess_fill_status' r.id %}">{% if LANG == 'sw' %}Angalia{% else %}View{% endif %}</a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="alt">
+        <a href="{% url 'ess_tracker:ess_home' %}"><i class="fas fa-arrow-left me-1"></i>{% if LANG == 'sw' %}Rudi nyumbani{% else %}Back to home{% endif %}</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="app-foot">
+  For any Technical inquiry, Please contact ICT Support Team at:
+  <a href="mailto:support@utumishi.go.tz">support@utumishi.go.tz</a> or call 026 216 0240<br>
+  Copyright ©2026, All rights reserved.
+</footer>
+
+</body>
+</html>
