@@ -193,11 +193,13 @@ def ess_home(request):
         })
     latest_run = profile.fill_runs.first()
     from .tasks import fill_day_names
+    from .compute import profile_calendar_status
     return render(request, 'ess_tracker/ess_home.html', {
         'profile': profile,
         'tasks': tasks,
         'latest_run': latest_run,
         'behind_count': behind_count,
+        'calendar_status': profile_calendar_status(profile),
         'fill_days': fill_day_names(profile.entries_per_week),
     })
 

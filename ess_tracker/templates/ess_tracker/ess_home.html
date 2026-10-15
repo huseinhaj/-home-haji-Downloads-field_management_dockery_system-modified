@@ -50,10 +50,23 @@
 </div>
 {% endif %}
 
+{% if calendar_status %}
+<div class="alert {% if calendar_status.status == 'behind' %}alert-warning{% else %}alert-success{% endif %} small">
+  <i class="fas fa-gauge-high me-1"></i>
+  <b>Jumla ya maendeleo:</b> {{ calendar_status.progress|floatformat:"0" }}%
+  &middot; lengo la kalenda <b>{{ calendar_status.target|floatformat:"0" }}%</b>
+  {% if calendar_status.status == 'behind' %}
+    — upo nyuma kwa <b>{{ calendar_status.gap|floatformat:"0" }}%</b>. Ongeza viingilio.
+  {% else %}
+    — umefikia au kuzidi lengo la muda. Hongera!
+  {% endif %}
+</div>
+{% endif %}
+
 {% if behind_count %}
 <div class="alert alert-danger small">
   <i class="fas fa-triangle-exclamation me-1"></i>
-  <b>Sub-task {{ behind_count }}</b> zipo <b>chini ya tarajio</b> la muda. Ongeza viingilio kwenye
+  <b>Sub-task {{ behind_count }}</b> zipo <b>chini ya ratiba</b> ya muda. Ongeza viingilio kwenye
   <a href="{% url 'ess_tracker:ess_week' %}" class="fw-bold">Rekodi wiki</a> au endelea kujaza.
 </div>
 {% endif %}
@@ -165,32 +178,31 @@
             {% endif %}
             {% if s.expected_pct_str %}
               {% if s.status == 'behind' %}
-              <span class="badge bg-danger mt-1" title="Tarajio la sasa {{ s.expected_pct_str }} — umepungukiwa {{ s.gap }}%">
-                <i class="fas fa-triangle-exclamation me-1"></i>Chini ya tarajio {{ s.expected_pct_str }}</span>
+              <span class="badge bg-danger mt-1" title="Ratiba ya sasa {{ s.expected_pct_str }} — umepungukiwa {{ s.gap }}%">
+                <i class="fas fa-triangle-exclamation me-1"></i>Chini ya ratiba {{ s.expected_pct_str }}</span>
               {% else %}
-              <span class="badge bg-success mt-1" title="Tarajio la sasa {{ s.expected_pct_str }}">
-                <i class="fas fa-check me-1"></i>Sawa na tarajio {{ s.expected_pct_str }}</span>
+              <span class="badge bg-success mt-1" title="Ratiba ya sasa {{ s.expected_pct_str }}">
+                <i class="fas fa-check me-1"></i>Sawa na ratiba {{ s.expected_pct_str }}</span>
               {% endif %}
             {% endif %}
             {% if s.will_skip %}<div class="text-muted" style="font-size:.7rem"><i class="fas fa-forward me-1"></i>itaskip — ESS tayari {{ s.ess_pct_str }}</div>{% endif %}
             {% if s.increment_str %}<div class="text-muted" style="font-size:.7rem">kila kiingilio +{{ s.increment_str }}</div>{% endif %}
-            {% if s.by_calendar %}<div class="text-muted" style="font-size:.7rem"><i class="fas fa-calendar-week me-1"></i>kufuata kalenda{% if s.expected_pct_str %} ({{ s.expected_pct_str }}){% endif %}</div>{% endif %}
             {% if s.plan and s.plan.remaining > 0 %}
               {% if s.plan.impossible %}
               <div class="text-danger fw-semibold" style="font-size:.72rem">
-                <i class="fas fa-triangle-exclamation me-1"></i>Muda hautoshi kufikia lengo la kalenda {{ s.plan.goal|floatformat:"0" }}% — ongeza viingilio!</div>
+                <i class="fas fa-triangle-exclamation me-1"></i>Muda hautoshi kufikia lengo la ratiba {{ s.plan.goal|floatformat:"0" }}% — ongeza viingilio!</div>
               {% elif s.plan.on_track %}
               <div class="text-muted" style="font-size:.72rem">
                 <i class="fas fa-gauge-high me-1"></i>Ingia ~{{ s.plan.epw_needed }}x/wiki
-                (wiki {{ s.plan.weeks_left }} zilizobaki) &rarr; lengo la kalenda {{ s.plan.goal|floatformat:"0" }}%</div>
+                (wiki {{ s.plan.weeks_left }} zilizobaki) &rarr; lengo la ratiba {{ s.plan.goal|floatformat:"0" }}%</div>
               {% else %}
               <div class="text-danger fw-semibold" style="font-size:.72rem">
                 <i class="fas fa-arrow-up me-1"></i>Ongeza hadi ~{{ s.plan.epw_needed }}x/wiki
-                (sasa {{ s.plan.epw_setting }}x) &rarr; lengo la kalenda {{ s.plan.goal|floatformat:"0" }}%</div>
+                (sasa {{ s.plan.epw_setting }}x) &rarr; lengo la ratiba {{ s.plan.goal|floatformat:"0" }}%</div>
               {% endif %}
             {% elif s.plan %}
               <div class="text-success" style="font-size:.72rem">
-                <i class="fas fa-flag-checkered me-1"></i>Imefikia lengo la kalenda {{ s.plan.goal|floatformat:"0" }}%</div>
+                <i class="fas fa-flag-checkered me-1"></i>Imefikia lengo la ratiba {{ s.plan.goal|floatformat:"0" }}%</div>
             {% endif %}
           </td>
         </tr>

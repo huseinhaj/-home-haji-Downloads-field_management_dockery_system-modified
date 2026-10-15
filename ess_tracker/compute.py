@@ -288,6 +288,34 @@ def profile_progress_pct(profile, tasks=None) -> float | None:
     return round(sum(vals) / len(vals), 2)
 
 
+def profile_calendar_status(profile, tasks=None,
+                            leo: date | None = None) -> dict | None:
+    """Linganisha JUMLA ya maendeleo ya mwalimu na lengo la kalenda.
+
+    Kalenda ya shule ni "total score" ya mwaka (mwenendo) — haiathiri
+    sub-task moja moja. Hapa ndipo inalinganishwa: wastani wa sub-task zote
+    vs asilimia lengwa ya kalenda kwa sasa.
+
+    Hurejesha {'target', 'progress', 'gap', 'status'} au None kama hakuna
+    kalenda hai au hakuna data. status: 'behind' | 'ontrack'.
+    """
+    target = calendar_target_pct(leo)
+    if target is None:
+        return None
+    progress = profile_progress_pct(profile, tasks)
+    if progress is None:
+        return None
+    tgt = round(float(target), 2)
+    prog = round(float(progress), 2)
+    gap = round(tgt - prog, 2)
+    return {
+        'target': tgt,
+        'progress': prog,
+        'gap': gap,
+        'status': 'behind' if prog + 0.5 < tgt else 'ontrack',
+    }
+
+
 def _window(task: Task) -> tuple[date | None, date | None]:
     """Dirisha la mwaka: kalenda ya admin, kisha tarehe za Wasifu, kisha Task."""
     win = calendar_window()
@@ -412,18 +440,17 @@ def expected_for(st: SubTask) -> Decimal | None:
 
 
 def expected_pct(st: SubTask, leo: date | None = None) -> float | None:
-    """Asilimia inayotarajiwa kwa sasa.
+    """Asilimia inayotarajiwa kwa sasa KWA SUB-TASK hii (ratiba ya viingilio).
 
-    Kama kalenda ya admin ina lengo la mwezi, hiyo hutumika (kalenda ya mwaka
-    ya e-Utendaji); vinginevyo ratiba ya mstari mnyoofu = wiki zilizopita /
-    wiki zote x 100. Sub-task ya mwaka (annual) hutarajiwa 100%. Rudi None
-    kama hakuna dirisha la muda.
+    Hutumia ratiba ya mstari mnyoofu = wiki zilizopita / wiki zote x 100.
+    Sub-task ya mwaka (annual) hutarajiwa 100%.
+
+    MUHIMU: kalenda ya shule HAIATHIRI hapa. Kalenda ni "total score" ya
+    mwaka na hulinganishwa na JUMLA ya maendeleo ya mwalimu
+    (`profile_calendar_status`), sio asilimia ya kila sub-task.
     """
     if st.mode == 'annual':
         return 100.0
-    cal = calendar_target_pct(leo)
-    if cal is not None:
-        return round(min(100.0, max(0.0, float(cal))), 2)
     tw = subtask_total_weeks(st)
     if not tw or tw <= 0:
         return None
@@ -503,10 +530,12 @@ def plan_for(st: SubTask, current_pct: float | None = None,
              leo: date | None = None) -> dict | None:
     """Tathmini: viingilio kwa wiki vinavyohitajika kufikia LENGO la sasa.
 
-    Lengo ni asilimia ya KALENDA ya mwaka (tarajio la sasa kwa sub-task hii,
-    mf. 87% katikati ya Oktoba) — SIO 100%. 100% hutumika tu kama hakuna
-    kalenda (mwisho wa mwaka/linear). Hivyo ushauri unyame ukifika tarajio
-    la kalenda badala ya kukuchochea uendelee hadi 100%.
+    Lengo ni asilimia ya RATIBA ya mwaka ya sub-task hii (tarajio la sasa kwa
+    ratiba yake, mf. 87% katikati ya Oktoba) — SIO 100%. 100% hutumika tu
+    kama hakuna dirisha/muda wa sub-task. Kalenda ya shule haitumiki hapa;
+    inalinganishwa na jumla ya maendeleo (`profile_calendar_status`). Hivyo
+    ushauri unyame ukifika tarajio la ratiba badala ya kukuchochea uendelee
+    hadi 100%.
 
     Inatumia asilimia ya sasa (kwa kawaida ile HALISI ya ESS) na muda
     uliobaki wa dirisha la shule. Rudi None kama hakuna dirisha/muda.
@@ -524,7 +553,7 @@ def plan_for(st: SubTask, current_pct: float | None = None,
         current_pct, _src = pct_auto_for(st)
     if current_pct is None:
         return None
-    # Lengo = tarajio la kalenda la sasa (linear/annual kama hakuna kalenda).
+    # Lengo = tarajio la RATIBA la sasa (linear/annual), sio la kalenda.
     goal = expected_pct(st, leo)
     if goal is None:
         goal = 100.0
@@ -631,22 +660,17 @@ def pct_auto_for(st: SubTask, leo: date | None = None) -> tuple[float | None, st
     """Asilimia ya 'Jaza' bila mwalimu kuandika kitu.
 
     - Sub-task ya mwaka (maazimio): 100%.
-    - Kalenda ya admin ikiwa na lengo la mwezi: hilo lengo hutumika (kalenda
-      ya mwaka ya e-Utendaji). Chanzo: 'calendar'.
     - Vinginevyo: ratiba ya viingilio (mstari mnyoofu) au actual kama
       aliandika zaidi ya ratiba. Chanzo: 'annual' | 'schedule' | 'topics'.
+
+    MUHIMU: kalenda ya shule HAIATHIRI sub-task. Kalenda ni "total score" ya
+    mwaka na hulinganishwa na JUMLA ya maendeleo ya mwalimu
+    (`profile_calendar_status`), sio kulazimisha asilimia ya kila sub-task.
     """
     if st.mode == 'annual':
         return 100.0, 'annual'
     target = target_for(st)
     actual = actual_for(st)
-    cal = calendar_target_pct(leo)
-    if cal is not None:
-        if target > 0:
-            planned = target * _dec(cal) / _dec(100)
-            eff = actual if actual > planned else planned
-            return min(100.0, round(float(eff) / float(target) * 100.0, 2)), 'calendar'
-        return min(100.0, round(float(cal), 2)), 'calendar'
     frac = entry_fraction(st, leo)
     if target > 0:
         planned = target * _dec(round(frac, 6))

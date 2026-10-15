@@ -2598,7 +2598,6 @@ def subtask_snapshot(task) -> list[dict]:
             'will_skip': will_skip,
             'recorded_pct': recorded,
             'source': src,
-            'by_calendar': src == 'calendar',
             'increment': inc,
             'increment_str': '' if inc is None else f'{inc:.2f}%',
             'status': status,
