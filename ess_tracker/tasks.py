@@ -220,11 +220,14 @@ def run_auto_fill_inline(profiles=None, log=None):
     return {'date': today.isoformat(), 'filled': filled, 'failed': failed}
 
 
-def run_approve_inline(profiles=None, log=None, dry_run=False):
+def run_approve_inline(profiles=None, log=None, dry_run=False, only_due=False):
     """Idhinisha (verify) maendeleo SUBMITTED ya walimu — humu ndani ya process.
 
     Hupitia wakuu/kiongozi wote waliochaguliwa (`approver_enabled=True`).
     Hutumika na amri `ess_approve --all` na kiendesha `ess_approve_scheduler`.
+
+    Kama `only_due=True`, huchukua wale tu ambao kipindi chao
+    (`auto_approve_weeks`) kimefika — hutumika na kiendesha cha kila siku.
 
     Hurudisha {'date', 'verified', 'processed', 'failed', 'profiles'}.
     """
@@ -242,9 +245,9 @@ def run_approve_inline(profiles=None, log=None, dry_run=False):
                 pass
 
     if profiles is None:
-        profiles = list(
-            TeacherProfile.objects.filter(
-                approver_enabled=True, ess_ready=True).select_related('user'))
+        base = TeacherProfile.objects.filter(
+            approver_enabled=True, ess_ready=True).select_related('user')
+        profiles = [p for p in base if (not only_due) or approve_due_for(p)]
 
     verified = processed = failed = 0
     done = []
@@ -279,34 +282,76 @@ def run_approve_inline(profiles=None, log=None, dry_run=False):
             'processed': processed, 'failed': failed, 'profiles': done}
 
 
+def approve_interval_days(profile) -> int:
+    """Kipindi cha auto-approve kwa profile kwa siku (wiki 1 = 7)."""
+    weeks = int(getattr(profile, 'auto_approve_weeks', 1) or 1)
+    return max(1, weeks) * 7
+
+
+def approve_last_auto(profile_id):
+    """Run ya mwisho ya auto-approve ya profile (au None)."""
+    from .models import EssFillRun
+    return EssFillRun.objects.filter(
+        profile_id=profile_id, kind='approve', source='auto'
+    ).order_by('-started').first()
+
+
+def approve_due_for(profile, now=None) -> bool:
+    """True kama ni wakati wa kuidhinisha kiotomatiki kwa profile hii.
+
+    Heshimu kipindi (`auto_approve_weeks` x wiki). Huzuia pia run ya pili
+    siku hiyo hiyo (catch-up + ratiba hazigongani).
+    """
+    from django.utils import timezone
+    now = now or timezone.now()
+    last = approve_last_auto(profile.id)
+    if last is None or last.started is None:
+        return True
+    last_day = last.started.astimezone(_eat_tz()).date()
+    today = now.astimezone(_eat_tz()).date()
+    if last_day >= today:
+        return False  # ilikwisha endeshwa leo
+    return (today - last_day).days >= approve_interval_days(profile)
+
+
+def approve_next_due(profile):
+    """Tarehe inayofuata ya auto-approve (au None kama haijawahi kuendeshwa)."""
+    from datetime import timedelta
+    last = approve_last_auto(profile.id)
+    if last is None or last.started is None:
+        return None
+    last_day = last.started.astimezone(_eat_tz()).date()
+    return last_day + timedelta(days=approve_interval_days(profile))
+
+
 @shared_task(bind=True, time_limit=120, soft_time_limit=100)
 def approve_due(self):
     """Weka foleni uhidhinishaji (verify) kwa wakuu waliochaguliwa (beat).
 
     Hulinganisha na `auto_fill_due`: hupanga `run_ess_approve` kwa kila mkuu
-    mwenye `approver_enabled=True`. Hutumika na `CELERY_BEAT_SCHEDULE`
-    (docker-compose/VPS yenye beat); kwenye Railway huendeshwa na kiendesha
-    kilichopachikwa `ess_approve_scheduler` badala yake.
+    mwenye `approver_enabled=True` ambaye kipindi chake (`auto_approve_weeks`)
+    kimefika. Hutumika na `CELERY_BEAT_SCHEDULE` (docker-compose/VPS yenye
+    beat); kwenye Railway huendeshwa na kiendesha kilichopachikwa
+    `ess_approve_scheduler` badala yake.
     """
     from .models import EssFillRun, TeacherProfile
     from .runstate import reap_stale_runs
 
     reap_stale_runs()
     today = _today_eat()
-    day_start, day_end = _eat_day_bounds(today)
-    if EssFillRun.objects.filter(
-            kind='approve', source='auto',
-            started__gte=day_start, started__lt=day_end).exists():
-        return {'date': today.isoformat(), 'skipped': 'already-ran-today'}
     qs = TeacherProfile.objects.filter(
         approver_enabled=True, ess_ready=True).select_related('user')
-    triggered = []
+    triggered, skipped = [], []
     for prof in qs:
+        if not approve_due_for(prof):
+            skipped.append(prof.id)
+            continue
         run = EssFillRun.objects.create(
             profile=prof, kind='approve', source='auto')
         run_ess_approve.apply_async(args=[prof.id, run.id], queue='essfill')
         triggered.append(prof.id)
-    return {'date': today.isoformat(), 'triggered': triggered}
+    return {'date': today.isoformat(), 'triggered': triggered,
+            'skipped': skipped}
 
 
 def _retry_countdown(task, base):

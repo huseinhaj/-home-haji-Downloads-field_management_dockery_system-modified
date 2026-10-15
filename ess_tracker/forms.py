@@ -128,6 +128,15 @@ class ProfileForm(forms.ModelForm):
         help_text='Kikizimwa, mfumo haitajazi yenyewe. Waweza kuwasha tena '
                   'au kujaza kwa mkono kwa kitufe cha "Jaza" kwenye nyumbani.')
 
+    auto_approve_weeks = forms.ChoiceField(
+        label='Kuidhinisha (verify) kiotomatiki mara ngapi?',
+        required=False,
+        choices=[(1, 'Kila wiki'), (2, 'Kila wiki mbili')],
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text='Kwa wakuu/kiongozi (approver): mfumo huzinduliwa kila siku '
+                  '18:00 EAT (baada ya saa za kazi) na kuidhinisha kwa kipindi '
+                  'hiki — wiki 1 au wiki 2.')
+
     holidays = forms.ModelMultipleChoiceField(
         label='Likizo (chagua zinazohusu mwaka huu)',
         required=False,
@@ -150,6 +159,12 @@ class ProfileForm(forms.ModelForm):
             self.fields['holidays'].initial = self.instance.holidays.all()
         else:
             self.fields['holidays'].queryset = Holiday.objects.filter(profile__isnull=True)
+        # Kipimo cha auto-approve ni cha wakuu/kiongozi pekee.
+        if getattr(self.instance, 'approver_enabled', False):
+            self.fields['auto_approve_weeks'].initial = getattr(
+                self.instance, 'auto_approve_weeks', 1)
+        else:
+            self.fields.pop('auto_approve_weeks', None)
 
     def clean(self):
         cleaned = super().clean()
@@ -184,6 +199,9 @@ class ProfileForm(forms.ModelForm):
         chosen = self.cleaned_data.get('auto_subtasks') or []
         profile.auto_subtasks = ','.join(str(s.id) for s in chosen)
         profile.auto_fill_enabled = bool(self.cleaned_data.get('auto_fill_enabled'))
+        wk = self.cleaned_data.get('auto_approve_weeks')
+        if wk:
+            profile.auto_approve_weeks = int(wk)
         if commit:
             profile.save()
             profile.holidays.set(self.cleaned_data.get('holidays') or [])

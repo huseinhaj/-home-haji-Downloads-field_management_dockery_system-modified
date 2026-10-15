@@ -174,6 +174,31 @@ h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
         {% if LANG == 'sw' %}Huidhinisha description zilizowasilishwa (SUBMITTED) na walimu walio chini yako.{% else %}Verifies SUBMITTED descriptions of teachers under you.{% endif %}
       </div>
 
+      {% if profile.approver_enabled %}
+      <div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--border);">
+        <h5 style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">
+          <i class="fas fa-calendar-week me-1"></i>{% if LANG == 'sw' %}Kuidhinisha kiotomatiki{% else %}Auto-approve{% endif %}
+        </h5>
+        <form method="post" action="{% url 'ess_tracker:ess_approve_schedule' %}">
+          {% csrf_token %}
+          <div style="display:flex;gap:10px;align-items:stretch;">
+            <select name="auto_approve_weeks"
+                    style="flex:1;border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:14px;background:#fff;">
+              <option value="1" {% if profile.auto_approve_weeks == 1 %}selected{% endif %}>{% if LANG == 'sw' %}Kila wiki{% else %}Every week{% endif %}</option>
+              <option value="2" {% if profile.auto_approve_weeks == 2 %}selected{% endif %}>{% if LANG == 'sw' %}Kila wiki mbili{% else %}Every two weeks{% endif %}</option>
+            </select>
+            <button class="btn" type="submit" style="width:auto;padding:10px 18px;text-transform:none;">
+              <i class="fas fa-floppy-disk"></i>{% if LANG == 'sw' %}Hifadhi{% else %}Save{% endif %}
+            </button>
+          </div>
+        </form>
+        <div class="note">
+          {% if LANG == 'sw' %}Mfumo huzinduliwa kila siku 18:00 EAT (baada ya saa za kazi).{% else %}Runs daily at 18:00 EAT (after working hours).{% endif %}
+          {% if approve_next_due %} {% if LANG == 'sw' %}Ijayo:{% else %}Next:{% endif %} {{ approve_next_due|date:'d M Y' }}.{% endif %}
+        </div>
+      </div>
+      {% endif %}
+
       {% if runs %}
       <div class="runs">
         <h5><i class="fas fa-clock-rotate-left me-1"></i>{% if LANG == 'sw' %}Historia ya uidhinishaji{% else %}Approval history{% endif %}</h5>

@@ -6,7 +6,7 @@ ya walimu.
 
 Mifano:
     python manage.py ess_approve_scheduler --once            # mara moja sasa
-    python manage.py ess_approve_scheduler --hour 20 --minute 0
+    python manage.py ess_approve_scheduler --hour 18 --minute 0
     python manage.py ess_approve_scheduler --once --dry-run
 """
 import time as _time
@@ -23,8 +23,9 @@ class Command(BaseCommand):
             'wakuu waliochaguliwa — HUMU ndani (bila celery worker).')
 
     def add_arguments(self, parser):
-        parser.add_argument('--hour', type=int, default=20,
-                            help='Saa ya EAT (default 20 — jioni).')
+        parser.add_argument('--hour', type=int, default=18,
+                            help='Saa ya EAT (default 18 — jioni, baada ya '
+                                 'saa za kazi).')
         parser.add_argument('--minute', type=int, default=0,
                             help='Dakika (default 0).')
         parser.add_argument('--once', action='store_true',
@@ -85,23 +86,24 @@ class Command(BaseCommand):
             _time.sleep(min(remaining, 300))
 
     def _should_catch_up(self):
-        from ess_tracker.models import EssFillRun
+        from ess_tracker.models import TeacherProfile
 
         now = self._now_eat()
         target = now.replace(hour=self.hour, minute=self.minute,
                              second=0, microsecond=0)
         if now < target:
             return False
-        day_start, day_end = tasks._eat_day_bounds(now.date())
-        return not EssFillRun.objects.filter(
-            kind='approve', source='auto',
-            started__gte=day_start, started__lt=day_end).exists()
+        # Kuna mkuu yeyote ambaye kipindi chake kimefika?
+        qs = TeacherProfile.objects.filter(
+            approver_enabled=True, ess_ready=True)
+        return any(tasks.approve_due_for(p) for p in qs)
 
     def _run_once(self):
         self.stdout.write(
             f'[ess-approve-scheduler] kuidhinisha sasa ({self._now_eat()})...')
         res = tasks.run_approve_inline(
-            log=lambda m: self.stdout.write(str(m)), dry_run=self.dry_run)
+            log=lambda m: self.stdout.write(str(m)), dry_run=self.dry_run,
+            only_due=True)
         self.stdout.write(self.style.SUCCESS(
             f'[ess-approve-scheduler] imekamilika: verified={res.get("verified")} '
             f'processed={res.get("processed")} failed={res.get("failed")}'))

@@ -375,10 +375,12 @@ CELERY_BEAT_SCHEDULE = {
         "options": {"expires": 1800, **_QUEUE},
     },
     "ess-approve-daily": {
-        # Kila siku 20:00 EAT: mkuu/kiongozi aidhinishe (verify) maendeleo
-        # SUBMITTED ya walimu. Hulinganisha na "ess-auto-fill-daily".
+        # Kila siku 18:00 EAT (baada ya saa za kazi): mkuu/kiongozi aidhinishe
+        # (verify) maendeleo SUBMITTED ya walimu. Kila mkuu hufanya kazi kwa
+        # kipindi chake (`auto_approve_weeks` = wiki 1 au 2). Hulinganisha na
+        # "ess-auto-fill-daily".
         "task": "ess_tracker.tasks.approve_due",
-        "schedule": crontab(hour=20, minute=0),
+        "schedule": crontab(hour=18, minute=0),
         "options": {"expires": 1800, **_QUEUE},
     },
     "ess-notify-due": {

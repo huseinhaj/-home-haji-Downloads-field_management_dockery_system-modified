@@ -528,12 +528,39 @@ def ess_approve_page(request):
     reap_stale_runs(profile)
     runs = profile.fill_runs.filter(kind='approve')[:15]
     running_run = profile.fill_runs.filter(kind='approve', status='running').first()
+    from . import tasks as ess_tasks
+    approve_next_due = ess_tasks.approve_next_due(profile)
     return render(request, 'ess_tracker/ess_approve.html', {
         'profile': profile,
         'runs': runs,
         'running_run': running_run,
+        'approve_next_due': approve_next_due,
         'hide_navbar': True,
     })
+
+
+@login_required
+@require_POST
+def ess_approve_schedule(request):
+    """Weka kipindi cha kuidhinisha kiotomatiki (wiki 1 au 2) kwa mkuu."""
+    profile = _me(request)
+    if profile is None:
+        return redirect('ess_tracker:ess_profile')
+    if not profile.approver_enabled:
+        messages.error(request, 'Akaunti hii haijawezeshwa kuidhinisha.')
+        return redirect('ess_tracker:ess_approve')
+    try:
+        wk = int(request.POST.get('auto_approve_weeks'))
+    except (TypeError, ValueError):
+        wk = None
+    if wk not in (1, 2):
+        messages.error(request, 'Chagua kipindi: kila wiki au kila wiki mbili.')
+        return redirect('ess_tracker:ess_approve')
+    profile.auto_approve_weeks = wk
+    profile.save(update_fields=['auto_approve_weeks'])
+    messages.success(request, 'Kipindi cha kuidhinisha kiotomatiki kimehifadhiwa: '
+                              + ('kila wiki.' if wk == 1 else 'kila wiki mbili.'))
+    return redirect('ess_tracker:ess_approve')
 
 
 @login_required

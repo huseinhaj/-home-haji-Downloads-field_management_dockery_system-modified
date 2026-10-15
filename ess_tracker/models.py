@@ -68,6 +68,11 @@ class TeacherProfile(models.Model):
         default=False,
         help_text='Mkuu/kiongozi: washa ili mfumo uidhinishe (verify) maendeleo '
                   'SUBMITTED ya walimu walio chini yake kwenye e-Utendaji.')
+    auto_approve_weeks = models.PositiveSmallIntegerField(
+        default=1,
+        choices=[(1, 'Kila wiki'), (2, 'Kila wiki mbili')],
+        help_text='Mkuu/kiongozi: kuidhinisha (verify) kiotomatiki kila wiki '
+                  'ngapi (1 au 2). Mfumo huzinduliwa kila siku 18:00 EAT.')
     holidays = models.ManyToManyField(
         'Holiday', blank=True, related_name='profiles',
         help_text='Likizo zilizochaguliwa — zinatolewa kwenye hesabu ya siku za shule (194)')

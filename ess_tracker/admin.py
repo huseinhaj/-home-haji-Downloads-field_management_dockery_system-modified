@@ -72,7 +72,8 @@ class TeacherProfileAdmin(admin.ModelAdmin):
         ('Ratiba ya shule', {'fields': ('school_open', 'school_close',
                                         'entries_per_week', 'holidays')}),
         ('Kujaza / Uidhinishaji', {'fields': ('auto_subtasks', 'auto_fill_enabled',
-                                              'approver_enabled')}),
+                                              'approver_enabled',
+                                              'auto_approve_weeks')}),
     )
 
 

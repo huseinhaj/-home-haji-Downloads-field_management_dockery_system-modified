@@ -161,8 +161,10 @@ if [ "$SERVICE_ROLE_NORM" = "web" ]; then
 fi
 
 # ── Kiendesha kuidhinisha (verify): ess_approve_scheduler ─────────────────────
-# Huidhinisha maendeleo SUBMITTED ya walimu kila siku 20:00 EAT kwa wakuu
-# waliochaguliwa (approver_enabled=True). Huzimwa kwa ESS_EMBED_APPROVER=0.
+# Huidhinisha maendeleo SUBMITTED ya walimu kila siku 18:00 EAT (baada ya saa
+# za kazi) kwa wakuu waliochaguliwa (approver_enabled=True). Kila mkuu hufanya
+# kazi kwa kipindi chake (auto_approve_weeks = wiki 1 au 2). Huzimwa kwa
+# ESS_EMBED_APPROVER=0.
 EMBED_APPROVER="$(printf '%s' "${ESS_EMBED_APPROVER:-}" | tr '[:upper:]' '[:lower:]' | tr -d ' ')"
 if [ -z "$EMBED_APPROVER" ]; then
     if [ -n "$RAILWAY_PROJECT_ID" ] || [ -n "$RAILWAY_SERVICE_ID" ] || [ -n "$RAILWAY_ENVIRONMENT_NAME" ]; then
@@ -172,7 +174,7 @@ fi
 if [ "$SERVICE_ROLE_NORM" = "web" ]; then
     case "$EMBED_APPROVER" in
         1|true|yes|on)
-            echo "✅ ESS embedded approver ON — kuidhinisha kila siku 20:00 EAT"
+            echo "✅ ESS embedded approver ON — kuidhinisha kila siku 18:00 EAT"
             (python manage.py ess_approve_scheduler --catch-up >> /tmp/ess_approve_scheduler.log 2>&1) &
             ;;
         *)

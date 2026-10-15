@@ -20,6 +20,7 @@ urlpatterns = [
     path('fill/', views.ess_fill, name='ess_fill'),
     path('approve/', views.ess_approve_page, name='ess_approve'),
     path('approve/run/', views.ess_approve_now, name='ess_approve_now'),
+    path('approve/schedule/', views.ess_approve_schedule, name='ess_approve_schedule'),
     path('fill/sync/', views.ess_sync_names, name='ess_sync_names'),
     path('fill/push/', views.ess_push_names, name='ess_push_names'),
     path('fill/read/', views.ess_read_pcts, name='ess_read_pcts'),
