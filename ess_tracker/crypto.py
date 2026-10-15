@@ -15,15 +15,24 @@ _cache = {'fernet': None}
 
 
 def _key() -> bytes:
-    raw = os.environ.get('ESS_ENC_KEY') or ''
+    """Fernet key (base64) — kutoka ESS_ENC_KEY, au kutokana na SECRET_KEY.
+
+    MUHIMU: Fernet inahitaji base64-encoded key (44 herufi), SI bytes
+    zilizodecodwa. Hapo awali tulikuwa tunarudisha bytes (base64.urlsafe_b64decode)
+    jambo ambalo lilifanya Fernet() kutupa ValueError — kwa hiyo password
+    zote zilisomwa kama tupu mara ESS_ENC_KEY ikiwekwa.
+    """
+    raw = (os.environ.get('ESS_ENC_KEY') or '').strip()
     if raw:
-        try:
-            return base64.urlsafe_b64decode(raw)
-        except Exception:
-            pass
+        return raw.encode('ascii')
     from django.conf import settings
     digest = hashlib.sha256(settings.SECRET_KEY.encode('utf-8')).digest()
     return base64.urlsafe_b64encode(digest)
+
+
+def effective_key() -> bytes:
+    """Kitufe kinachotumika sasa (base64 bytes) — kwa ajili ya zana za recovery."""
+    return _key()
 
 
 def _fernet() -> Fernet:
