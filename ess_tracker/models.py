@@ -23,6 +23,7 @@ RUN_KIND_CHOICES = [
     ('sync', 'Sawazisha majina na ESS'),
     ('push', 'Tuma majina kwenye ESS'),
     ('read', 'Soma asilimia ESS'),
+    ('approve', 'Kuidhinisha (verify) maendeleo ESS'),
 ]
 
 RUN_SOURCE_CHOICES = [
@@ -63,6 +64,10 @@ class TeacherProfile(models.Model):
         default=True,
         help_text='Washa/kuzima kujaza kiotomatiki. Kikizimwa, mfumo haujazi '
                   'yenyewe; unaweza kujaza mwenyewe kwa kitufe cha "Jaza".')
+    approver_enabled = models.BooleanField(
+        default=False,
+        help_text='Mkuu/kiongozi: washa ili mfumo uidhinishe (verify) maendeleo '
+                  'SUBMITTED ya walimu walio chini yake kwenye e-Utendaji.')
     holidays = models.ManyToManyField(
         'Holiday', blank=True, related_name='profiles',
         help_text='Likizo zilizochaguliwa — zinatolewa kwenye hesabu ya siku za shule (194)')

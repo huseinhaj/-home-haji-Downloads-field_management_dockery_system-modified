@@ -202,6 +202,31 @@
       tathmini, majaribio) kwenye ESS kwa akaunti yako. Ukitaka kuweka idadi halisi uliyofanya,
       unaweza hiari kwenye <a href="{% url 'ess_tracker:ess_week' %}">Rekodi wiki</a>.
     </small>
+
+    {% if profile.approver_enabled %}
+    <hr class="my-4">
+    <div class="text-center">
+      <div class="fw-bold mb-2"><i class="fas fa-user-check me-2"></i>Uhidhinishaji (mkuu/kiongozi)</div>
+      <form method="post" action="{% url 'ess_tracker:ess_approve_now' %}" class="d-inline">
+        {% csrf_token %}
+        <button class="btn btn-primary" {% if not profile.ess_ready %}disabled{% endif %}
+                onclick="return confirm('Kuidhinisha (verify) maendeleo yote SUBMITTED ya walimu kwa akaunti yako ya ESS. Endelea?')">
+          <i class="fas fa-check-double me-2"></i>Idhinisha maendeleo (verify)
+        </button>
+      </form>
+      <form method="post" action="{% url 'ess_tracker:ess_approve_now' %}" class="d-inline ms-2">
+        {% csrf_token %}
+        <input type="hidden" name="dry_run" value="1">
+        <button class="btn btn-outline-primary" {% if not profile.ess_ready %}disabled{% endif %}
+                onclick="return confirm('Onyesho pekee (dry-run): haitabofya Verify. Endelea?')">
+          <i class="fas fa-eye me-2"></i>Onyesho (dry-run)
+        </button>
+      </form>
+      <div class="small text-muted mt-1">
+        Huidhinisha description zilizowasilishwa (SUBMITTED) na walimu walio chini yako.
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

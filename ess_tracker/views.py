@@ -458,6 +458,43 @@ def _run_in_thread(profile_id, run_id):
 
 @login_required
 @require_POST
+def ess_approve_now(request):
+    """Idhinisha (verify) maendeleo SUBMITTED kwa akaunti hii ya mkuu."""
+    profile = _me(request)
+    if profile is None:
+        return redirect('ess_tracker:ess_profile')
+    if not profile.ess_ready:
+        messages.error(request, 'Weka kwanza ESS username na password kwenye wasifu.')
+        return redirect('ess_tracker:ess_profile')
+    if not profile.approver_enabled:
+        messages.error(request, 'Akaunti hii haijawezeshwa kuidhinisha. '
+                                'Iwashe kwenye wasifu (approver_enabled).')
+        return redirect('ess_tracker:ess_home')
+    from .runstate import reap_stale_runs
+    reap_stale_runs(profile)
+    existing = profile.fill_runs.filter(kind='approve', status='running').first()
+    if existing:
+        messages.info(request, 'Uhidhinishaji unaendelea tayari — subiri kukamilika.')
+        return redirect('ess_tracker:ess_fill_status', run_id=existing.id)
+    dry_run = request.POST.get('dry_run') == '1'
+    run = EssFillRun.objects.create(profile=profile, kind='approve')
+    run.status = 'running'
+    run.log = '[DRY-RUN] Uhidhinishaji umeanza...' if dry_run else 'Uhidhinishaji umeanza...'
+    run.save()
+    threading.Thread(target=_run_approve_in_thread,
+                     args=(profile.id, run.id, dry_run), daemon=True).start()
+    cache.set(CACHE_PREFIX + str(run.id), {'msg': 'Inaanzisha...', 'step': 0,
+                                           'done': False, 'error': ''}, timeout=3600)
+    return redirect('ess_tracker:ess_fill_status', run_id=run.id)
+
+
+def _run_approve_in_thread(profile_id, run_id, dry_run=False):
+    from .essapprove import run_approve
+    run_approve(profile_id, run_id, dry_run=dry_run)
+
+
+@login_required
+@require_POST
 def ess_save_auto_choice(request):
     """Hifadhi sub-task zilizotick kwenye nyumbani kama chaguo la kiotomatiki.
 

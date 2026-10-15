@@ -220,6 +220,95 @@ def run_auto_fill_inline(profiles=None, log=None):
     return {'date': today.isoformat(), 'filled': filled, 'failed': failed}
 
 
+def run_approve_inline(profiles=None, log=None, dry_run=False):
+    """Idhinisha (verify) maendeleo SUBMITTED ya walimu — humu ndani ya process.
+
+    Hupitia wakuu/kiongozi wote waliochaguliwa (`approver_enabled=True`).
+    Hutumika na amri `ess_approve --all` na kiendesha `ess_approve_scheduler`.
+
+    Hurudisha {'date', 'verified', 'processed', 'failed', 'profiles'}.
+    """
+    from django.utils import timezone
+
+    from .essapprove import run_approve
+    from .locks import profile_lock
+    from .models import EssFillRun, TeacherProfile
+
+    def _log(msg):
+        if log:
+            try:
+                log(msg)
+            except Exception:  # noqa: BLE001
+                pass
+
+    if profiles is None:
+        profiles = list(
+            TeacherProfile.objects.filter(
+                approver_enabled=True, ess_ready=True).select_related('user'))
+
+    verified = processed = failed = 0
+    done = []
+    for prof in profiles:
+        run = EssFillRun.objects.create(
+            profile=prof, kind='approve', source='auto')
+        with profile_lock(prof.id) as got:
+            if not got:
+                run.status = 'error'
+                run.finished = timezone.now()
+                run.log = 'Lock ilikuwa inashikiliwa; kurukwa.'
+                run.save()
+                _log(f'  #{prof.id} — lock, imerukwa')
+                continue
+            try:
+                res = run_approve(prof.id, run.id, dry_run=dry_run)
+                verified += res.get('verified', 0)
+                processed += res.get('processed', 0)
+                failed += res.get('failed', 0)
+                done.append(prof.id)
+                _log(f'  #{prof.id} — verified={res.get("verified", 0)} '
+                     f'processed={res.get("processed", 0)} '
+                     f'failed={res.get("failed", 0)}')
+            except Exception as exc:  # noqa: BLE001
+                failed += 1
+                run.status = 'error'
+                run.finished = timezone.now()
+                run.log = (run.log + f'\n{exc}') if run.log else str(exc)
+                run.save()
+                _log(f'  #{prof.id} — HITILAFU: {exc}')
+    return {'date': _today_eat().isoformat(), 'verified': verified,
+            'processed': processed, 'failed': failed, 'profiles': done}
+
+
+@shared_task(bind=True, time_limit=120, soft_time_limit=100)
+def approve_due(self):
+    """Weka foleni uhidhinishaji (verify) kwa wakuu waliochaguliwa (beat).
+
+    Hulinganisha na `auto_fill_due`: hupanga `run_ess_approve` kwa kila mkuu
+    mwenye `approver_enabled=True`. Hutumika na `CELERY_BEAT_SCHEDULE`
+    (docker-compose/VPS yenye beat); kwenye Railway huendeshwa na kiendesha
+    kilichopachikwa `ess_approve_scheduler` badala yake.
+    """
+    from .models import EssFillRun, TeacherProfile
+    from .runstate import reap_stale_runs
+
+    reap_stale_runs()
+    today = _today_eat()
+    day_start, day_end = _eat_day_bounds(today)
+    if EssFillRun.objects.filter(
+            kind='approve', source='auto',
+            started__gte=day_start, started__lt=day_end).exists():
+        return {'date': today.isoformat(), 'skipped': 'already-ran-today'}
+    qs = TeacherProfile.objects.filter(
+        approver_enabled=True, ess_ready=True).select_related('user')
+    triggered = []
+    for prof in qs:
+        run = EssFillRun.objects.create(
+            profile=prof, kind='approve', source='auto')
+        run_ess_approve.apply_async(args=[prof.id, run.id], queue='essfill')
+        triggered.append(prof.id)
+    return {'date': today.isoformat(), 'triggered': triggered}
+
+
 def _retry_countdown(task, base):
     """Backoff: base, base x2, base x4 ... hadi dakika 15."""
     return min(base * (2 ** task.request.retries), 900)
@@ -309,6 +398,21 @@ def run_ess_read(self, profile_id, run_id):
         if not got:
             raise self.retry(countdown=_retry_countdown(self, 90))
         return run_read(profile_id, run_id)
+
+
+@shared_task(bind=True, queue='essfill', time_limit=900, soft_time_limit=860,
+             max_retries=2)
+def run_ess_approve(self, profile_id, run_id):
+    """Idhinisha (verify) maendeleo SUBMITTED kwa mkuu mmoja (queue='essfill').
+
+    Lock ya mkuu huzuia uhidhinishaji mbili za mtu mmoja ziende pamoja.
+    """
+    from .essapprove import run_approve
+    from .locks import profile_lock
+    with profile_lock(profile_id) as got:
+        if not got:
+            raise self.retry(countdown=_retry_countdown(self, 90))
+        return run_approve(profile_id, run_id)
 
 
 @shared_task(time_limit=180, soft_time_limit=160)

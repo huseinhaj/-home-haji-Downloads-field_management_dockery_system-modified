@@ -162,11 +162,39 @@ python manage.py ess_auto_fill --execute --inline  # endesha HUMU (bila worker/b
 > - Kukagua: `python manage.py ess_scheduler --once` (endesha mara moja), au
 >   angalia log `/tmp/ess_scheduler.log` kwenye container.
 
+### ✅ Uhidhinishaji (approve / verify)
+
+Mkuu wa shule (au IT wa shule aliyepewa taarifa zake) huingia ESS kwa akaunti
+yake na **kuidhinisha** (= *Verify*) description/maendeleo yaliyowasilishwa
+(status `SUBMITTED`) na walimu walio chini yake. Wasifu wa mkuu huwashwa kwa
+`approver_enabled=True` (Django admin → *ESS → Wasifu*; kitufe huonekana kwenye
+`/ess/`). Hii hutumia Playwright kama kujaza: `ess_tracker/essapprove.run_approve`
+huingia, hufungua *Approve Progress* kwa kila safu, na huthibitisha kila safu
+yenye `SUBMITTED`.
+
+**Kwa mkono:** kitufe "Idhinisha maendeleo (verify)" (au "Onyesho (dry-run)")
+kwenye `/ess/`, au:
+
+```bash
+python manage.py ess_approve --profile 3         # mkuu mmoja
+python manage.py ess_approve --all               # wakuu wote waliochaguliwa
+python manage.py ess_approve --all --dry-run     # onyesha tu (bila Verify)
+```
+
+**Kiotomatiki:**
+> * **Railway (service moja ya web):** kipanga-saa kilichopachikwa
+>   **`ess_approve_scheduler`** huthibitisha kila siku **20:00 EAT** (huzimwa kwa
+>   `ESS_EMBED_APPROVER=0`; huwaka kiotomatiki kwenye `RAILWAY_*`). Log:
+>   `/tmp/ess_approve_scheduler.log`.
+> * **docker-compose/VPS yenye beat:** `CELERY_BEAT_SCHEDULE` ina
+>   **`ess-approve-daily`** (20:00 EAT) → `approve_due` → foleni **`essfill`**
+>   (`run_ess_approve`). Hakikisha worker wa foleni `essfill` anaendesha.
+
 **Historia ya kujaza** (`/ess/fill/log/`) inaonyesha kila run ikiwa na safu
-**Aina** (`kind`: Kujaza/Sawazisha/Tuma/Soma) na **Chanzo** (`source`:
+**Aina** (`kind`: Kujaza/Sawazisha/Tuma/Soma/Kuidhinisha) na **Chanzo** (`source`:
 **Kiotomatiki** kwa beat, **Mwenyewe** kwa kubofya). Run za **kujaza**
 (`kind=fill`) pekee zinaathiri kuzuia/kujaza; run nyingine ni za kusawazisha
-majina, kusoma asilimia, n.k.
+majina, kusoma asilimia, kuidhinisha (verify), n.k.
 
 > **Runs zilizokwama.** Run iliyoanza zaidi ya `ESS_RUN_STALE_SECONDS`
 > (default 1800s) bado `running` hufungwa kama `error` kiotomatiki

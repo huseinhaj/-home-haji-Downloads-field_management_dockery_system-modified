@@ -17,6 +17,7 @@ urlpatterns = [
     path('week/', views.ess_week, name='ess_week'),
     path('csv/', views.ess_csv, name='ess_csv'),
     path('fill/', views.ess_fill, name='ess_fill'),
+    path('approve/', views.ess_approve_now, name='ess_approve_now'),
     path('fill/sync/', views.ess_sync_names, name='ess_sync_names'),
     path('fill/push/', views.ess_push_names, name='ess_push_names'),
     path('fill/read/', views.ess_read_pcts, name='ess_read_pcts'),

@@ -31,7 +31,9 @@ class AcademicCalendarAdmin(admin.ModelAdmin):
 
 @admin.register(TeacherProfile)
 class TeacherProfileAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'user', 'school', 'ess_username', 'ess_ready')
+    list_display = ('full_name', 'user', 'school', 'ess_username', 'ess_ready',
+                    'approver_enabled')
+    list_filter = ('approver_enabled',)
     search_fields = ('full_name', 'ess_username', 'user__email')
 
 

@@ -1,9 +1,9 @@
 {% extends 'ess_tracker/ess_base.html' %}
-{% block title %}{% if run.kind == 'sync' %}Vuta kutoka ESS{% elif run.kind == 'push' %}Sahihisha majina kwenye ESS{% elif run.kind == 'read' %}Soma asilimia ESS{% else %}Kujaza ESS{% endif %} — e-Tendaji{% endblock %}
+{% block title %}{% if run.kind == 'sync' %}Vuta kutoka ESS{% elif run.kind == 'push' %}Sahihisha majina kwenye ESS{% elif run.kind == 'read' %}Soma asilimia ESS{% elif run.kind == 'approve' %}Kuidhinisha (verify) ESS{% else %}Kujaza ESS{% endif %} — e-Tendaji{% endblock %}
 {% block content %}
 <div class="card shadow-sm" style="max-width:720px;margin:0 auto;margin-top:10px;">
     <div class="card-header d-flex justify-content-between align-items-center">
-      <span><i class="fas fa-{% if run.kind == 'sync' %}sync-alt{% elif run.kind == 'read' %}cloud-arrow-down{% else %}cloud-upload-alt{% endif %} me-2"></i>{% if run.kind == 'sync' %}Vuta kutoka ESS{% elif run.kind == 'push' %}Sahihisha majina kwenye ESS{% elif run.kind == 'read' %}Soma asilimia ESS{% else %}Kujaza ESS{% endif %} — Run #{{ run.id }}</span>
+      <span><i class="fas fa-{% if run.kind == 'sync' %}sync-alt{% elif run.kind == 'read' %}cloud-arrow-down{% elif run.kind == 'approve' %}user-check{% else %}cloud-upload-alt{% endif %} me-2"></i>{% if run.kind == 'sync' %}Vuta kutoka ESS{% elif run.kind == 'push' %}Sahihisha majina kwenye ESS{% elif run.kind == 'read' %}Soma asilimia ESS{% elif run.kind == 'approve' %}Kuidhinisha (verify) ESS{% else %}Kujaza ESS{% endif %} — Run #{{ run.id }}</span>
       <span id="statusbadge" class="badge bg-info">running</span>
     </div>
     <div class="card-body">
@@ -12,9 +12,9 @@
         <div id="pbar" class="progress-bar" style="width:0%"></div>
       </div>
       <div class="row text-center mb-3 g-2">
-        <div class="col-6 col-md-3"><p class="mb-0 small text-muted">{% if run.kind == 'sync' %}Zimesawazishwa{% elif run.kind == 'push' %}Zimesahihishwa ESS{% elif run.kind == 'read' %}Zimesomwa{% else %}Zinazoongezwa{% endif %}</p><h5 id="c_saved" class="mb-0">0</h5></div>
+        <div class="col-6 col-md-3"><p class="mb-0 small text-muted">{% if run.kind == 'sync' %}Zimesawazishwa{% elif run.kind == 'push' %}Zimesahihishwa ESS{% elif run.kind == 'read' %}Zimesomwa{% elif run.kind == 'approve' %}Zilizoidhinishwa{% else %}Zinazoongezwa{% endif %}</p><h5 id="c_saved" class="mb-0">0</h5></div>
         <div class="col-6 col-md-3"><p class="mb-0 small text-muted">Sawa tayari</p><h5 id="c_skip" class="mb-0">0</h5></div>
-        <div class="col-6 col-md-3"><p class="mb-0 small text-muted">{% if run.kind == 'sync' %}Hazipo ESS{% else %}Hazikupatikana{% endif %}</p><h5 id="c_miss" class="mb-0">0</h5></div>
+        <div class="col-6 col-md-3"><p class="mb-0 small text-muted">{% if run.kind == 'sync' %}Hazipo ESS{% elif run.kind == 'approve' %}Hitilafu{% else %}Hazikupatikana{% endif %}</p><h5 id="c_miss" class="mb-0">0</h5></div>
         <div class="col-6 col-md-3"><p class="mb-0 small text-muted">Jumla</p><h5 id="c_req" class="mb-0">{{ run.required }}</h5></div>
       </div>
       <div id="errorbox" class="alert alert-danger d-none"></div>
