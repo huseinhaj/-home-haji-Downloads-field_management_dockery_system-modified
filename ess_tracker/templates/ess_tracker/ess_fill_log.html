@@ -1,6 +1,13 @@
 {% extends 'ess_tracker/ess_base.html' %}
 {% block title %}Historia ya kujaza — e-Tendaji{% endblock %}
 {% block content %}
+<style>
+  @media (max-width:768px){
+    .fill-log-table .cell-log{display:block;text-align:left;padding:0;}
+    .fill-log-table .cell-log::before{content:none;}
+    .fill-log-table .cell-log pre{white-space:pre-wrap;word-break:break-word;}
+  }
+</style>
 <div style="max-width:960px;margin:0 auto;">
 <div class="page-head">
   <h4>Historia ya kujaza ESS</h4>
@@ -9,7 +16,7 @@
 
   <div class="card shadow-sm">
     <div class="table-responsive">
-      <table class="table table-sm align-middle mb-0">
+      <table class="table table-sm align-middle mb-0 rtable fill-log-table">
         <thead class="table-light">
           <tr>
             <th>#</th>
@@ -27,26 +34,26 @@
         <tbody>
           {% for r in runs %}
           <tr>
-            <td>{{ r.id }}</td>
-            <td class="small">{{ r.get_kind_display }}</td>
-            <td class="small">
+            <td data-label="#">{{ r.id }}</td>
+            <td class="small" data-label="Aina">{{ r.get_kind_display }}</td>
+            <td class="small" data-label="Chanzo">
               {% if r.source == 'auto' %}
               <span class="badge bg-primary">Kiotomatiki</span>
               {% else %}
               <span class="badge bg-secondary">Mwenyewe</span>
               {% endif %}
             </td>
-            <td class="small">{{ r.started|date:'d M Y H:i' }}</td>
-            <td class="small d-none d-md-table-cell">{{ r.finished|date:'d M Y H:i'|default:'—' }}</td>
-            <td>
+            <td class="small" data-label="Ilianza">{{ r.started|date:'d M Y H:i' }}</td>
+            <td class="small d-none d-md-table-cell" data-label="Ilimalizika">{{ r.finished|date:'d M Y H:i'|default:'—' }}</td>
+            <td data-label="Status">
               <span class="badge {% if r.status == 'done' %}bg-success{% elif r.status == 'error' %}bg-danger{% else %}bg-info{% endif %}">
                 {{ r.get_status_display }}
               </span>
             </td>
-            <td>{{ r.saved }}</td>
-            <td class="d-none d-md-table-cell">{{ r.skipped }}</td>
-            <td class="d-none d-md-table-cell">{{ r.not_found }}</td>
-            <td>
+            <td data-label="Zimeongezwa">{{ r.saved }}</td>
+            <td class="d-none d-md-table-cell" data-label="Sawa">{{ r.skipped }}</td>
+            <td class="d-none d-md-table-cell" data-label="Hazikupatikana">{{ r.not_found }}</td>
+            <td data-label="">
               {% if r.status == 'running' %}
               <a href="{% url 'ess_tracker:ess_fill_status' r.id %}" class="btn btn-sm btn-outline-info">Fuata</a>
               {% else %}
@@ -57,7 +64,7 @@
           </tr>
           {% if r.status != 'running' %}
           <tr class="collapse" id="log{{ r.id }}">
-            <td colspan="10"><pre class="small bg-light p-2 mb-0" style="max-height:200px;overflow:auto;">{{ r.log }}</pre></td>
+            <td colspan="10" class="cell-log" data-label=""><pre class="small bg-light p-2 mb-0" style="max-height:200px;overflow:auto;">{{ r.log }}</pre></td>
           </tr>
           {% endif %}
           {% empty %}
