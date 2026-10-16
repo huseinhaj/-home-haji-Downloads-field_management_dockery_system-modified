@@ -12,7 +12,8 @@ from django.test import TestCase, override_settings
 
 from ess_tracker import compute as C
 from ess_tracker.essfill import subtask_snapshot
-from ess_tracker.models import SubTask, SubTaskEvent, Task, TeacherProfile
+from ess_tracker.models import (EssFillRun, SubTask, SubTaskEvent, Task,
+                                 TeacherProfile)
 
 
 class ScheduleGuardTests(TestCase):
@@ -345,3 +346,45 @@ class WaitingSkipTests(TestCase):
         pct, src = C.pct_auto_for(st, dt.date(2026, 10, 15))
         self.assertEqual(pct, 0.0)
         self.assertEqual(src, 'events')
+
+
+@override_settings(STORAGES={
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+})
+class FillLogWeekTests(TestCase):
+    """Historia ya kujaza huonyesha run za wiki husika (si historia yote)."""
+
+    def setUp(self):
+        U = get_user_model()
+        u = U.objects.create_user('mw5', password='x')
+        self.profile = TeacherProfile.objects.create(
+            user=u, full_name='M', ess_username='mw5', ess_password='x')
+        self.client.force_login(self.profile.user)
+
+        today = dt.date.today()
+        old = today - dt.timedelta(days=30)
+        self.this_week = EssFillRun.objects.create(
+            profile=self.profile, status='done', saved=3)
+        self.old_week = EssFillRun.objects.create(
+            profile=self.profile, status='done', saved=9)
+        EssFillRun.objects.filter(pk=self.this_week.pk).update(
+            started=dt.datetime.combine(today, dt.time(9, 0)))
+        EssFillRun.objects.filter(pk=self.old_week.pk).update(
+            started=dt.datetime.combine(old, dt.time(9, 0)))
+
+    def test_default_shows_current_week_only(self):
+        body = self.client.get('/ess/fill/log/').content.decode()
+        self.assertIn(f'#log{self.this_week.id}"', body)
+        self.assertNotIn(f'#log{self.old_week.id}"', body)
+
+    def test_all_shows_everything(self):
+        body = self.client.get('/ess/fill/log/?week=all').content.decode()
+        self.assertIn(f'#log{self.old_week.id}"', body)
+        self.assertIn(f'#log{self.this_week.id}"', body)
+
+    def test_old_week_param_shows_old_run(self):
+        old = dt.date.today() - dt.timedelta(days=30)
+        body = self.client.get(f'/ess/fill/log/?week={old.isoformat()}').content.decode()
+        self.assertIn(f'#log{self.old_week.id}"', body)
+        self.assertNotIn(f'#log{self.this_week.id}"', body)

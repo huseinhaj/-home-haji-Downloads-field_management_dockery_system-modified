@@ -1,6 +1,6 @@
 import json
 import threading
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.auth import login, logout
@@ -900,8 +900,33 @@ def ess_fill_log(request):
         return redirect('ess_tracker:ess_profile')
     from .runstate import reap_stale_runs
     reap_stale_runs(profile)
-    runs = profile.fill_runs.all()[:30]
-    return render(request, 'ess_tracker/ess_fill_log.html', {'profile': profile, 'runs': runs})
+
+    week_param = (request.GET.get('week') or '').strip()
+    show_all = week_param == 'all'
+    anchor = date.today()
+    if not show_all and week_param and week_param != 'current':
+        try:
+            anchor = date.fromisoformat(week_param)
+        except ValueError:
+            anchor = date.today()
+    week_start = anchor - timedelta(days=anchor.weekday())
+    week_end = week_start + timedelta(days=6)
+
+    qs = profile.fill_runs.all()
+    if not show_all:
+        qs = qs.filter(started__date__gte=week_start, started__date__lte=week_end)
+    runs = qs[:60]
+
+    return render(request, 'ess_tracker/ess_fill_log.html', {
+        'profile': profile,
+        'runs': runs,
+        'show_all': show_all,
+        'week_start': week_start,
+        'week_end': week_end,
+        'this_week': week_start == (date.today() - timedelta(days=date.today().weekday())),
+        'prev_week': (week_start - timedelta(days=7)).isoformat(),
+        'next_week': (week_start + timedelta(days=7)).isoformat(),
+    })
 
 
 def ess_manifest(request):

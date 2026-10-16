@@ -9,9 +9,28 @@
   }
 </style>
 <div style="max-width:960px;margin:0 auto;">
-<div class="page-head">
-  <h4>Historia ya kujaza ESS</h4>
-  <div class="sub">Run za awali za kuwasilisha asilimia zako kwenye ESS.</div>
+<div class="page-head d-flex flex-wrap justify-content-between align-items-end gap-2">
+  <div>
+    <h4>Historia ya kujaza ESS</h4>
+    <div class="sub">
+      {% if show_all %}Run zote za nyuma.
+      {% elif this_week %}Run za wiki hii.
+      {% else %}Run za wiki {{ week_start|date:'d M' }} – {{ week_end|date:'d M Y' }}.
+      {% endif %}
+    </div>
+  </div>
+  <div class="btn-group btn-group-sm" role="group">
+    <a href="?week={{ prev_week }}" class="btn btn-outline-secondary" title="Wiki iliyopita">
+      <i class="fas fa-chevron-left"></i></a>
+    {% if this_week and not show_all %}
+    <span class="btn btn-outline-secondary disabled">Wiki hii</span>
+    {% else %}
+    <a href="?week=current" class="btn btn-outline-secondary">Wiki hii</a>
+    {% endif %}
+    <a href="?week={{ next_week }}" class="btn btn-outline-secondary" title="Wiki ijayo">
+      <i class="fas fa-chevron-right"></i></a>
+    <a href="?week=all" class="btn btn-outline-{% if show_all %}primary{% else %}secondary{% endif %}">Zote</a>
+  </div>
 </div>
 
   <div class="card shadow-sm">
@@ -68,7 +87,10 @@
           </tr>
           {% endif %}
           {% empty %}
-          <tr><td colspan="10" class="text-center text-muted py-4">Bado hakuna kujaza.</td></tr>
+          <tr><td colspan="10" class="text-center text-muted py-4">
+            {% if show_all %}Bado hakuna kujaza.
+            {% else %}Hakuna kujaza wiki hii — bofya <b>Zote</b> kuona za nyuma.{% endif %}
+          </td></tr>
           {% endfor %}
         </tbody>
       </table>
