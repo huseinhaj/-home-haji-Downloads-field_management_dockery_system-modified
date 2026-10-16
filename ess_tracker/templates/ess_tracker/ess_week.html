@@ -19,8 +19,7 @@
   <div>
     <h4>Rekodi kazi kwa wiki {{ week }}</h4>
     <div class="sub">
-      <b>Hiari:</b> huna haja ya kurekodi hapa — <b>Jaza ESS sasa</b> inajaza yote yenyewe.
-      Weka hapa tu kama unataka kuonyesha idadi halisi uliyofanya (mf. vipindi 4), itatumika badala ya ratiba.
+      <b>Hiari:</b> unaweza kuandika idadi halisi uliyofanya; vinginevyo mfumo hutumia ratiba.
     </div>
   </div>
   <form class="d-flex gap-2 align-items-center">
@@ -39,17 +38,17 @@
   <div class="card shadow-sm mb-3">
     <div class="card-header">Uliyorekodi wiki {{ week }}</div>
     <div class="table-responsive">
-      <table class="table table-sm align-middle mb-0">
+      <table class="table table-sm align-middle mb-0 rtable">
         <thead class="table-light">
           <tr><th>Tarehe</th><th>Sub Task</th><th style="width:110px">Idadi</th><th class="d-none d-md-table-cell">Maelezo</th></tr>
         </thead>
         <tbody>
           {% for e in entries %}
           <tr>
-            <td>{{ e.date|date:"d/m/Y" }}</td>
-            <td class="small">{{ e.subtask.position }}. {{ e.subtask.description }}</td>
-            <td>{{ e.amount }}</td>
-            <td class="small d-none d-md-table-cell">{{ e.note }}</td>
+            <td data-label="Tarehe">{{ e.date|date:"d/m/Y" }}</td>
+            <td class="small" data-label="Sub Task">{{ e.subtask.position }}. {{ e.subtask.description }}</td>
+            <td data-label="Idadi">{{ e.amount }}</td>
+            <td class="small d-none d-md-table-cell" data-label="Maelezo">{{ e.note }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -102,10 +101,7 @@
     <a href="{% url 'ess_tracker:ess_home' %}" class="btn btn-outline-secondary">Nyumbani</a>
   </div>
   <small class="text-muted d-block mt-2">
-    <b>Idadi</b> = kiasi cha kile ulichofanya siku hiyo (mf. vipindi 4, maandalio 2).
-    Ukiiandika, tunatumia hiyo; usipoandika, tunatumia maendeleo ya ratiba.
-    Zote zinaingia ESS baada ya kubofya <b>Jaza ESS sasa</b>. Sub-task za mwaka mzima
-    (maazimio, nukuu, tathmini) zina asilimia 100 zenyewe.
+    <b>Idadi</b> = kiasi ulichofanya (mf. vipindi 4). Zote zinaingia ESS ukibofya <b>Jaza ESS sasa</b>.
   </small>
 </form>
 </div>

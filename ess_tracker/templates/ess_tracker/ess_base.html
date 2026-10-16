@@ -101,6 +101,19 @@ a.btn-success{color:#fff;}
 .table-responsive{-webkit-overflow-scrolling:touch;scrollbar-width:thin;}
 .table-responsive::-webkit-scrollbar{height:6px;}
 .table-responsive::-webkit-scrollbar-thumb{background:#c3d0e4;border-radius:8px;}
+/* ── Jedwali → kadi kwenye simu (jumla) ── */
+@media (max-width:768px){
+  .rtable thead{display:none;}
+  .rtable{border:0;}
+  .rtable>tbody{display:block;}
+  .rtable>tbody>tr{display:block;border:1px solid #E3EAF4;border-radius:10px;background:#fff;
+    padding:11px 12px;margin:0 0 11px;box-shadow:0 1px 5px rgba(31,65,187,.06);}
+  .rtable>tbody>tr>td{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+    border:0;padding:5px 0;text-align:right;font-size:13.5px;}
+  .rtable>tbody>tr>td::before{content:attr(data-label);font-weight:700;color:#5A6B7E;font-size:12px;
+    text-align:left;flex-shrink:0;font-family:'Poppins',sans-serif;letter-spacing:.2px;}
+  .rtable>tbody>tr>td[data-label=""]::before{content:none;}
+}
 /* ── Responsive: simu na tablet ── */
 @media (max-width:768px){
   .app-header{padding:10px 14px;gap:8px;}
@@ -122,6 +135,18 @@ a.btn-success{color:#fff;}
   .form-control,.form-select{font-size:15px;} /* >=16px huzuia zoom ya iOS; 15 bado vizuri */
   .btn-sm{padding:.32rem .6rem;}
   .ess-install-btn{padding:7px 11px;font-size:11.5px;}
+  /* nav: bar ya chini kama programu ya simu — rahisi kusogeza */
+  .app-nav{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:1040;overflow:visible;
+    justify-content:space-around;gap:0;padding:5px 4px calc(5px + env(safe-area-inset-bottom));
+    border-top:1px solid #E3EAF4;
+    box-shadow:0 -3px 14px rgba(31,65,187,.12);}
+  .app-nav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:5px 2px;font-size:11px;border-bottom:0;border-radius:8px;line-height:1.1;}
+  .app-nav a i{margin:0 !important;font-size:16px;}
+  .app-nav a.on{background:#EDF3FF;border-bottom:0;color:var(--primary);}
+  .app-nav a.on i{color:var(--primary);}
+  .app-main{padding-bottom:76px;}
+  .app-foot{display:none;}
 }
 @media (max-width:520px){
   .brand-txt p{display:none;}

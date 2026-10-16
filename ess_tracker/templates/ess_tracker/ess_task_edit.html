@@ -1,6 +1,21 @@
 {% extends 'ess_tracker/ess_base.html' %}
 {% block title %}Hariri Task — e-Tendaji{% endblock %}
 {% block content %}
+<style>
+  @media (min-width:769px){ .edit-table{min-width:760px;} }
+  @media (max-width:768px){
+    .edit-table .cell-pos{font-weight:700;color:var(--muted);}
+    .edit-table .cell-desc::before{content:none;}
+    .edit-table .cell-desc{display:block;text-align:left;}
+    .edit-table .cell-desc input{width:100%;}
+    .edit-table .cell-events{display:block;text-align:left;padding:0;}
+    .edit-table .cell-events::before{content:none;}
+    .edit-table .events-row{border:1px solid #D7E3F7;background:#F7FAFF;box-shadow:none;
+      margin-top:-11px;border-radius:0 0 10px 10px;}
+    .edit-table .events-row .event-item .form-control,
+    .edit-table .events-row .event-item .form-select{max-width:100% !important;}
+  }
+</style>
 <div style="max-width:960px;margin:0 auto;">
 <div class="page-head">
   <h4>Hariri Task</h4>
@@ -30,7 +45,7 @@
         <button class="btn btn-sm btn-success" type="submit">Hifadhi sub-tasks</button>
       </div>
       <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0" style="min-width:760px">
+        <table class="table table-sm align-middle mb-0 rtable edit-table">
           <thead class="table-light">
             <tr>
               <th>#</th>
@@ -46,9 +61,9 @@
           <tbody>
             {% for s in snapshot %}
             <tr class="subtask-row">
-              <td>{{ s.st.position }}</td>
-              <td><input class="form-control form-control-sm" name="desc_{{ s.st.id }}" value="{{ s.st.description }}" required></td>
-              <td>
+              <td class="cell-pos" data-label="#">{{ s.st.position }}</td>
+              <td class="cell-desc" data-label="Maandishi"><input class="form-control form-control-sm" name="desc_{{ s.st.id }}" value="{{ s.st.description }}" required></td>
+              <td data-label="Aina">
                 <select name="mode_{{ s.st.id }}" class="form-select form-select-sm mode-select" data-subtask="{{ s.st.id }}">
                   <option value="annual" {% if s.st.mode == 'annual' %}selected{% endif %}>Mwaka mzima</option>
                   <option value="periods" {% if s.st.mode == 'periods' %}selected{% endif %}>Vipindi/wiki</option>
@@ -57,15 +72,14 @@
                   <option value="count" {% if s.st.mode == 'count' %}selected{% endif %}>Idadi (nukuu)</option>
                 </select>
               </td>
-              <td><input type="number" step="any" class="form-control form-control-sm" name="target_{{ s.st.id }}" value="{{ s.st.target }}"></td>
-              <td><input type="number" step="any" class="form-control form-control-sm" name="vila_{{ s.st.id }}" value="{{ s.st.vila_per_week }}"></td>
-              <td><input type="number" class="form-control form-control-sm" name="wk_{{ s.st.id }}" value="{{ s.st.week_count }}"></td>
-              <td><input type="number" step="any" class="form-control form-control-sm" name="base_{{ s.st.id }}" value="{{ s.st.actual_base }}"></td>
-              <td class="small">{{ s.pct_str|default:'—' }}</td>
+              <td data-label="Target"><input type="number" step="any" class="form-control form-control-sm" name="target_{{ s.st.id }}" value="{{ s.st.target }}"></td>
+              <td data-label="Vila/Wiki"><input type="number" step="any" class="form-control form-control-sm" name="vila_{{ s.st.id }}" value="{{ s.st.vila_per_week }}"></td>
+              <td data-label="Wiki"><input type="number" class="form-control form-control-sm" name="wk_{{ s.st.id }}" value="{{ s.st.week_count }}"></td>
+              <td data-label="Base"><input type="number" step="any" class="form-control form-control-sm" name="base_{{ s.st.id }}" value="{{ s.st.actual_base }}"></td>
+              <td class="cell-pct small" data-label="%">{{ s.pct_str|default:'—' }}</td>
             </tr>
             <tr class="events-row" data-subtask="{{ s.st.id }}" {% if s.st.mode != 'events' %}style="display:none"{% endif %}>
-              <td></td>
-              <td colspan="7">
+              <td colspan="8" class="cell-events" data-label="">
                 <div class="small fw-bold mb-1 text-primary">
                   <i class="fas fa-calendar-day me-1"></i>Ratiba ya matukio (tarehe / mwezi / muhula + wiki)
                 </div>
