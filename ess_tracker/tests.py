@@ -5,13 +5,20 @@ kama limekamilika Oktoba; nukuu hutumia idadi mwalimu aliyojaza.
 """
 
 import datetime as dt
+import json
+import tempfile
 from decimal import Decimal
+from pathlib import Path
+from unittest import mock
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.core.cache import cache
+from django.core.management import call_command
+from django.core.management.base import CommandError
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from ess_tracker import compute as C
-from ess_tracker.essfill import subtask_snapshot
+from ess_tracker.essfill import CACHE_PREFIX, subtask_snapshot
 from ess_tracker.models import (EssFillRun, SubTask, SubTaskEvent, Task,
                                  TeacherProfile)
 
@@ -388,3 +395,439 @@ class FillLogWeekTests(TestCase):
         body = self.client.get(f'/ess/fill/log/?week={old.isoformat()}').content.decode()
         self.assertIn(f'#log{self.old_week.id}"', body)
         self.assertNotIn(f'#log{self.this_week.id}"', body)
+
+
+# ── Artifacts, diagnostics na ess_probe ─────────────────────────────────────
+
+from contextlib import contextmanager  # noqa: E402
+from io import StringIO  # noqa: E402
+
+from ess_tracker import tasks as T  # noqa: E402
+from ess_tracker.artifacts import (artifacts_snippet,  # noqa: E402
+                                   describe_failure, dump_artifacts,
+                                   ess_browser, prune_artifacts)
+from ess_tracker.essfill import run_read  # noqa: E402
+from ess_tracker.management.commands.ess_probe import (Command as ProbeCommand,  # noqa: E402
+                                                       ProbeFailure)
+from ess_tracker.runs import launch_run  # noqa: E402
+from ess_tracker.selectors import PROBE_CHECKS  # noqa: E402
+
+
+class _FakePage:
+    def __init__(self, html='<html><body>ESS</body></html>'):
+        self.url = 'https://ess.utumishi.go.tz/pepmis/implementation/progress'
+        self._html = html
+
+    def set_default_timeout(self, ms):
+        pass
+
+    def content(self):
+        return self._html
+
+    def screenshot(self, path=None, full_page=False):
+        Path(path).write_bytes(b'PNG')
+
+
+class _FakeBrowser:
+    def new_context(self, ignore_https_errors=False):
+        return self
+
+    def new_page(self):
+        return _FakePage()
+
+    def close(self):
+        pass
+
+
+class _FakeChromium:
+    def launch(self, headless=True, args=None):
+        return _FakeBrowser()
+
+
+class _FakePW:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    @property
+    def chromium(self):
+        return _FakeChromium()
+
+
+class ArtifactsHelperTests(SimpleTestCase):
+    """describe_failure / artifacts_snippet / dump / prune."""
+
+    def test_describe_failure_includes_step_and_hint(self):
+        info = describe_failure(RuntimeError('Timeout 30000ms exceeded waiting for locator'),
+                                'subtasks_table', 'https://ess/x')
+        self.assertEqual(info['step'], 'subtasks_table')
+        self.assertIn('RuntimeError', info['error'])
+        self.assertIn('Selector imepotea', info['hint'])
+        self.assertEqual(info['url'], 'https://ess/x')
+
+    def test_describe_failure_generic_hint(self):
+        info = describe_failure(ValueError('nonsense'), 'login', '')
+        self.assertIn('HTML/screenshot', info['hint'])
+
+    def test_artifacts_snippet_formats_paths(self):
+        self.assertEqual(artifacts_snippet(None), '')
+        self.assertEqual(artifacts_snippet({}), '')
+        s = artifacts_snippet({'screenshot': 'ess_artifacts/a.png',
+                               'html': 'ess_artifacts/a.html'})
+        self.assertIn('ess_artifacts/a.png', s)
+        self.assertIn('ess_artifacts/a.html', s)
+
+    def test_dump_artifacts_writes_html_and_png(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with override_settings(ESS_ARTIFACT_DIR=tmp):
+                info = dump_artifacts(_FakePage(), run_id=9, label='login')
+                self.assertTrue(Path(tmp, Path(info['html']).name).exists()
+                                or Path(info['html']).exists())
+                self.assertTrue(Path(info['screenshot']).exists())
+                self.assertIn('progress', info['url'])
+
+    def test_prune_artifacts_keeps_newest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with override_settings(ESS_ARTIFACT_DIR=tmp):
+                root = Path(tmp)
+                for i in range(5):
+                    p = root / f'old_{i}.png'
+                    p.write_bytes(b'x')
+                keep = root / 'new.png'
+                keep.write_bytes(b'y')
+                removed = prune_artifacts(keep=2)
+                self.assertEqual(removed, 4)
+                self.assertTrue(keep.exists())
+
+
+class EssBrowserCaptureTests(SimpleTestCase):
+    """ess_browser nasa screenshot/HTML WAKATI page bado wazi."""
+
+    def _run(self, state, exc=None):
+        with mock.patch('playwright.sync_api.sync_playwright',
+                        return_value=_FakePW()):
+            with ess_browser(state, run_id=1, label='fill') as (page, browser):
+                state['step'] = 'login'
+                if exc:
+                    raise exc
+
+    def test_no_error_leaves_state_clean(self):
+        state = {}
+        with tempfile.TemporaryDirectory() as tmp:
+            with override_settings(ESS_ARTIFACT_DIR=tmp):
+                self._run(state)
+        self.assertNotIn('error', state)
+        self.assertNotIn('artifacts', state)
+
+    def test_error_captures_artifacts_and_step(self):
+        state = {}
+        with tempfile.TemporaryDirectory() as tmp:
+            with override_settings(ESS_ARTIFACT_DIR=tmp):
+                with self.assertRaises(RuntimeError):
+                    self._run(state, RuntimeError('Login ya ESS haikufaulu'))
+                art = state['artifacts']
+                self.assertTrue(Path(art['screenshot']).exists())
+                self.assertTrue(Path(art['html']).exists())
+        self.assertEqual(state['error']['step'], 'login')
+        self.assertIn('Login ya ESS haikufaulu', state['error']['error'])
+
+
+class RunReadErrorArtifactTests(TestCase):
+    """run_read hurekodi error_step + artifacts pale login inaposhindwa."""
+
+    def setUp(self):
+        U = get_user_model()
+        u = U.objects.create_user('mw6', password='x')
+        self.profile = TeacherProfile.objects.create(
+            user=u, full_name='M', ess_username='mw6', ess_password='x')
+        task = Task.objects.create(
+            profile=self.profile, name='Task', somo='Hisabati', kidato='1',
+            start=dt.date(2026, 1, 7), end=dt.date(2026, 11, 13))
+        SubTask.objects.create(task=task, position=1, description='Kufundisha',
+                              mode='annual', target=Decimal('10'))
+
+    @mock.patch('ess_tracker.essfill.ess_browser')
+    def test_error_sets_step_and_artifacts(self, m_browser):
+        def _fake(state, **kw):
+            @contextmanager
+            def cm():
+                state['step'] = 'login'
+                state['artifacts'] = {'screenshot': 'ess_artifacts/a.png',
+                                      'html': 'ess_artifacts/a.html',
+                                      'url': 'https://ess/x'}
+                state['error'] = describe_failure(
+                    RuntimeError('Login ya ESS haikufaulu'), 'login', '')
+                raise RuntimeError('Login ya ESS haikufaulu')
+                yield
+            return cm()
+        m_browser.side_effect = _fake
+
+        run = EssFillRun.objects.create(profile=self.profile, kind='read',
+                                        status='running')
+        res = run_read(self.profile.id, run.id)
+        self.assertEqual(res['status'], 'error')
+        run.refresh_from_db()
+        self.assertEqual(run.status, 'error')
+        self.assertEqual(run.error_step, 'login')
+        self.assertEqual(run.artifacts['screenshot'], 'ess_artifacts/a.png')
+        self.assertIn('ERROR [login]', run.log)
+        self.assertIn('HINT', run.log)
+
+
+class LaunchRunTests(TestCase):
+    """launch_run: kuunda run, fallback ya thread, na notify ya matokeo."""
+
+    class ImmediateThread:
+        def __init__(self, target=None, args=(), daemon=None):
+            self._t, self._a = target, args
+
+        def start(self):
+            self._t(*self._a)
+
+    def setUp(self):
+        U = get_user_model()
+        u = U.objects.create_user('mw7', password='x')
+        self.profile = TeacherProfile.objects.create(user=u, full_name='M')
+
+    def test_creates_running_run_and_seeds_cache(self):
+        with mock.patch('ess_tracker.runs.threading.Thread') as m_thread:
+            run = launch_run(profile=self.profile, kind='fill',
+                             thread_target=lambda *a: None)
+            m_thread.return_value.start.assert_called_once()
+        self.assertEqual(run.status, 'running')
+        self.assertEqual(run.kind, 'fill')
+        data = cache.get(CACHE_PREFIX + str(run.id))
+        self.assertEqual(data['msg'], 'Inaanzisha...')
+
+    def test_run_fields_are_applied(self):
+        with mock.patch('ess_tracker.runs.threading.Thread'):
+            run = launch_run(profile=self.profile, kind='fill',
+                             thread_target=lambda *a: None,
+                             run_fields={'only_subtasks': '3,4'})
+        self.assertEqual(run.only_subtasks, '3,4')
+
+    def test_async_success_sets_task_id_and_skips_thread(self):
+        task = mock.Mock()
+        task.apply_async.return_value = mock.Mock(id='abc123')
+        with mock.patch('ess_tracker.runs.threading.Thread') as m_thread:
+            run = launch_run(profile=self.profile, kind='sync', task=task,
+                             thread_target=lambda *a: None)
+        self.assertEqual(run.task_id, 'abc123')
+        m_thread.assert_not_called()
+
+    def test_async_failure_falls_back_to_thread(self):
+        task = mock.Mock()
+        task.apply_async.side_effect = RuntimeError('broker down')
+        calls = []
+
+        def target(pid, rid):
+            calls.append((pid, rid))
+
+        with mock.patch('ess_tracker.runs.threading.Thread',
+                        self.ImmediateThread):
+            run = launch_run(profile=self.profile, kind='read', task=task,
+                             thread_target=target)
+        self.assertEqual(calls, [(self.profile.id, run.id)])
+        self.assertEqual(run.task_id, '')
+
+    def test_thread_wrapper_notifies_result(self):
+        calls = []
+
+        def target(pid, rid):
+            calls.append((pid, rid))
+
+        with mock.patch('ess_tracker.runs.threading.Thread',
+                        self.ImmediateThread), \
+                mock.patch('ess_tracker.tasks.notify_run_result') as m_notify:
+            run = launch_run(profile=self.profile, kind='fill',
+                             thread_target=target)
+        self.assertEqual(calls, [(self.profile.id, run.id)])
+        m_notify.assert_called_once_with(run.id)
+
+    def test_approve_thread_args_are_passed(self):
+        seen = []
+
+        def target(pid, rid, dry_run=False):
+            seen.append((pid, rid, dry_run))
+
+        with mock.patch('ess_tracker.runs.threading.Thread',
+                        self.ImmediateThread):
+            launch_run(profile=self.profile, kind='approve',
+                       thread_target=target, thread_args=(True,),
+                       use_async=False)
+        self.assertEqual(seen[0][2], True)
+
+
+class NotifyResultTests(TestCase):
+    """Arifa za matokeo: mwenye wasifu + admins kama run ilivunjika."""
+
+    def setUp(self):
+        U = get_user_model()
+        u = U.objects.create_user('mw8', password='x')
+        self.profile = TeacherProfile.objects.create(user=u, full_name='M')
+        u2 = get_user_model().objects.create_user('admin', password='x')
+        self.admin = TeacherProfile.objects.create(user=u2, full_name='A')
+
+    def test_admin_ids_parse(self):
+        with override_settings(ESS_ADMIN_PROFILE_IDS='11, 12;13'):
+            self.assertEqual(T._admin_ids(), [11, 12, 13])
+        with override_settings(ESS_ADMIN_PROFILE_IDS=''):
+            self.assertEqual(T._admin_ids(), [])
+
+    def test_result_body_done_and_error(self):
+        run = EssFillRun(profile=self.profile, status='done', saved=3,
+                         skipped=1, not_found=2)
+        self.assertIn('imeongezwa 3', T._result_body(run, 'Kujaza'))
+        run2 = EssFillRun(profile=self.profile, status='error',
+                          error_step='subtasks_table',
+                          artifacts={'screenshot': 'ess_artifacts/x.png'})
+        body = T._result_body(run2, 'Kujaza')
+        self.assertIn('subtasks_table', body)
+        self.assertIn('ess_artifacts/x.png', body)
+
+    def test_done_run_notifies_owner_only(self):
+        run = EssFillRun.objects.create(profile=self.profile, status='done',
+                                        saved=2)
+        with override_settings(ESS_ADMIN_PROFILE_IDS=str(self.admin.id)), \
+                mock.patch('ess_tracker.push.push_configured',
+                           return_value=True), \
+                mock.patch('ess_tracker.push.send_to_profile',
+                           return_value={'sent': 1}) as m_send:
+            T.notify_run_result(run.id)
+        self.assertEqual(m_send.call_count, 1)
+        self.assertEqual(m_send.call_args.args[0], self.profile.id)
+
+    def test_error_run_notifies_owner_and_admins(self):
+        run = EssFillRun.objects.create(
+            profile=self.profile, status='error', error_step='login',
+            artifacts={'screenshot': 'ess_artifacts/x.png'},
+            log='ERROR [login]: boom\nHINT: weka')
+        with override_settings(ESS_ADMIN_PROFILE_IDS=str(self.admin.id)), \
+                mock.patch('ess_tracker.push.push_configured',
+                           return_value=True), \
+                mock.patch('ess_tracker.push.send_to_profile',
+                           return_value={'sent': 1}) as m_send:
+            T.notify_run_result(run.id)
+        self.assertEqual(m_send.call_count, 2)
+        targets = {c.args[0] for c in m_send.call_args_list}
+        self.assertEqual(targets, {self.profile.id, self.admin.id})
+        admin_call = [c for c in m_send.call_args_list
+                      if c.args[0] == self.admin.id][0]
+        self.assertIn('login', admin_call.kwargs['body'])
+        self.assertIn('ess_artifacts/x.png', admin_call.kwargs['body'])
+        self.assertEqual(admin_call.kwargs['tag'], 'ess-admin-error')
+
+    def test_error_run_skips_owner_in_admin_list(self):
+        run = EssFillRun.objects.create(profile=self.profile, status='error',
+                                        error_step='open')
+        with override_settings(ESS_ADMIN_PROFILE_IDS=str(self.profile.id)), \
+                mock.patch('ess_tracker.push.push_configured',
+                           return_value=True), \
+                mock.patch('ess_tracker.push.send_to_profile',
+                           return_value={'sent': 1}) as m_send:
+            T.notify_run_result(run.id)
+        self.assertEqual(m_send.call_count, 1)
+        self.assertEqual(m_send.call_args.args[0], self.profile.id)
+
+
+@override_settings(STORAGES={
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+})
+class ErrorFeedbackUITests(TestCase):
+    """JSON ya status na ukurasa wa historical huonyesha error_step/artifacts."""
+
+    def setUp(self):
+        U = get_user_model()
+        u = U.objects.create_user('mw9', password='x')
+        self.profile = TeacherProfile.objects.create(user=u, full_name='M')
+        self.run = EssFillRun.objects.create(
+            profile=self.profile, status='error', kind='fill',
+            error_step='subtasks_table',
+            artifacts={'screenshot': 'ess_artifacts/run_1_x.png',
+                       'html': 'ess_artifacts/run_1_x.html',
+                       'url': 'https://ess/x'},
+            log='ERROR [subtasks_table]: timeout\nHINT: angalia HTML')
+        self.client.force_login(self.profile.user)
+
+    def test_status_json_exposes_error_step_and_artifacts(self):
+        data = self.client.get(f'/ess/fill/{self.run.id}/json/').json()
+        self.assertEqual(data['error_step'], 'subtasks_table')
+        self.assertEqual(data['artifacts']['screenshot'],
+                         'ess_artifacts/run_1_x.png')
+        self.assertTrue(data['done'])
+
+    def test_fill_log_shows_badge_and_artifact_links(self):
+        body = self.client.get('/ess/fill/log/').content.decode()
+        self.assertIn('subtasks_table', body)
+        self.assertIn('/media/ess_artifacts/run_1_x.png', body)
+        self.assertIn('/media/ess_artifacts/run_1_x.html', body)
+
+
+class EssProbeCommandTests(TestCase):
+    """ess_probe: exit 1 + artifacts pale selector inapobadilika."""
+
+    def setUp(self):
+        U = get_user_model()
+        u = U.objects.create_user('mw10', password='x')
+        self.profile = TeacherProfile.objects.create(
+            user=u, full_name='M', ess_username='mw10', ess_password='x',
+            ess_ready=True)
+
+    def test_requires_profile_or_credentials(self):
+        TeacherProfile.objects.all().delete()
+        with self.assertRaises(CommandError):
+            call_command('ess_probe', stdout=StringIO())
+
+    def test_record_raises_probe_failure_on_fail(self):
+        cmd = ProbeCommand()
+        results = []
+        with self.assertRaises(ProbeFailure):
+            cmd._record(results, 'login', False, 'boom', keep_going=False)
+        self.assertEqual(results[0]['status'], 'fail')
+        self.assertEqual(results[0]['step'], 'login')
+
+    def test_record_keep_going_does_not_raise(self):
+        cmd = ProbeCommand()
+        results = []
+        cmd._record(results, 'login', False, 'boom', keep_going=True)
+        self.assertEqual(results[0]['status'], 'fail')
+
+    def test_all_pass_returns_ok(self):
+        def fake_run(results, state, username, password, *, headed, keep):
+            for c in PROBE_CHECKS:
+                results.append({'name': c['name'], 'step': c['step'],
+                                'desc': c['desc'], 'status': 'pass',
+                                'detail': ''})
+        with mock.patch.object(ProbeCommand, '_run_checks',
+                               side_effect=fake_run):
+            call_command('ess_probe', username='u', password='p',
+                         stdout=StringIO())
+
+    def test_failed_check_raises_command_error(self):
+        def fake_run(results, state, username, password, *, headed, keep):
+            results.append({'name': 'login', 'step': 'login', 'desc': 'x',
+                            'status': 'fail', 'detail': 'boom'})
+            raise ProbeFailure('login', 'boom')
+        out = StringIO()
+        with mock.patch.object(ProbeCommand, '_run_checks',
+                               side_effect=fake_run):
+            with self.assertRaises(CommandError):
+                call_command('ess_probe', username='u', password='p',
+                             stdout=out)
+        self.assertIn('login', out.getvalue())
+
+    def test_json_output_lists_checks(self):
+        def fake_run(results, state, username, password, *, headed, keep):
+            results.append({'name': 'open', 'step': 'open', 'desc': 'x',
+                            'status': 'pass', 'detail': ''})
+        out = StringIO()
+        with mock.patch.object(ProbeCommand, '_run_checks',
+                               side_effect=fake_run):
+            call_command('ess_probe', username='u', password='p',
+                         json=True, stdout=out)
+        data = json.loads(out.getvalue())
+        self.assertEqual(data['summary']['passed'], 1)
+        self.assertEqual(data['checks'][0]['name'], 'open')

@@ -30,6 +30,7 @@ import time
 from django.utils import timezone as tz
 
 from . import essfill
+from .artifacts import artifacts_snippet, describe_failure, ess_browser
 from .essfill import (_goto_retry, _normalize, _open_ess, _set_progress,
                       _visible_text, CACHE_PREFIX)
 
@@ -426,33 +427,37 @@ def run_approve(profile_id: int, run_id: int, dry_run: bool = False) -> dict:
     emit(('[DRY-RUN] ' if dry_run else '') + 'Kuanza kuidhinisha (verify) ESS...')
     verified = processed = failed = 0
     remaining_all = []
+    state = {}
     try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(
-                headless=True,
+        # Artifacts nasa ndani ya context (page bado wazi) — si kwenye except
+        # hapa nje ambapo Playwright tayari imezimwa.
+        with ess_browser(
+                state, run_id=run_id, label='approve',
                 args=['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu',
                       '--ignore-certificate-errors',
-                      '--disable-features=CertificateTransparencyEnforcement'])
-            ctx = browser.new_context(ignore_https_errors=True)
-            page = ctx.new_page()
-            page.set_default_timeout(45000)
-
+                      '--disable-features=CertificateTransparencyEnforcement'],
+        ) as (page, browser):
+            state['step'] = 'open'
             _open_ess(page)
+            state['step'] = 'login'
             essfill._auto_login(page, profile.ess_username,
                                 profile.ess_password_plain)
             emit('Login kamili.')
+            state['step'] = 'dashboard'
             try:
                 _goto_retry(page, DASHBOARD_URL)
                 essfill._wait_for_current_year(page, 20)
             except Exception:
                 pass
 
+            state['step'] = 'department'
             if not _ensure_dept(page, emit):
                 raise ApproveError(
                     'Sirikufikia skrini ya Department/Unit/Workstation. '
                     'URL: %s' % page.url)
             emit('Tumefikia dashboard: ' + page.url)
 
+            state['step'] = 'main_table'
             page_no = 0
             attempted = set()
             while page_no < 500:
@@ -518,7 +523,9 @@ def run_approve(profile_id: int, run_id: int, dry_run: bool = False) -> dict:
                       'processed': processed, 'failed': failed,
                       'remaining': len(uniq)}
     except Exception as exc:  # noqa: BLE001
-        result = {'status': 'error', 'msg': str(exc)}
+        result = {'status': 'error', 'msg': str(exc),
+                  'error': state.get('error'),
+                  'artifacts': state.get('artifacts')}
 
     # DB saves nje ya browser context (Django async-guard).
     run.saved = verified
@@ -529,9 +536,19 @@ def run_approve(profile_id: int, run_id: int, dry_run: bool = False) -> dict:
     run.status = 'done' if result.get('status') == 'done' else 'error'
     run.finished = tz.now()
     if result.get('status') == 'error':
-        log.append(f'HITILAFU: {result.get("msg")}')
+        err = result.get('error') or describe_failure(
+            Exception(result.get('msg')), state.get('step') or '', '')
+        run.error_step = err.get('step') or state.get('step') or ''
+        run.artifacts = state.get('artifacts')
+        log.append(f"HITILAFU [{run.error_step or '?'}]: {result.get('msg')}")
+        snippet = artifacts_snippet(state.get('artifacts'))
+        if snippet:
+            log.append(f'ARTIFACTS:{snippet}')
+        if err.get('hint'):
+            log.append('HINT: ' + err['hint'])
     run.log = '\n'.join(log)
     run.save()
     _set_progress(run_id, done=True, status=run.status, saved=verified,
-                  skipped=run.skipped, not_found=failed, log=list(log))
-    return result
+                  skipped=run.skipped, not_found=failed, log=list(log),
+                  step=run.error_step or '')
+    return {k: v for k, v in result.items() if k not in ('error', 'artifacts')}

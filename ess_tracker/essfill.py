@@ -17,12 +17,14 @@ from difflib import SequenceMatcher
 from django.core.cache import cache
 from django.utils import timezone as tz
 
+from .artifacts import artifacts_snippet, describe_failure, ess_browser
 from .compute import (_MONTHS_SW, built_wanted, count_pct, entry_from_values,
                       event_anchor_text, events_completed, events_next,
                       events_total, is_waiting, on_track_status, parse_count,
                       pct_auto_for, pct_for, plan_for, schedule_cap_pct,
                       subtask_increment_pct, target_for)
 from .models import EssFillRun, SubTask
+from .selectors import PASSWORD_SEL, SELECTORS, USERNAME_SELS  # noqa: F401
 
 BASE_URL = 'https://ess.utumishi.go.tz/'
 SIGNIN_URL = 'https://ess.utumishi.go.tz/sessions/signin'
@@ -41,54 +43,8 @@ def _parse_id_list(raw) -> set:
     return out
 
 
-PASSWORD_SEL = "input[formcontrolname='password'], input[name='password'], input[type='password']"
-
-USERNAME_SELS = [
-    "input[formcontrolname='username']",
-    "input[formcontrolname='email']",
-    "input[type='email']",
-    "input[name='username']",
-    "input[name='email']",
-    "input[id='username']",
-    "input[id='email']",
-    "input.form-control:not([type='password'])",
-]
-
-SELECTORS = {
-    'row_selector': 'table tbody tr.mat-mdc-row.mdc-data-table__row',
-    'subtask_cell_selector': 'td.mat-column-subTaskDescription',
-    'percentage_cell_selector': 'td.mat-column-progressPercentage',
-    'percentage_value_selector': 'mat-progress-bar',
-    'percentage_value_attr': 'aria-valuenow',
-    'row_action_button_selector': 'td.mat-column-manage .mat-mdc-menu-trigger',
-    'add_entry_labels': ['Add Sub Task Progress', 'Add Progress Details',
-                         'Add Progress', 'Add Implementation'],
-    'view_impl_labels': ['View Implementation', 'View Progress', 'View Impl'],
-    'submit_entry_labels': ['Submit', 'SUBMIT', 'Submit Progress', 'Wasilisha',
-                            'Tuma', 'Send'],
-    'delete_entry_labels': ['Delete', 'Remove', 'Futa', 'Ondoa'],
-    'delete_confirm_labels': ['Yes', 'YES', 'Delete', 'Confirm', 'Ok', 'OK',
-                              'Continue', 'Ndiyo', 'Thibitisha', 'Futa',
-                              'Proceed', 'Submit', 'SUBMIT'],
-    'progress_row_selector': 'mat-dialog-container table tbody tr',
-    'dialog_selector': 'mat-dialog-container',
-    'subtype_select_selector': "mat-dialog-container mat-select[formcontrolname='subActivityType']",
-    'description_selector': "mat-dialog-container textarea[formcontrolname='description']",
-    'status_select_selector': "mat-dialog-container mat-select[formcontrolname='implementationStatus']",
-    'status_option_completed': 'COMPLETED',
-    'status_option_in_progress': 'IN_PROGRESS',
-    'status_option_not_started': 'NOT_STARTED',
-    'percentage_input_selector': "mat-dialog-container input[formcontrolname='percentageRank']",
-    'save_button': "mat-dialog-container button[type='submit']",
-    'paginator_next_selector': '.mat-mdc-paginator-navigation-next',
-    'match_threshold': 0.9,
-    # Vitufe vya kuwasilisha (ESS inahitaji Submit, si Save pekee)
-    'submit_labels': ['Submit', 'SUBMIT', 'Submit Progress', 'Wasilisha', 'Tuma',
-                      'Thibitisha', 'Send', 'Sumit'],
-    'confirm_labels': ['Yes', 'YES', 'Ok', 'OK', 'Confirm', 'Continue',
-                       'Ndiyo', 'Thibitisha', 'Submit', 'SUBMIT'],
-}
-
+# PASSWORD_SEL / USERNAME_SELS / SELECTORS vinatoka kwenye `.selectors`
+# (chanzo kimoja kwa fill, approve na `ess_probe`).
 CACHE_PREFIX = 'ess_fill:'
 
 
@@ -1236,24 +1192,24 @@ def run_fill(profile_id: int, run_id: int) -> dict:
     official = {}
     page = None
     finalized = False
+    state = {}
     try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(
-                headless=True,
-                args=['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'])
-            ctx = browser.new_context(ignore_https_errors=True)
-            page = ctx.new_page()
-            page.set_default_timeout(45000)
-
+        # `ess_browser` nasa hitilafu WAKATI page bado wazi → screenshot/HTML
+        # halisi huhifadhiwa (nje ya hapa Playwright tayari imezimwa).
+        with ess_browser(state, run_id=run_id, label='fill') as (page, browser):
+            state['step'] = 'open'
             _open_ess(page)
+            state['step'] = 'login'
             _auto_login(page, profile.ess_username, profile.ess_password_plain)
             emit('Login kamili.')
             # Pitia dashboard ili app ikamilishe kikao na iweke mwaka wa PEPMIS.
+            state['step'] = 'dashboard'
             try:
                 _goto_retry(page, DASHBOARD_URL)
                 _wait_for_current_year(page, 20)
             except Exception:
                 pass
+            state['step'] = 'subtasks_table'
             _goto_subtasks(page)
 
             cy = _current_year(page)
@@ -1370,6 +1326,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                         emit(f'-> {text[:50]}  (match {score:.2f}) => {pct:.2f}%')
                         emit(f'   desc: {note[:70]}')
                         try:
+                            state['step'] = 'fill_row'
                             _fill_one(page, match['i'], text, pct, emit=emit, note=note)
                             saved += 1
                             _set_progress(run_id, saved=saved)
@@ -1435,25 +1392,29 @@ def run_fill(profile_id: int, run_id: int) -> dict:
         if finalized:
             return {'status': 'done', 'saved': saved, 'skipped': skipped,
                     'not_found': not_found}
-        snippet = ''
-        if page is not None:
+        # `state['artifacts']`/`state['error']` zimechukuliwa ndani ya
+        # `ess_browser` wakati page bado ilikuwa wazi (screenshot + HTML).
+        err = state.get('error') or describe_failure(
+            exc, state.get('step') or '', '')
+        snippet = artifacts_snippet(state.get('artifacts'))
+        if not snippet and page is not None:
             try:
-                shot = f'/tmp/ess_fill_{run_id}.png'
-                page.screenshot(path=shot, full_page=True)
-                snippet = f' [screenshot: {shot}; URL: {page.url}]'
+                snippet = f' [URL: {page.url}]'
             except Exception:
-                try:
-                    snippet = f' [URL: {page.url}]'
-                except Exception:
-                    pass
+                pass
         run.status = 'error'
         run.finished = tz.now()
         run.saved = saved
         run.skipped = skipped
         run.not_found = not_found + failed
-        run.log = '\n'.join(log + [f'ERROR: {exc}{snippet}'])
+        run.error_step = err.get('step') or state.get('step') or ''
+        run.artifacts = state.get('artifacts')
+        run.log = '\n'.join(log + [
+            f"ERROR [{run.error_step or '?'}]: {exc}{snippet}",
+            f"HINT: {err.get('hint', '')}"])
         run.save()
-        _set_progress(run_id, done=True, error=str(exc), status='error')
+        _set_progress(run_id, done=True, error=str(exc), status='error',
+                      step=run.error_step)
         return {'status': 'error', 'msg': str(exc)}
 
     return {'status': 'done', 'saved': saved, 'skipped': skipped,
@@ -2111,23 +2072,21 @@ def run_read(profile_id: int, run_id: int) -> dict:
     official = {}
     saved = 0
     page = None
+    state = {}
     try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(
-                headless=True,
-                args=['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'])
-            ctx = browser.new_context(ignore_https_errors=True)
-            page = ctx.new_page()
-            page.set_default_timeout(45000)
-
+        with ess_browser(state, run_id=run_id, label='read') as (page, browser):
+            state['step'] = 'open'
             _open_ess(page)
+            state['step'] = 'login'
             _auto_login(page, profile.ess_username, profile.ess_password_plain)
             emit('Login kamili.')
+            state['step'] = 'dashboard'
             try:
                 _goto_retry(page, DASHBOARD_URL)
                 _wait_for_current_year(page, 20)
             except Exception:
                 pass
+            state['step'] = 'subtasks_table'
             _goto_subtasks(page)
 
             cands = _candidate_years(page)
@@ -2157,19 +2116,21 @@ def run_read(profile_id: int, run_id: int) -> dict:
                 pass
         saved = _save_official_pcts(official)
     except Exception as exc:  # noqa: BLE001
-        snippet = ''
-        if page is not None:
-            try:
-                snippet = f' [URL: {page.url}]'
-            except Exception:
-                pass
+        err = state.get('error') or describe_failure(
+            exc, state.get('step') or '', '')
+        snippet = artifacts_snippet(state.get('artifacts'))
         run.status = 'error'
         run.finished = tz.now()
         run.saved = saved
         run.required = len(local)
-        run.log = '\n'.join(log + [f'ERROR: {exc}{snippet}'])
+        run.error_step = err.get('step') or state.get('step') or ''
+        run.artifacts = state.get('artifacts')
+        run.log = '\n'.join(log + [
+            f"ERROR [{run.error_step or '?'}]: {exc}{snippet}",
+            f"HINT: {err.get('hint', '')}"])
         run.save()
-        _set_progress(run_id, done=True, status='error', saved=saved)
+        _set_progress(run_id, done=True, status='error', saved=saved,
+                      step=run.error_step)
         return {'status': 'error', 'msg': str(exc)}
 
     not_found = len(local) - len(official)
@@ -2218,15 +2179,9 @@ def run_sync(profile_id: int, run_id: int) -> dict:
     tree = None
     official_rows = {}
     year_num = tz.localdate().year
+    state = {}
     try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(
-                headless=True,
-                args=['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'])
-            ctx = browser.new_context(ignore_https_errors=True)
-            page = ctx.new_page()
-            page.set_default_timeout(45000)
-
+        with ess_browser(state, run_id=run_id, label='sync') as (page, browser):
             cap = {'auth': None}
 
             def _on_req(req):
@@ -2241,15 +2196,19 @@ def run_sync(profile_id: int, run_id: int) -> dict:
 
             page.on('request', _on_req)
 
+            state['step'] = 'open'
             _open_ess(page)
+            state['step'] = 'login'
             _auto_login(page, profile.ess_username, profile.ess_password_plain)
             emit('Login kamili.')
+            state['step'] = 'dashboard'
             try:
                 _goto_retry(page, DASHBOARD_URL)
                 _wait_for_current_year(page, 20)
             except Exception:
                 pass
 
+            state['step'] = 'graphql'
             token = page.evaluate("() => localStorage.getItem('token')")
             emp = page.evaluate(
                 "() => { const v = localStorage.getItem('currentEmployee');"
@@ -2315,6 +2274,7 @@ def run_sync(profile_id: int, run_id: int) -> dict:
 
         n_subs = sum(len(t['subs']) for t in tree)
         emit(f'ESS: tasks {len(tree)}, sub-tasks {n_subs}.')
+        state['step'] = 'pull'
         saved, skipped, not_found, total = _pull_from_ess(
             profile, tree, year_num, emit)
         try:
@@ -2322,26 +2282,23 @@ def run_sync(profile_id: int, run_id: int) -> dict:
         except Exception as exc:
             emit(f'Kuhifadhi asilimia za ESS: {exc}')
     except Exception as exc:  # noqa: BLE001
-        snippet = ''
-        if page is not None:
-            try:
-                shot = f'/tmp/ess_sync_{run_id}.png'
-                page.screenshot(path=shot, full_page=True)
-                snippet = f' [screenshot: {shot}; URL: {page.url}]'
-            except Exception:
-                try:
-                    snippet = f' [URL: {page.url}]'
-                except Exception:
-                    pass
+        err = state.get('error') or describe_failure(
+            exc, state.get('step') or '', '')
+        snippet = artifacts_snippet(state.get('artifacts'))
         run.status = 'error'
         run.finished = tz.now()
         run.saved = saved
         run.skipped = skipped
         run.not_found = not_found
-        run.log = '\n'.join(log + [f'ERROR: {exc}{snippet}'])
+        run.error_step = err.get('step') or state.get('step') or ''
+        run.artifacts = state.get('artifacts')
+        run.log = '\n'.join(log + [
+            f"ERROR [{run.error_step or '?'}]: {exc}{snippet}",
+            f"HINT: {err.get('hint', '')}"])
         run.save()
         _set_progress(run_id, done=True, status='error',
-                      saved=saved, skipped=skipped, not_found=not_found)
+                      saved=saved, skipped=skipped, not_found=not_found,
+                      step=run.error_step)
         return {'status': 'error', 'msg': str(exc)}
 
     run.status = 'done'
@@ -2484,15 +2441,9 @@ def run_push(profile_id: int, run_id: int) -> dict:
                   for st in t.subtasks.all()]}
         for t in profile.tasks.all()
     ]
+    state = {}
     try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(
-                headless=True,
-                args=['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'])
-            ctx = browser.new_context(ignore_https_errors=True)
-            page = ctx.new_page()
-            page.set_default_timeout(45000)
-
+        with ess_browser(state, run_id=run_id, label='push') as (page, browser):
             cap = {'auth': None}
 
             def _on_req(req):
@@ -2507,15 +2458,19 @@ def run_push(profile_id: int, run_id: int) -> dict:
 
             page.on('request', _on_req)
 
+            state['step'] = 'open'
             _open_ess(page)
+            state['step'] = 'login'
             _auto_login(page, profile.ess_username, profile.ess_password_plain)
             emit('Login kamili.')
+            state['step'] = 'dashboard'
             try:
                 _goto_retry(page, DASHBOARD_URL)
                 _wait_for_current_year(page, 20)
             except Exception:
                 pass
 
+            state['step'] = 'graphql'
             token = page.evaluate("() => localStorage.getItem('token')")
             emp = page.evaluate(
                 "() => { const v = localStorage.getItem('currentEmployee');"
@@ -2572,30 +2527,28 @@ def run_push(profile_id: int, run_id: int) -> dict:
                 return False, (node.get('swahiliMessage') or node.get('message')
                                or f'code {code}')
 
+            state['step'] = 'push'
             saved, skipped, not_found, total = _push_local_names(
                 local_tasks, ess_subs, update, emit)
             browser.close()
     except Exception as exc:  # noqa: BLE001
-        snippet = ''
-        if page is not None:
-            try:
-                shot = f'/tmp/ess_push_{run_id}.png'
-                page.screenshot(path=shot, full_page=True)
-                snippet = f' [screenshot: {shot}; URL: {page.url}]'
-            except Exception:
-                try:
-                    snippet = f' [URL: {page.url}]'
-                except Exception:
-                    pass
+        err = state.get('error') or describe_failure(
+            exc, state.get('step') or '', '')
+        snippet = artifacts_snippet(state.get('artifacts'))
         run.status = 'error'
         run.finished = tz.now()
         run.saved = saved
         run.skipped = skipped
         run.not_found = not_found
-        run.log = '\n'.join(log + [f'ERROR: {exc}{snippet}'])
+        run.error_step = err.get('step') or state.get('step') or ''
+        run.artifacts = state.get('artifacts')
+        run.log = '\n'.join(log + [
+            f"ERROR [{run.error_step or '?'}]: {exc}{snippet}",
+            f"HINT: {err.get('hint', '')}"])
         run.save()
         _set_progress(run_id, done=True, status='error',
-                      saved=saved, skipped=skipped, not_found=not_found)
+                      saved=saved, skipped=skipped, not_found=not_found,
+                      step=run.error_step)
         return {'status': 'error', 'msg': str(exc)}
 
     run.status = 'done'

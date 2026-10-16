@@ -288,6 +288,14 @@ class EssFillRun(models.Model):
     not_found = models.IntegerField(default=0)
     required = models.IntegerField(default=0)
     log = models.TextField(blank=True)
+    error_step = models.CharField(
+        max_length=64, blank=True,
+        help_text='Hatua iliyoshindwa kwenye mtiririko wa ESS (mf. login, '
+                  'subtasks_table, row_actions) — kutoka diagnostics.')
+    artifacts = models.JSONField(
+        null=True, blank=True,
+        help_text='Njia za screenshot/HTML zilizohifadhiwa wakati wa hitilafu '
+                  '(media/ess_artifacts/).')
     task_id = models.CharField(max_length=64, blank=True)
     only_subtasks = models.CharField(
         max_length=255, blank=True,

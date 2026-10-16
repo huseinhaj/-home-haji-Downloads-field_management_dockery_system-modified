@@ -38,6 +38,31 @@
   const errbox = document.getElementById('errorbox');
   let shown = 0;
   let done = false;
+  const media = "{{ MEDIA_URL|default:'/' }}";
+  function showError(d) {
+    errbox.textContent = '';
+    const step = d.error_step ? ' [hatua: ' + d.error_step + ']' : '';
+    const line = document.createElement('div');
+    line.textContent = (d.error || 'Hitilafu') + step;
+    errbox.appendChild(line);
+    const art = d.artifacts;
+    if (art) {
+      const links = document.createElement('div');
+      links.className = 'mt-1';
+      [['screenshot', 'Picha ya ukurasa (PNG)'], ['html', 'HTML ya ukurasa']].forEach(function (pair) {
+        if (!art[pair[0]]) return;
+        const a = document.createElement('a');
+        a.href = media + art[pair[0]];
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.className = 'btn btn-sm btn-outline-danger me-2 py-0';
+        a.textContent = pair[1];
+        links.appendChild(a);
+      });
+      if (links.childNodes.length) errbox.appendChild(links);
+    }
+    errbox.classList.remove('d-none');
+  }
   async function poll() {
     try {
       const r = await fetch(url, {credentials: 'same-origin'});
@@ -59,7 +84,7 @@
         badge.textContent = d.status;
         badge.className = 'badge ' + (d.status === 'done' ? 'bg-success' : 'bg-danger');
         pbar.style.width = '100%';
-        if (d.error) { errbox.textContent = d.error; errbox.classList.remove('d-none'); }
+        if (d.status === 'error') showError(d);
         return;
       }
       const total = d.required || 1;

@@ -440,19 +440,105 @@ def run_ess_fill(self, profile_id, run_id):
     return res
 
 
+# Kichwa/sentensi kwa aina ya run (kwa arifa kwa mwenye wasifu).
+_VERB_BY_KIND = {
+    'fill': 'Kujaza',
+    'read': 'Kusoma asilimia',
+    'sync': 'Kusawazisha majina',
+    'push': 'Kutuma majina',
+    'approve': 'Uhidhinishaji',
+}
+
+
+def notify_run_result(run_id):
+    """Arifa ya matokeo ya run: kwa mwenye wasifu, na kwa admins kama error.
+
+    Inaitwa na Celery (run_ess_fill / run_ess_approve) NA kwa thread
+    fallback ya `launch_run` — hivyo hupata matokeo njia zote mbili.
+    """
+    from .models import EssFillRun
+    run = EssFillRun.objects.filter(pk=run_id).select_related('profile').first()
+    if run is None or run.status not in ('done', 'error'):
+        return
+    verb = _VERB_BY_KIND.get(run.kind, 'Kujaza')
+    _notify_run_result(run, verb=verb)
+    if run.status == 'error':
+        _notify_admins(run, verb=verb.lower())
+
+
 def _notify_fill_result(profile_id, run_id):
     """Tuma arifa ya matokeo ya kujaza (kama notifications zimewashwa)."""
-    from .models import EssFillRun
+    notify_run_result(run_id)
+
+
+def _result_body(run, verb: str) -> str:
+    """Sentensi fupi ya arifa: matokeo (au hatua iliyovunjika + kiungo)."""
+    if run.status == 'done':
+        return ('%s: imeongezwa %d, sawa %d, hazikupatikana %d.'
+                % (verb, run.saved, run.skipped, run.not_found))
+    step = run.error_step or 'sijulikana'
+    art = run.artifacts or {}
+    link = ' Angalia picha: %s' % art['screenshot'] if art.get('screenshot') else ''
+    return '%s kumeshindwa kwenye hatua "%s".%s' % (verb, step, link)
+
+
+def _notify_run_result(run, *, verb='Kujaza'):
+    """Tuma matokeo ya run kwa mwenye wasifu (done au error)."""
     from .push import push_configured, send_to_profile
     if not push_configured():
-        return
-    run = EssFillRun.objects.filter(pk=run_id).first()
-    if run is None or run.status != 'done':
-        return
-    body = ('Imejaza: %d mpya, %d zilizopo tayari, %d hazikupatikana.'
-            % (run.saved, run.skipped, run.not_found))
-    send_to_profile(profile_id, title='e-Tendaji: kujaza kumekamilika',
-                    body=body, url='/ess/', tag='ess-done', renotify=True)
+        return {'sent': 0, 'skipped': 'not-configured'}
+    if run.status == 'error':
+        title = f'e-Tendaji: {verb.lower()} limevunjika'
+    else:
+        title = f'e-Tendaji: {verb.lower()} kumekamilika'
+    return send_to_profile(run.profile_id, title=title,
+                           body=_result_body(run, verb),
+                           url=f'/ess/fill/{run.id}/',
+                           tag='ess-error' if run.status == 'error' else 'ess-done',
+                           renotify=True)
+
+
+def _admin_ids() -> list[int]:
+    """Idadi za wasifu za maombi/admin (env `ESS_ADMIN_PROFILE_IDS`)."""
+    import re
+    from django.conf import settings
+    raw = getattr(settings, 'ESS_ADMIN_PROFILE_IDS', '') or ''
+    out = []
+    for part in re.split(r'[,\s;]+', str(raw)):
+        if part.strip().isdigit():
+            out.append(int(part))
+    return out
+
+
+def _error_line(run) -> str:
+    """Mstari wa hitilafu kwenye log (ERROR [...] / HITILAFU), vinginevyo wa mwisho."""
+    lines = [(ln or '').strip() for ln in (run.log or '').splitlines()]
+    for ln in reversed(lines):
+        if ln.startswith(('ERROR', 'HITILAFU')):
+            return ln[:200]
+    return lines[-1][:200] if lines else ''
+
+
+def _notify_admins(run, verb='kujaza'):
+    """Arifa kwa admins walioorodheshwa ESS_ADMIN_PROFILE_IDS pale run
+    inaposhindwa (selectors/tables za ESS zimebadilika)."""
+    from .push import push_configured, send_to_profile
+    if not push_configured():
+        return {'sent': 0, 'skipped': 'not-configured'}
+    sent = 0
+    art = run.artifacts or {}
+    step = run.error_step or '?'
+    body = f'ESS {verb} limevunjika (run #{run.id}, hatua "{step}"): {_error_line(run)}'
+    if art.get('screenshot'):
+        body += f' Picha: {art["screenshot"]}'
+    for pid in _admin_ids():
+        if pid == run.profile_id:
+            continue
+        res = send_to_profile(pid, title=f'e-Tendaji: {verb} limevunjika',
+                              body=body[:400], url=f'/ess/fill/{run.id}/',
+                              tag='ess-admin-error', renotify=True)
+        sent += res.get('sent', 0)
+    return {'sent': sent}
 
 
 @shared_task(bind=True, queue='essfill', time_limit=600, soft_time_limit=560,
@@ -503,7 +589,9 @@ def run_ess_approve(self, profile_id, run_id):
     with profile_lock(profile_id) as got:
         if not got:
             raise self.retry(countdown=_retry_countdown(self, 90))
-        return run_approve(profile_id, run_id)
+        res = run_approve(profile_id, run_id)
+    notify_run_result(run_id)
+    return res
 
 
 @shared_task(time_limit=180, soft_time_limit=160)

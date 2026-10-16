@@ -99,6 +99,15 @@ Management commands:
 | Django multi-line `{# #}` comment inaonekana kwenye header | Badilisha kwenda `{% comment %}...{% endcomment %}` kwenye `_ess_install.html` (Django 5.2 haitupi multi-line `{# #}`). | `1c2f7af1` |
 | Kalenda ililazimisha asilimia ya kila sub-task (kila sub-task = kalenda %) — si sahihi | Kalenda ni "total score" ya mwaka. Ondoa matangazo ya kalenda kwenye `expected_pct` na `pct_auto_for`; sub-task sasa hufuata **ratiba yake** (`schedule`). Ongeza `profile_calendar_status` (jumla ya maendeleo ya mwalimu vs lengo la kalenda) na kuionyesha kwenye `ess_home`. | `5feebbfc` |
 | Ratiba ya jaribio ilikuwa tarehe pekee; walimu wanatofautiana kuandika nukuu | Aina tatu za anchor (`date`/`month`/`term_week`) kwenye `SubTaskEvent` (migration 0021), `resolve_event_date`/`term_bounds`/`event_anchor_text`. Nukuu (nafasi 2) → mode `count` kwa default (autogen + sync); fomu ya nyumbani hujaza X **na** Y. Sub-task inayosubiri (cap=0) haipitishwi kwenye kujaza; onyesho la "inasubiri" chini ya maelezo nyumbani. | mpya (migration 0021) |
+| Screenshot za hitilafu zilichukuliwa **nje** ya `with sync_playwright()` — browser ilikuwa imezimwa, hivyo artifacts hazikuhifadhiwa kamwe | `artifacts.py` (`ess_browser` contextmanager) hunasa screenshot+HTML **ndani** ya browser context; selectors zote zimehamia `selectors.py`; `EssFillRun.error_step`/`artifacts` (migration 0022); UI (log + status JSON) huonyesha hatua iliyovunjika + kiungo cha picha/HTML; arifa kwa admins (`ESS_ADMIN_PROFILE_IDS`); `ess_probe` command ya kugundua selectors zilizobadilika mapema. | mpya (migration 0022) |
+
+### Artifacts za hitilafu & Admin feedback (mpya)
+
+- **Chanzo kimoja cha selectors:** `ess_tracker/selectors.py` — `PASSWORD_SEL`, `USERNAME_SELS`, `SELECTORS`, `PROBE_CHECKS`. Fill/approve/probe zote hutumia hapa (badilika mara moja).
+- **`ess_tracker/artifacts.py`:** `ess_browser(state, run_id=, label=)` (contextmanager) huchukua screenshot (`.png`) + HTML (`.html`) ya ukurasa uliokuwa wazi pale hitilafu inatokea, huhifadhi `media/ess_artifacts/`, na huweka `state['step']`/`state['artifacts']`/`state['error']`. `describe_failure()` hutoa `step`/`error`/`url`/`hint`; `prune_artifacts()` huacha 200 za mwisho (dir inaweza kubadilishwa kwa `ESS_ARTIFACT_DIR`).
+- **Kila run:** `EssFillRun.error_step` (hatua iliyovunjika: `open`/`login`/`subtasks_table`/`row_actions`/...) na `artifacts` (dict ya screenshot/html/url). Ukurasa wa `fill/log/` huonyesha badge ya hatua + vitufe vya Picha/HTML; `ess_fill_status` huonyesha hivyo moja kwa moja bila ku-refresh.
+- **Arifa:** `notify_run_result()` (inaitwa na Celery **na** thread fallback): mwenye wasifu hupata matokeo (done/error); kama **error**, admins walioorodheshwa kwenye env `ESS_ADMIN_PROFILE_IDS` (CSV ya `TeacherProfile.id`) hupata arifa yenye hatua + kiungo cha artifact.
+- **`ess_probe`:** `python manage.py ess_probe` hupima hatua 7 (`open`→`add_progress`) kwa session halisi; kitu kikivunjika huchapisha FAIL + huhifadhi artifacts na kurudi **exit 1** (kwa CI/alerting). `--headed`, `--keep-going`, `--json`, `--profile`. Amri hii hutumika kuangalia ESS portal imebadilisha DOM **kabla** ya walimu kugundua.
 
 ### Mantiki ya Kalenda vs Sub-task (muhimu)
 
@@ -115,6 +124,8 @@ Management commands:
 - `ESS_APPROVE_CONCURRENCY` — idadi ya approvers sambamba (default 3, range 1-8).
 - `ESS_FILL_CONCURRENCY` — concurrency kwa fill workers (queue essfill).
 - `ESS_EMBED_SCHEDULER`, `ESS_EMBED_APPROVER` — wa ON kwenye Railway (embedded inline), OFF kwenye docker-compose (beat/worker).
+- `ESS_ADMIN_PROFILE_IDS` — CSV ya `TeacherProfile.id` wa maombi/admins wanaopokea arifa za push pale run ya ESS inaposhindwa (mf. `12,15`).
+- `ESS_ARTIFACT_DIR` — diri mbadala ya artifacts (default `media/ess_artifacts/`).
 - `ESS_LOGIN_URL`, `ESS_PROFILE_LOCK_SECONDS`, `ESS_RUN_STALE_SECONDS`, `ESS_FILL_RATE_LIMIT`.
 
 ### Beat (Celery)
@@ -131,7 +142,7 @@ Management commands:
 - Entrypoint huanzisha TTC portal (optional), migrations, collectstatic, seeds, background jobs, embedded schedulers (kulingana na `SERVICE_ROLE` na Railway env), kisha gunicorn/nginx.
 
 ### Management Commands (zilizo muhimu)
-`ess_approve`, `ess_approve_scheduler`, `ess_auto_fill`, `ess_scheduler`, `ess_key_check`, `ess_set_password`, `ess_enc_key`, `import_academic_calendar.py`, `data/`, n.k.
+`ess_approve`, `ess_approve_scheduler`, `ess_auto_fill`, `ess_scheduler`, `ess_key_check`, `ess_set_password`, `ess_enc_key`, **`ess_probe`** (smoke-test ya selectors/mtiririko; exit 1 ikivunjika), `import_academic_calendar.py`, `data/`, n.k.
 
 ## 5. Njia ya Kufanya Kazi (Overview Flow)
 

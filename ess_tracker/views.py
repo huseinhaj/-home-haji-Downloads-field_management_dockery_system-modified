@@ -1,5 +1,4 @@
 import json
-import threading
 from datetime import date, timedelta
 
 from django.contrib import messages
@@ -588,28 +587,18 @@ def ess_fill(request):
     for raw in request.POST.getlist('subtasks'):
         if str(raw).isdigit():
             selected.append(int(raw))
-    run = EssFillRun.objects.create(profile=profile)
-    run.only_subtasks = ','.join(str(i) for i in sorted(set(selected)))
-    run.status = 'running'
-    run.save()
-    try:
-        from .tasks import run_ess_fill
-        res = run_ess_fill.apply_async(args=[profile.id, run.id], queue='essfill')
-        run.task_id = res.id
-        run.save()
-        started = True
-    except Exception:
-        started = False
-    if not started:
-        threading.Thread(target=_run_in_thread, args=(profile.id, run.id), daemon=True).start()
-    cache.set(CACHE_PREFIX + str(run.id), {'msg': 'Inaanzisha...', 'step': 0,
-                                           'done': False, 'error': ''}, timeout=3600)
+    from .runs import launch_run
+    from .tasks import run_ess_fill
+    run = launch_run(
+        profile=profile, kind='fill', task=run_ess_fill,
+        thread_target=_run_fill,
+        run_fields={'only_subtasks': ','.join(str(i) for i in sorted(set(selected)))})
     return redirect('ess_tracker:ess_fill_status', run_id=run.id)
 
 
-def _run_in_thread(profile_id, run_id):
+def _run_fill(profile_id, run_id):
     from .essfill import run_fill
-    run_fill(profile_id, run_id)
+    return run_fill(profile_id, run_id)
 
 
 @login_required(login_url=ESS_LOGIN_URL)
@@ -678,20 +667,18 @@ def ess_approve_now(request):
         messages.info(request, 'Uhidhinishaji unaendelea tayari — subiri kukamilika.')
         return redirect('ess_tracker:ess_fill_status', run_id=existing.id)
     dry_run = request.POST.get('dry_run') == '1'
-    run = EssFillRun.objects.create(profile=profile, kind='approve')
-    run.status = 'running'
-    run.log = '[DRY-RUN] Uhidhinishaji umeanza...' if dry_run else 'Uhidhinishaji umeanza...'
-    run.save()
-    threading.Thread(target=_run_approve_in_thread,
-                     args=(profile.id, run.id, dry_run), daemon=True).start()
-    cache.set(CACHE_PREFIX + str(run.id), {'msg': 'Inaanzisha...', 'step': 0,
-                                           'done': False, 'error': ''}, timeout=3600)
+    from .runs import launch_run
+    run = launch_run(
+        profile=profile, kind='approve', thread_target=_run_approve,
+        thread_args=(dry_run,), use_async=False,
+        initial_log='[DRY-RUN] Uhidhinishaji umeanza...' if dry_run
+        else 'Uhidhinishaji umeanza...')
     return redirect('ess_tracker:ess_fill_status', run_id=run.id)
 
 
-def _run_approve_in_thread(profile_id, run_id, dry_run=False):
+def _run_approve(profile_id, run_id, dry_run=False):
     from .essapprove import run_approve
-    run_approve(profile_id, run_id, dry_run=dry_run)
+    return run_approve(profile_id, run_id, dry_run=dry_run)
 
 
 @login_required
@@ -771,28 +758,16 @@ def ess_sync_names(request):
     if not profile.ess_ready:
         messages.error(request, 'Weka kwanza ESS username na password kwenye wasifu.')
         return redirect('ess_tracker:ess_profile')
-    run = EssFillRun.objects.create(profile=profile, kind='sync')
-    run.status = 'running'
-    run.save()
-    try:
-        from .tasks import run_ess_sync
-        res = run_ess_sync.apply_async(args=[profile.id, run.id], queue='essfill')
-        run.task_id = res.id
-        run.save()
-        started = True
-    except Exception:
-        started = False
-    if not started:
-        threading.Thread(target=_run_sync_in_thread,
-                         args=(profile.id, run.id), daemon=True).start()
-    cache.set(CACHE_PREFIX + str(run.id), {'msg': 'Inaanzisha...', 'step': 0,
-                                           'done': False, 'error': ''}, timeout=3600)
+    from .runs import launch_run
+    from .tasks import run_ess_sync
+    run = launch_run(profile=profile, kind='sync', task=run_ess_sync,
+                     thread_target=_run_sync)
     return redirect('ess_tracker:ess_fill_status', run_id=run.id)
 
 
-def _run_sync_in_thread(profile_id, run_id):
+def _run_sync(profile_id, run_id):
     from .essfill import run_sync
-    run_sync(profile_id, run_id)
+    return run_sync(profile_id, run_id)
 
 
 @login_required
@@ -805,28 +780,16 @@ def ess_read_pcts(request):
     if not profile.ess_ready:
         messages.error(request, 'Weka kwanza ESS username na password kwenye wasifu.')
         return redirect('ess_tracker:ess_profile')
-    run = EssFillRun.objects.create(profile=profile, kind='read')
-    run.status = 'running'
-    run.save()
-    try:
-        from .tasks import run_ess_read
-        res = run_ess_read.apply_async(args=[profile.id, run.id], queue='essfill')
-        run.task_id = res.id
-        run.save()
-        started = True
-    except Exception:
-        started = False
-    if not started:
-        threading.Thread(target=_run_read_in_thread,
-                         args=(profile.id, run.id), daemon=True).start()
-    cache.set(CACHE_PREFIX + str(run.id), {'msg': 'Inaanzisha...', 'step': 0,
-                                           'done': False, 'error': ''}, timeout=3600)
+    from .runs import launch_run
+    from .tasks import run_ess_read
+    run = launch_run(profile=profile, kind='read', task=run_ess_read,
+                     thread_target=_run_read)
     return redirect('ess_tracker:ess_fill_status', run_id=run.id)
 
 
-def _run_read_in_thread(profile_id, run_id):
+def _run_read(profile_id, run_id):
     from .essfill import run_read
-    run_read(profile_id, run_id)
+    return run_read(profile_id, run_id)
 
 
 @login_required
@@ -839,28 +802,16 @@ def ess_push_names(request):
     if not profile.ess_ready:
         messages.error(request, 'Weka kwanza ESS username na password kwenye wasifu.')
         return redirect('ess_tracker:ess_profile')
-    run = EssFillRun.objects.create(profile=profile, kind='push')
-    run.status = 'running'
-    run.save()
-    try:
-        from .tasks import run_ess_push
-        res = run_ess_push.apply_async(args=[profile.id, run.id], queue='essfill')
-        run.task_id = res.id
-        run.save()
-        started = True
-    except Exception:
-        started = False
-    if not started:
-        threading.Thread(target=_run_push_in_thread,
-                         args=(profile.id, run.id), daemon=True).start()
-    cache.set(CACHE_PREFIX + str(run.id), {'msg': 'Inaanzisha...', 'step': 0,
-                                           'done': False, 'error': ''}, timeout=3600)
+    from .runs import launch_run
+    from .tasks import run_ess_push
+    run = launch_run(profile=profile, kind='push', task=run_ess_push,
+                     thread_target=_run_push)
     return redirect('ess_tracker:ess_fill_status', run_id=run.id)
 
 
-def _run_push_in_thread(profile_id, run_id):
+def _run_push(profile_id, run_id):
     from .essfill import run_push
-    run_push(profile_id, run_id)
+    return run_push(profile_id, run_id)
 
 
 @login_required(login_url=ESS_LOGIN_URL)
@@ -889,6 +840,8 @@ def ess_fill_status_json(request, run_id):
         'required': run.required,
         'done': run.status in ('done', 'error'),
         'error': '' if run.status == 'done' else run.log.splitlines()[-1] if run.log else '',
+        'error_step': run.error_step or '',
+        'artifacts': run.artifacts or None,
         'log': run_log,
     })
 

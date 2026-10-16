@@ -68,6 +68,25 @@
               <span class="badge {% if r.status == 'done' %}bg-success{% elif r.status == 'error' %}bg-danger{% else %}bg-info{% endif %}">
                 {{ r.get_status_display }}
               </span>
+              {% if r.status == 'error' %}
+                {% if r.error_step %}
+                <span class="badge bg-warning text-dark" title="Hatua iliyovunjika kwenye mtiririko wa ESS">
+                  <i class="fas fa-exclamation-triangle"></i> {{ r.error_step }}
+                </span>
+                {% endif %}
+                {% if r.artifacts.screenshot %}
+                <a href="{{ MEDIA_URL }}{{ r.artifacts.screenshot }}" target="_blank" rel="noopener"
+                   class="btn btn-sm btn-outline-danger py-0" title="Picha ya ukurasa wakati wa hitilafu">
+                  <i class="fas fa-image"></i> Picha
+                </a>
+                {% endif %}
+                {% if r.artifacts.html %}
+                <a href="{{ MEDIA_URL }}{{ r.artifacts.html }}" target="_blank" rel="noopener"
+                   class="btn btn-sm btn-outline-secondary py-0" title="HTML ya ukurasa wakati wa hitilafu">
+                  HTML
+                </a>
+                {% endif %}
+              {% endif %}
             </td>
             <td data-label="Zimeongezwa">{{ r.saved }}</td>
             <td class="d-none d-md-table-cell" data-label="Sawa">{{ r.skipped }}</td>
