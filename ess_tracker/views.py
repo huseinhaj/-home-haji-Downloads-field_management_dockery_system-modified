@@ -19,7 +19,8 @@ from .compute import (actual_for, autogen_subtasks, create_task_from_row,
 from .essfill import CACHE_PREFIX, expected_display, subtask_snapshot
 from .forms import (AutogenForm, ProfileForm, SubTaskEditForm, TaskForm,
                     TeacherRegistrationForm)
-from .models import EssFillRun, SubTask, Task, TeacherProfile, WeekEntry
+from .models import (MONTH_CHOICES, EssFillRun, SubTask, Task, TeacherProfile,
+                     WeekEntry)
 
 ESS_LOGIN_URL = '/ess/login/'
 
@@ -271,6 +272,14 @@ def ess_task_edit(request, task_id):
         return redirect('ess_tracker:ess_task_edit', task_id=task.id)
     form = TaskForm(instance=task)
     snapshot = subtask_snapshot(task)
+    events_map = {}
+    for s in snapshot:
+        st_obj = s['st']
+        if st_obj.mode == 'events':
+            events_map[st_obj.id] = [
+                {'index': ev.index, 'due_date': ev.due_date, 'label': ev.label}
+                for ev in st_obj.events.all().order_by('due_date', 'index')
+            ]
     existing = task.subtasks.filter(mode='periods').first()
     autogen = AutogenForm(initial={
         'vila_per_week': existing.vila_per_week if existing
@@ -283,7 +292,9 @@ def ess_task_edit(request, task_id):
         'form': form,
         'task': task,
         'snapshot': snapshot,
+        'events_map': events_map,
         'autogen': autogen,
+        'months': MONTH_CHOICES,
     })
 
 
@@ -311,6 +322,87 @@ def _save_subtasks_from_forms(request, task):
         st.week_count = int(request.POST.get(f'wk_{p}') or 0)
         st.actual_base = _dec_or_zero(request.POST.get(f'base_{p}'))
         st.save()
+        if st.mode == 'events':
+            _save_events_from_forms(request, st)
+
+
+def _save_events_from_forms(request, st):
+    """Tengeneza upya matukio ya sub-task kutoka sehemu zilizotumwa.
+
+    Kila mstari una: aina (anchor), tarehe / mwezi+tarehe / muhula+wiki, na
+    maelezo. Mfumo huresibu `due_date` halisi kutoka anchor (mwezi bila
+    tarehe = mwisho wa mwezi; muhula+wiki = kutoka kufungua/kufunga).
+    """
+    from .models import SubTaskEvent
+    ids = list(range(len(request.POST.getlist(f'event_anchor_{st.id}'))))
+    anchors = request.POST.getlist(f'event_anchor_{st.id}')
+    dates = request.POST.getlist(f'event_date_{st.id}')
+    months = request.POST.getlist(f'event_month_{st.id}')
+    days = request.POST.getlist(f'event_day_{st.id}')
+    terms = request.POST.getlist(f'event_term_{st.id}')
+    weeks = request.POST.getlist(f'event_week_{st.id}')
+    labels = request.POST.getlist(f'event_label_{st.id}')
+    # Mstari mpya unaongezwa na JS bila anchor — chagua 'date' kwa msingi.
+    n = max(len(anchors), len(dates), len(labels))
+
+    def _at(lst, i, default=''):
+        return lst[i] if i < len(lst) else default
+
+    rows = []
+    for i in range(n):
+        anchor = (_at(anchors, i, 'date') or 'date').strip()
+        if anchor not in ('date', 'month', 'term_week'):
+            anchor = 'date'
+        d = _parse_date(_at(dates, i))
+        month = _int_or_none(_at(months, i))
+        day = _int_or_none(_at(days, i))
+        term = _int_or_none(_at(terms, i))
+        week = _int_or_none(_at(weeks, i))
+        label = (_at(labels, i, '') or '').strip()
+        if anchor == 'date' and d is None:
+            continue
+        if anchor == 'month' and not (month and 1 <= month <= 12):
+            continue
+        if anchor == 'term_week' and not (term in (1, 2) and week and week >= 1):
+            continue
+        rows.append({
+            'anchor': anchor, 'date': d, 'month': month, 'day': day,
+            'term': term, 'term_week': week, 'label': label,
+        })
+    SubTaskEvent.objects.filter(subtask=st).delete()
+    from .compute import resolve_event_date
+    resolved_rows = []
+    for order, row in enumerate(rows):
+        ev = SubTaskEvent(
+            subtask=st, index=order + 1, anchor=row['anchor'],
+            label=row['label'], month=row['month'], day=row['day'],
+            term=row['term'], term_week=row['term_week'],
+            due_date=row['date'] or date.today())
+        resolved = resolve_event_date(ev, st.task)
+        if resolved:
+            ev.due_date = resolved
+        resolved_rows.append((ev.due_date, order, ev))
+    # Panga kwa tarehe halisi iliyohesabiwa (kama ilivyokuwa awali).
+    resolved_rows.sort(key=lambda r: (r[0], r[1]))
+    for idx, (_d, _o, ev) in enumerate(resolved_rows, start=1):
+        ev.index = idx
+        ev.save()
+
+
+def _int_or_none(v):
+    try:
+        s = str(v or '').strip()
+        if not s:
+            return None
+        n = int(s)
+        return n
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_date(val):
+    from .compute import parse_date
+    return parse_date(val)
 
 
 def _dec_or_zero(v):
@@ -630,6 +722,42 @@ def ess_save_auto_choice(request):
     else:
         messages.success(
             request, 'Hakuna uliyochagua — kujaza kiotomatiki kutajaza ZOTE.')
+    return redirect('ess_tracker:ess_home')
+
+
+@login_required
+@require_POST
+def ess_subtask_count(request, subtask_id):
+    """Sasisha idadi iliyokamilika ya sub-task ya mode='count' (nukuu).
+
+    Mwalimu hujaza "nukuu X kati ya Y" — mfumo hutumia X/target kama
+    asilimia ya kujaza. Hii inaruhusu walimu wa kasi tofauti (mmoja
+    anamaliza nukuu mwezi wa 5, mwingine wa 10).
+    """
+    profile = _me(request)
+    if profile is None:
+        return redirect('ess_tracker:ess_profile')
+    st = get_object_or_404(SubTask, pk=subtask_id, task__profile=profile)
+    if st.mode != 'count':
+        messages.error(request, 'Sub-task hii si ya aina ya idadi (nukuu).')
+        return redirect('ess_tracker:ess_home')
+    raw = request.POST.get('count_done')
+    val = _dec_or_zero(raw)
+    # Y (jumla) — mwalimu anaweza kubadilisha hapa pia (mf. "3 kati ya 7").
+    target_raw = request.POST.get('count_target')
+    if target_raw is not None and str(target_raw).strip() != '':
+        st.target = max(_dec_or_zero(0), _dec_or_zero(target_raw))
+        st.save(update_fields=['target', 'updated_at'])
+    target = st.target or 0
+    if val < 0:
+        val = _dec_or_zero(0)
+    if target and val > target:
+        val = target
+    st.actual_base = val
+    st.save(update_fields=['actual_base', 'updated_at'])
+    messages.success(
+        request,
+        f'{st.description[:40]} — imesasishwa: {val:g} kati ya {target:g}.')
     return redirect('ess_tracker:ess_home')
 
 

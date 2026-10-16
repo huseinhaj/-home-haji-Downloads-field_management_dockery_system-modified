@@ -3,11 +3,12 @@
 Mantiki ni sawa na CLI: kutengeneza maandishi ya sub task, target, actual,
 na asilimia. Kwenye app, actual = actual_base + jumla ya WeekEntry.
 """
+import calendar as _cal
 import csv
 import io
 import math
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 
 from .models import SubTask, Task
@@ -78,7 +79,7 @@ SUBTASK_SPECS = [
      'annual'),
     ('nukuu',
      'Kuandaa nukuu {nukuu_p} za somo la {somo}{kidato_p} kwa kila mada husika',
-     'manual'),
+     'count'),
     ('maandalio',
      'Kuandaa maandalio {maandalio_p}',
      'periods'),
@@ -353,6 +354,239 @@ def subtask_window(st: SubTask) -> tuple[date | None, date | None]:
     if s and e:
         return s, e
     return _window(st.task)
+
+
+# ── Schedule Guard (ratiba ya uhalisia) ─────────────────────────────
+# Kila sub-task ina "rhythm" yake: mwaka mara moja (annual), kila siku/wiki
+# (periods/manual linear), kwa matukio maalum (events: jaribio/mtihani), au
+# kwa idadi inayosasishwa na mwalimu (count: nukuu X kati ya Y).
+# Guard huu hukubali kupandisha asilimia PEKE ya uhalisia — mf. jaribio la
+# 5 la Novemba halipandishwi Oktoba.
+
+def subtask_events(st: SubTask) -> list:
+    """Matukio ya ratiba ya sub-task hii (mode='events'), yamepangwa kwa tarehe."""
+    if getattr(st, 'mode', None) != 'events':
+        return []
+    try:
+        return list(st.events.all().order_by('due_date', 'index'))
+    except Exception:
+        return []
+
+
+def events_completed(st: SubTask, leo: date | None = None) -> int:
+    """Idadi ya matukio yaliyofikia tarehe yao (due_date <= leo)."""
+    leo = leo or date.today()
+    return sum(1 for ev in subtask_events(st) if ev.due_date and ev.due_date <= leo)
+
+
+def events_total(st: SubTask) -> int:
+    return len(subtask_events(st))
+
+
+def events_next(st: SubTask, leo: date | None = None) -> dict | None:
+    """Tukio ijayo (la kwanza lisilofika) au None kama zote zimefika.
+
+    Hurudisha {'index', 'due_date', 'label', 'days_left'}.
+    """
+    leo = leo or date.today()
+    for ev in subtask_events(st):
+        if ev.due_date and ev.due_date > leo:
+            return {
+                'index': ev.index,
+                'due_date': ev.due_date,
+                'label': ev.label or f'Tukio {ev.index}',
+                'days_left': (ev.due_date - leo).days,
+                'anchor_text': event_anchor_text(ev),
+            }
+    return None
+
+
+# ── Anchor: tarehe / mwezi / muhula+wiki ─────────────────────────────
+# Mwalimu anaweza kuweka ratiba ya jaribio kwa njia tatu: tarehe maalum,
+# mwezi (mf. "Jaribio 1: Machi"), au muhula + wiki ndani yake (mf.
+# "Muhula 1, wiki ya 6"). Mfumo huresibu tarehe halisi kutoka kufungua/
+# kufunga kwa shule na kuhifadhi kwenye `due_date`.
+
+def term_bounds(task) -> tuple[date | None, date | None]:
+    """(mwanzo wa Muhula 1, mwanzo wa Muhula 2) kutoka dirisha la shule.
+
+    Muhula 1 huanza tarehe ya kufungua; Muhula 2 huanza nusu ya mwaka
+    baada ya hapo. Hurejesha (None, None) kama hakuna dirisha.
+    """
+    start, end = _window(task)
+    if not (start and end):
+        return None, None
+    half = max(1, (end - start).days // 2)
+    return start, start + timedelta(days=half)
+
+
+def resolve_event_date(ev, task=None) -> date | None:
+    """Tarehe halisi ya tukio kutoka anchor yake (au `due_date` yenyewe).
+
+    - anchor='date'      → due_date kama ilivyo.
+    - anchor='month'     → tarehe ya mwezi (na `day` ikiwepo); bila `day`
+                           → MWISHO wa mwezi (hakuna kudai kabla ya mwezi
+                           kuisha). Mwaka hutoka due_date iliyopo, au dirisha
+                           la shule, au leo.
+    - anchor='term_week' → mwanzo wa muhula + wiki 7 x (wiki-1). Muhula 1 =
+                           tarehe ya kufungua; Muhula 2 = nusu ya mwaka.
+                           Bila dirisha la shule → due_date iliyopo.
+    """
+    anchor = getattr(ev, 'anchor', 'date') or 'date'
+    due = getattr(ev, 'due_date', None)
+    if anchor == 'date':
+        return due
+    if anchor == 'month':
+        try:
+            month = int(getattr(ev, 'month', None) or 0)
+        except (TypeError, ValueError):
+            month = 0
+        if not 1 <= month <= 12:
+            return due
+        year = due.year if due else date.today().year
+        if task is not None:
+            start, _end = _window(task)
+            if start and not due:
+                year = start.year
+        try:
+            day = int(getattr(ev, 'day', None) or 0)
+        except (TypeError, ValueError):
+            day = 0
+        if not 1 <= day <= 31:
+            day = _cal.monthrange(year, month)[1]  # mwisho wa mwezi
+        else:
+            day = min(day, _cal.monthrange(year, month)[1])
+        return date(year, month, day)
+    if anchor == 'term_week':
+        if task is None:
+            task = getattr(getattr(ev, 'subtask', None), 'task', None)
+        if task is None:
+            return due
+        t1, t2 = term_bounds(task)
+        try:
+            term = int(getattr(ev, 'term', None) or 0)
+            week = int(getattr(ev, 'term_week', None) or 0)
+        except (TypeError, ValueError):
+            term, week = 0, 0
+        if term not in (1, 2) or week < 1:
+            return due
+        base = t1 if term == 1 else t2
+        if base is None:
+            return due
+        return base + timedelta(days=7 * (week - 1))
+    return due
+
+
+def refresh_event_dates(st: SubTask) -> int:
+    """Sasisha `due_date` za matukio kutoka anchor (idadi iliyobadilishwa).
+
+    Inatumika kwenye UI/posho mpya (mf. mwalimu akibadilisha tarehe za
+    kufungua au anchor). Hurejesha idadi ya matukio yaliyobadilishwa.
+    """
+    changed = 0
+    for ev in subtask_events(st):
+        resolved = resolve_event_date(ev, st.task)
+        if resolved and resolved != ev.due_date:
+            ev.due_date = resolved
+            ev.save(update_fields=['due_date', 'updated_at'])
+            changed += 1
+    return changed
+
+
+def event_anchor_text(ev) -> str:
+    """Maelezo ya binadamu ya anchor ya tukio (kwa UI).
+
+    mf. 'Tarehe 15 Machi 2026' | 'Mwezi: Machi (mwisho wa mwezi)' |
+    'Muhula 1, wiki ya 6 — 16 Februari 2026'.
+    """
+    anchor = getattr(ev, 'anchor', 'date') or 'date'
+    due = getattr(ev, 'due_date', None)
+    if anchor == 'month':
+        try:
+            month = int(getattr(ev, 'month', None) or 0)
+        except (TypeError, ValueError):
+            month = 0
+        name = _MONTHS_SW[month - 1] if 1 <= month <= 12 else '?'
+        try:
+            day = int(getattr(ev, 'day', None) or 0)
+        except (TypeError, ValueError):
+            day = 0
+        if 1 <= day <= 31:
+            return f'Tarehe {day} {name}'
+        return f'Mwezi: {name} (mwisho wa mwezi)'
+    if anchor == 'term_week':
+        try:
+            term = int(getattr(ev, 'term', None) or 0)
+            week = int(getattr(ev, 'term_week', None) or 0)
+        except (TypeError, ValueError):
+            term, week = 0, 0
+        head = f'Muhula {term}, wiki ya {week}' if term and week else 'Muhula + wiki'
+        if due:
+            return f'{head} — {due.strftime("%d %B %Y")}'
+        return head
+    if due:
+        return f'Tarehe {due.strftime("%d %B %Y")}'
+    return 'Tarehe haijawekwa'
+
+
+def count_pct(st: SubTask) -> float | None:
+    """Asilimia kwa mode='count' (nukuu): actual_base / target."""
+    if getattr(st, 'mode', None) != 'count':
+        return None
+    try:
+        target = float(target_for(st))
+    except (TypeError, ValueError):
+        target = 0.0
+    if target <= 0:
+        return None
+    try:
+        done = float(st.actual_base or 0)
+    except (TypeError, ValueError):
+        done = 0.0
+    done = max(0.0, min(done, target))
+    return round(done / target * 100.0, 2)
+
+
+def schedule_cap_pct(st: SubTask, leo: date | None = None) -> float | None:
+    """Kikomo cha asilimia inayoruhusiwa kwa sasa kulingana na ratiba.
+
+    - events:   matukio yaliyofika tu (due_date <= leo) / target.
+    - count:    idadi mwalimu aliyojaza (actual_base) / target.
+    - annual:   100 (tayari).
+    - periods/manual: linear (kama ilivyo sasa) — hakuna cap maalum.
+
+    Hurejesha None kama hakuna kizingiti (kwa periods/manual).
+    """
+    leo = leo or date.today()
+    mode = getattr(st, 'mode', None)
+    if mode == 'events':
+        total = events_total(st)
+        if total <= 0:
+            return None  # hakuna ratiba bado — rudi kwenye linear
+        done = events_completed(st, leo)
+        return round(min(100.0, done / total * 100.0), 2)
+    if mode == 'count':
+        return count_pct(st)  # None kama target haipo
+    if mode == 'annual':
+        return 100.0
+    return None  # periods/manual — linear, hakuna cap maalum
+
+
+def is_waiting(st: SubTask, leo: date | None = None) -> bool:
+    """True kama sub-task ya 'events' inasubiri tukio ijayo (hakuna jipya).
+
+    Mfumo haipaswi kupandisha wala kujaza sub-task hii hadi tukio ijayo
+    lifike (mf. jaribio la 5 Novemba).
+    """
+    if getattr(st, 'mode', None) != 'events':
+        return False
+    total = events_total(st)
+    if total <= 0:
+        return False
+    done = events_completed(st, leo)
+    # Inasubiri kama bado kuna matukio yasiyofika NA tayari tumefikia
+    # yale yaliyofika (hakuna cha kuongeza hadi tukio ijayo).
+    return done < total and events_next(st, leo) is not None
 
 
 def subtask_total_weeks(st: SubTask) -> float | None:
@@ -660,8 +894,11 @@ def pct_auto_for(st: SubTask, leo: date | None = None) -> tuple[float | None, st
     """Asilimia ya 'Jaza' bila mwalimu kuandika kitu.
 
     - Sub-task ya mwaka (maazimio): 100%.
+    - Sub-task ya 'events' (jaribio/mtihani): matukio yaliyofika tu (guard).
+    - Sub-task ya 'count' (nukuu): actual_base/target (mwalimu anajaza).
     - Vinginevyo: ratiba ya viingilio (mstari mnyoofu) au actual kama
-      aliandika zaidi ya ratiba. Chanzo: 'annual' | 'schedule' | 'topics'.
+      aliandika zaidi ya ratiba. Chanzo: 'annual' | 'events' | 'count' |
+      'schedule' | 'topics'.
 
     MUHIMU: kalenda ya shule HAIATHIRI sub-task. Kalenda ni "total score" ya
     mwaka na hulinganishwa na JUMLA ya maendeleo ya mwalimu
@@ -669,13 +906,26 @@ def pct_auto_for(st: SubTask, leo: date | None = None) -> tuple[float | None, st
     """
     if st.mode == 'annual':
         return 100.0, 'annual'
+    # Guard: events (jaribio/mtihani) na count (nukuu) — hutumia ratiba yao.
+    # Kama bado hazina data (tarehe/target), hurudi kwenye linear (haivunji).
+    if st.mode == 'events' and events_total(st) > 0:
+        cap = schedule_cap_pct(st, leo)
+        return (cap if cap is not None else 0.0), 'events'
+    if st.mode == 'count' and count_pct(st) is not None:
+        return count_pct(st), 'count'
     target = target_for(st)
     actual = actual_for(st)
     frac = entry_fraction(st, leo)
     if target > 0:
         planned = target * _dec(round(frac, 6))
         eff = actual if actual > planned else planned
-        return min(100.0, round(float(eff) / float(target) * 100.0, 2)), 'schedule'
+        result = min(100.0, round(float(eff) / float(target) * 100.0, 2))
+        # Cap ya ziada kwa periods/manual endapo kuna events zilizowekwa
+        # (hutokea kwa sub-task zilizobadilishwa kutoka events kwenda manual).
+        cap = schedule_cap_pct(st, leo)
+        if cap is not None:
+            result = min(result, cap)
+        return result, 'schedule'
     topics = topics_fraction(st.task)
     if topics is not None:
         return round(topics * 100.0, 2), 'topics'
@@ -765,12 +1015,15 @@ def parse_count(desc: str, position: int | None) -> int | None:
 
 
 def entry_from_values(st: SubTask, target, base_pct,
-                      prev_actual=None) -> tuple[str, float]:
+                      prev_actual=None, max_pct=None) -> tuple[str, float]:
     """(description, asilimia) kutoka target/base_pct (BILA DB).
 
     Hutumika ndani ya context ya Playwright (async) ambapo ORM haiwezi
     kuitwa. actual = idadi kubwa kati ya entries za nyuma (prev_actual) na
     ile ya ratiba (target x base_pct), isiyozidi target. asilimia = actual/target.
+
+    `max_pct` (si lazima): kikomo cha ratiba (schedule_cap_pct). Planned
+    haipaswi kuzidi hiki — mf. jaribio la 5 la Novemba halipandishwi Oktoba.
     """
     try:
         target = float(target or 0)
@@ -782,6 +1035,10 @@ def entry_from_values(st: SubTask, target, base_pct,
         # la majaribio 5 lisitoe "5 kati ya 5" (100%); linatoa "4 kati ya 5"
         # (80%). Hivyo kujaza kwenda hatua kwa hatua na si kukurupuka.
         planned = math.floor(target * base_pct / 100.0 + 1e-9)
+        # Cap ya ratiba: usizidi uhalisia wa tarehe (events) au idadi ya mwalimu.
+        if max_pct is not None:
+            planned_cap = math.floor(target * float(max_pct) / 100.0 + 1e-9)
+            planned = min(planned, planned_cap)
         actual = max(planned, int(prev_actual or 0))
         actual = int(min(actual, int(target)))
         pct = round(100.0 * actual / target, 2)
@@ -792,7 +1049,8 @@ def entry_from_values(st: SubTask, target, base_pct,
 def entry_for_ess(st: SubTask, prev_actual=None) -> tuple[str, float]:
     """(description, asilimia) ya entry mpya ya ESS (inagusa DB)."""
     base_pct, _src = pct_auto_for(st)
-    return entry_from_values(st, target_for(st), base_pct, prev_actual)
+    cap = schedule_cap_pct(st)
+    return entry_from_values(st, target_for(st), base_pct, prev_actual, max_pct=cap)
 
 
 def built_wanted(profile) -> list[tuple[SubTask, str, str, float, float]]:
@@ -938,7 +1196,7 @@ _SPEC_TARGET_COL = ['maazimio', 'nukuu', 'maandalio', 'zana', 'vipindi',
 _SPEC_ACTUAL_COL = ['maazimio_actual', 'nukuu_actual', 'maandalio_actual',
                     'zana_actual', 'vipindi_actual', 'tathmini_actual',
                     'majaribio_actual']
-_DEFAULT_MODES = {1: 'annual', 2: 'manual', 3: 'periods', 4: 'periods',
+_DEFAULT_MODES = {1: 'annual', 2: 'count', 3: 'periods', 4: 'periods',
                   5: 'periods', 6: 'manual', 7: 'manual'}
 
 
@@ -952,6 +1210,10 @@ def _mode_for(idx: int, row: dict) -> str:
             return 'periods'
         if m in ('manual', 'actual', 'target'):
             return 'manual'
+        if m in ('count', 'idadi', 'nukuu'):
+            return 'count'
+        if m in ('events', 'ratiba', 'tukio', 'tukio_la_ratiba'):
+            return 'events'
     return _DEFAULT_MODES[idx]
 
 

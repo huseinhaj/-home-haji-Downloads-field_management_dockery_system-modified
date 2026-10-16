@@ -17,9 +17,11 @@ from difflib import SequenceMatcher
 from django.core.cache import cache
 from django.utils import timezone as tz
 
-from .compute import (built_wanted, entry_from_values,
-                      on_track_status, parse_count, pct_auto_for, pct_for,
-                      plan_for, subtask_increment_pct, target_for)
+from .compute import (_MONTHS_SW, built_wanted, count_pct, entry_from_values,
+                      event_anchor_text, events_completed, events_next,
+                      events_total, is_waiting, on_track_status, parse_count,
+                      pct_auto_for, pct_for, plan_for, schedule_cap_pct,
+                      subtask_increment_pct, target_for)
 from .models import EssFillRun, SubTask
 
 BASE_URL = 'https://ess.utumishi.go.tz/'
@@ -1168,6 +1170,29 @@ def run_fill(profile_id: int, run_id: int) -> dict:
 
     wanted = built_wanted(profile)
     only_ids = _parse_id_list(getattr(run, 'only_subtasks', ''))
+
+    # Ratiba: sub-task inayoSUBIRI tukio ijayo (cap=0 — hakuna tukio lililo-
+    # fika) haipaswi kujazwa wala kufunguliwa ESS. Tukio la Julai halijazwi
+    # Juni; mwalimu atajaza pale tu litakapofika.
+    def _drop_waiting(entries):
+        keep, dropped = [], []
+        for entry in entries:
+            st = entry[0]
+            if st.mode == 'events' and is_waiting(st, date.today()):
+                cap = schedule_cap_pct(st, date.today())
+                if cap is not None and cap <= 0:
+                    nxt = events_next(st, date.today())
+                    msg = (f'inasubiri {nxt["label"] if nxt else "tukio ijayo"}'
+                           f' ({nxt["due_date"] if nxt else "?"}) — haijazwi')
+                    dropped.append((st, msg))
+                    continue
+            keep.append(entry)
+        return keep, dropped
+
+    wanted, waiting_dropped = _drop_waiting(wanted)
+    for st, msg in waiting_dropped:
+        emit('⏸ ' + msg)
+
     if only_ids:
         available = {w[0].id for w in wanted}
         matched = only_ids & available
@@ -1186,6 +1211,16 @@ def run_fill(profile_id: int, run_id: int) -> dict:
     run.save()
 
     if not wanted:
+        if waiting_dropped:
+            emit('Zote zinasubiri ratiba — hakuna cha kujaza leo.')
+            run.status = 'done'
+            run.finished = tz.now()
+            run.log = '\n'.join(log)
+            run.save()
+            _set_progress(run_id, done=True, status='done', saved=0,
+                          skipped=len(waiting_dropped), not_found=0)
+            return {'status': 'done', 'saved': 0,
+                    'skipped': len(waiting_dropped), 'not_found': 0}
         emit('Hakuna sub-task yenye asilimia. Ongeza actual/target kwanza.')
         run.status = 'error'
         run.finished = tz.now()
@@ -1306,10 +1341,27 @@ def run_fill(profile_id: int, run_id: int) -> dict:
                         if ess_target and ess_target > 0:
                             target = float(ess_target)
                         emit(f'  target = {target:g} (kutoka ESS)')
+                        # Schedule guard: sub-task ya matukio (jaribio/mtihani)
+                        # hupewa cap kulingana na matukio yenye tarehe iliyofika.
+                        # Hivyo hatujazi 100% Oktoba wakati jaribio la 5 ni Novemba.
+                        cap = schedule_cap_pct(st, date.today())
+                        if st.mode == 'events':
+                            done = events_completed(st, date.today())
+                            tot = events_total(st)
+                            nxt = events_next(st, date.today())
+                            if nxt is not None:
+                                emit(f'  ratiba: matukio {done}/{tot}; ijayo '
+                                     f'{nxt["label"]} {nxt["due_date"]} '
+                                     f'(siku {nxt["days_left"]})')
+                            else:
+                                emit(f'  ratiba: matukio {done}/{tot} yote yamefika')
                         # Soma entries za nyuma za ESS ili actual/asilimia ziwe sawa.
                         prev, _prior = _prior_actual_for_ess(
                             page, match['i'], st, emit)
-                        note, pct = entry_from_values(st, target, pct, prev)
+                        note, pct = entry_from_values(st, target, pct, prev,
+                                                      max_pct=cap)
+                        if cap is not None:
+                            emit(f'  cap ya ratiba = {cap:.2f}%')
                         emit(f'  hesabu: prev={prev} => {pct:.2f}% (actual/target)')
                         if cur is not None and float(pct) <= float(cur) + 0.5:
                             skipped += 1
@@ -1799,7 +1851,8 @@ def _pull_from_ess(profile, tree, year_num, emit):
                 pos += 1
                 SubTask.objects.create(task=task, position=pos,
                                        description=es['sub_name'],
-                                       mode='manual', target=0,
+                                       mode=('count' if pos == 2 else 'manual'),
+                                       target=0,
                                        start=_ess_sdate(es.get('start')),
                                        end=_ess_sdate(es.get('end')))
                 saved += 1
@@ -1884,7 +1937,7 @@ def _pull_from_ess(profile, tree, year_num, emit):
             next_pos += 1
             new_st = SubTask.objects.create(
                 task=task, position=next_pos, description=name,
-                mode='manual', target=0,
+                mode=('count' if next_pos == 2 else 'manual'), target=0,
                 start=_ess_sdate(es.get('start')),
                 end=_ess_sdate(es.get('end')))
             local_subs.append(new_st)
@@ -2561,8 +2614,13 @@ def run_push(profile_id: int, run_id: int) -> dict:
 
 def subtask_snapshot(task) -> list[dict]:
     """Maelezo ya UI (asilimia, target, actual) kwa template."""
+    from .compute import refresh_event_dates
     out = []
-    for st in task.subtasks.all().prefetch_related('entries'):
+    for st in task.subtasks.all().prefetch_related('entries', 'events'):
+        # Rekebisha due_date kutoka anchor ikiwa dirisha la shule au anchor
+        # zimebadilika (mf. mwalimu akibadilisha kufungua/kufunga).
+        if st.mode == 'events':
+            refresh_event_dates(st)
         pct, src = pct_auto_for(st)
         recorded, _ = pct_for(st)
         inc = subtask_increment_pct(st)
@@ -2573,6 +2631,12 @@ def subtask_snapshot(task) -> list[dict]:
         cur_real = ess_val if ess_val is not None else (
             recorded if recorded is not None else pct)
         status, expected_pct, gap = on_track_status(st, cur_real)
+        # Guard za ratiba (events) na idadi (count) — kwa onyesho la UI.
+        waiting = is_waiting(st, date.today())
+        nxt_event = events_next(st, date.today()) if st.mode == 'events' else None
+        ev_done = events_completed(st, date.today()) if st.mode == 'events' else None
+        ev_total = events_total(st) if st.mode == 'events' else None
+        cap = schedule_cap_pct(st, date.today())
         plan = plan_for(st, ess_val if ess_val is not None else pct)
         # Asilimia ITAKAYOTUMWA: hii ndiyo thamani ambayo kujaza kutatumia
         # (floor ya target x base), SIO base yenyewe. Na itaskip kama ESS
@@ -2609,6 +2673,30 @@ def subtask_snapshot(task) -> list[dict]:
                            else f'{float(st.official_pct):.0f}%',
             'ess_at': st.official_at,
             'plan': plan,
+            # Ratiba ya uhalisia (events) na idadi (count).
+            'waiting': waiting,
+            'next_event': nxt_event,
+            'events_done': ev_done,
+            'events_total': ev_total,
+            'cap_pct': cap,
+            'is_events': st.mode == 'events',
+            'is_count': st.mode == 'count',
+            'count_done': float(st.actual_base or 0),
+            'count_target': float(st.target or 0),
+            'topics_total': st.task.topics_total or 0,
+            'events_list': [
+                {'index': ev.index, 'due_date': ev.due_date, 'label': ev.label,
+                 'anchor': getattr(ev, 'anchor', 'date') or 'date',
+                 'month': getattr(ev, 'month', None),
+                 'day': getattr(ev, 'day', None),
+                 'term': getattr(ev, 'term', None),
+                 'term_week': getattr(ev, 'term_week', None),
+                 'anchor_text': event_anchor_text(ev),
+                 'sw_month': _MONTHS_SW[ev.due_date.month - 1]
+                             if ev.due_date else ''}
+                for ev in (st.events.all().order_by('due_date', 'index')
+                           if st.mode == 'events' else [])
+            ],
         })
     return out
 

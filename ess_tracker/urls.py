@@ -16,6 +16,8 @@ urlpatterns = [
     path('task/<int:task_id>/autogen/', views.ess_autogen, name='ess_autogen'),
     path('task/<int:task_id>/delete/', views.ess_task_delete, name='ess_task_delete'),
     path('week/', views.ess_week, name='ess_week'),
+    path('subtask/<int:subtask_id>/count/', views.ess_subtask_count,
+         name='ess_subtask_count'),
     path('csv/', views.ess_csv, name='ess_csv'),
     path('fill/', views.ess_fill, name='ess_fill'),
     path('approve/', views.ess_approve_page, name='ess_approve'),

@@ -16,9 +16,37 @@ Mfumo wa e-Tendaji (ESS) katika repo hii unasaidia walimu:
   - `auto_subtasks` (IDs za sub-tasks kwa kujaza kiotomatiki), `auto_fill_enabled`, `entries_per_week`, `school_open/close`, `holidays`, `user`, `school`, `full_name`, `phone`
   - `set_ess_password(raw)` — simbua na hifadhi; `ess_password_plain` (mambo ya debug)
 - `Task` / `SubTask` (`135, 158`): kazi na sub-tasks zenye maeneo (somo, kidato, n.k.), position, description, mode/target.
+  - `SubTask.mode` sasa ni: `annual`, `periods`, `manual`, **`events`** (ratiba ya jaribio/mtihani kwa tarehe), **`count`** (nukuu / idadi iliyokamilika). Sub-task ya **nukuu (nafasi 2)** huumbwa ikiwa `count` kwa default (autogen + sync kutoka ESS).
+- `SubTaskEvent` (migration `0020`, `0021`): tukio moja la sub-task ya `events` — `index`, `due_date` (tarehe ILIYOHESABIWA), `label`, na **anchor** ya aina tatu:
+  - `date` — tarehe maalum (mf. `2026-03-15`).
+  - `month` — mwezi (mf. "Jaribio 1: Machi"); `day` ikiwepo → siku hiyo, vinginevyo **mwisho wa mwezi** (hakuna kudai kabla mwezi kuisha).
+  - `term_week` — muhula + wiki (mf. "Muhula 1, wiki ya 6"); mfumo huresibu kutoka kufungua/kufunga kwa shule: Muhula 1 = tarehe ya kufungua, Muhula 2 = nusu ya mwaka; wiki N = mwanzo + 7×(N−1).
+  - `resolve_event_date(ev, task)` hubadilisha anchor → `due_date`; `refresh_event_dates(st)` husasisha (huitwa kwenye `subtask_snapshot`); `event_anchor_text(ev)` hutoa maelezo ya binadamu kwa UI.
 - `WeekEntry` (`192`): maandishi ya wiki (actual, date, week_no) kwa profile+subtask.
 - `EssFillRun` (`217`): rekodi ya run (fill/sync/push/read/approve), status (queued/running/done/error), timestamps, counts (saved/skipped/not_found), kind/source.
 - `PushSubscription`, `AcademicCalendar`, `MonthlyTarget`, `WeeklyTarget`, `Holiday`.
+
+### Schedule Guard (Ratiba ya Matukio & Nukuu)
+Kizuizi cha ratiba kinazuia sub-task kufikia 100% mapema. Jaribio la Novemba
+halionyeshwi kama limekamilika Oktoba; nukuu hutumia idadi halisi ya mwalimu,
+si kudhaniwa kwa muda (linear).
+
+**Kilele (compute.py):**
+- `subtask_events / events_total / events_completed / events_next / schedule_cap_pct / is_waiting / count_pct`
+- `resolve_event_date / term_bounds / refresh_event_dates / event_anchor_text` — ratiba ya mwezi na muhula+wiki.
+- `pct_auto_for` — hurudisha cap ya ratiba kwa `events` na `count`; kama bado hazina data (tarehe/target) hurudi kwenye `linear` (haivunji tabia ya zamani).
+- `entry_from_values(..., max_pct=cap)` — `planned` haipaswi kupita cap (mf. jaribio 3 kati ya 5 = 60%, si 100%).
+
+**Jinsi inavyofanya kazi:**
+- **Ratiba ya matukio (`events`)**: mwalimu huchagua njia moja kati ya tatu — tarehe maalum, mwezi ("Jaribio 1: Machi" — bila siku hujahesabiwa mwisho wa mwezi), au muhula + wiki ("Muhula 1, wiki ya 6"). Mfumo huresibu `due_date` na hujaza tu matukio yenye `due_date <= leo`. Cap = `yaliyofika / jumla`. Sub-task huonyesha "inasubiri Jaribio 4 — Julai…" (mwezi/anchor kwa Kiswahili) bila kupanda juu.
+- **Idadi ya nukuu (`count`)**: mwalimu hujaza "X kati ya Y" (ukurasa wa nyumbani — X na Y vyote); cap = `X / Y` (mf. 3/7 = 42.86%). Walimu wa kasi tofauti (mmoja anamaliza nukuu mwezi wa 5, mwingine wa 10) hutumia idadi yao halisi.
+- **"Inasubiri" kwenye nyumbani**: chini ya maelezo ya sub-task huonyeshwa "inasubiri <tukio> — <anchor/tarehe> (siku N)" kwa events, na "inasubiri mwalimu ajaze idadi ya nukuu" kwa count. Badge ya "Chini ya ratiba" haionyeshwi wakati sub-task inasubiri.
+- **Kujaza kiotomatiki**: sub-task yenye `is_waiting` na cap=0 HAIPITISHWI kwenye kujaza (log: "inasubiri … — haijazwi"); ikifika tukio, hujazwa hadi cap.
+- **Mabadiliko**: kwenye ukurasa wa kuhariri (`ess_task_edit`), mwalimu huchagua aina (`events`) na aina ya anchor kwa kila tukio; `ess_subtask_count` (`/ess/subtask/<id>/count/`) husasisha X **na Y** ya nukuu.
+
+**Vipengele vya UI (ess_home.html):** kila sub-task ya `events` huonyesha badge
+"Matukio X/Y" na ujumbe "inasubiri …"; kila `count` huonyesha kisanduku cha
+kusasisha nukuu.
 
 ### Kufanya kazi (Fill)
 Kituo: `ess_tracker/essfill.py` — Playwright sync, inafungua ESS, ingia, kwenda "subtasks", kusoma majina ya mwaka, kutafuta sub-task inayolingana, kufungua View/Implementation, kusoma entries zilizopo (official map), kuchagua status/pct inayolingana, Save/Submit kulingana na hali. Pia:
@@ -70,6 +98,7 @@ Management commands:
 | UI ilikuwa na vitu vingi inakera watumiaji | Mpangilio upya wa `ess_home.html` na `ess_approve.html`: vichwa wazi (Hali, Hatua kuu, Maendeleo, Zana za ziada, Uhidhinishaji), kitufe kikuu mbele, zana za hiari zimepangika vizuri. Kila kipengele kimebaki. | `d21adac4` |
 | Django multi-line `{# #}` comment inaonekana kwenye header | Badilisha kwenda `{% comment %}...{% endcomment %}` kwenye `_ess_install.html` (Django 5.2 haitupi multi-line `{# #}`). | `1c2f7af1` |
 | Kalenda ililazimisha asilimia ya kila sub-task (kila sub-task = kalenda %) — si sahihi | Kalenda ni "total score" ya mwaka. Ondoa matangazo ya kalenda kwenye `expected_pct` na `pct_auto_for`; sub-task sasa hufuata **ratiba yake** (`schedule`). Ongeza `profile_calendar_status` (jumla ya maendeleo ya mwalimu vs lengo la kalenda) na kuionyesha kwenye `ess_home`. | `5feebbfc` |
+| Ratiba ya jaribio ilikuwa tarehe pekee; walimu wanatofautiana kuandika nukuu | Aina tatu za anchor (`date`/`month`/`term_week`) kwenye `SubTaskEvent` (migration 0021), `resolve_event_date`/`term_bounds`/`event_anchor_text`. Nukuu (nafasi 2) → mode `count` kwa default (autogen + sync); fomu ya nyumbani hujaza X **na** Y. Sub-task inayosubiri (cap=0) haipitishwi kwenye kujaza; onyesho la "inasubiri" chini ya maelezo nyumbani. | mpya (migration 0021) |
 
 ### Mantiki ya Kalenda vs Sub-task (muhimu)
 

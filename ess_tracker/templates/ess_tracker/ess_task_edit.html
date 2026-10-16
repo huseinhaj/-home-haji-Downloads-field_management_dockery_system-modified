@@ -4,7 +4,7 @@
 <div style="max-width:960px;margin:0 auto;">
 <div class="page-head">
   <h4>Hariri Task</h4>
-  <div class="sub">Weka sub-tasks kisha, kwenye Nyumbani, hifadhi kazi zako za kila siku.</div>
+  <div class="sub">Panga sub-tasks zako.</div>
 </div>
 
   <form method="post">
@@ -45,14 +45,16 @@
           </thead>
           <tbody>
             {% for s in snapshot %}
-            <tr>
+            <tr class="subtask-row">
               <td>{{ s.st.position }}</td>
               <td><input class="form-control form-control-sm" name="desc_{{ s.st.id }}" value="{{ s.st.description }}" required></td>
               <td>
-                <select name="mode_{{ s.st.id }}" class="form-select form-select-sm">
+                <select name="mode_{{ s.st.id }}" class="form-select form-select-sm mode-select" data-subtask="{{ s.st.id }}">
                   <option value="annual" {% if s.st.mode == 'annual' %}selected{% endif %}>Mwaka mzima</option>
                   <option value="periods" {% if s.st.mode == 'periods' %}selected{% endif %}>Vipindi/wiki</option>
                   <option value="manual" {% if s.st.mode == 'manual' %}selected{% endif %}>Actual/Target</option>
+                  <option value="events" {% if s.st.mode == 'events' %}selected{% endif %}>Ratiba ya matukio</option>
+                  <option value="count" {% if s.st.mode == 'count' %}selected{% endif %}>Idadi (nukuu)</option>
                 </select>
               </td>
               <td><input type="number" step="any" class="form-control form-control-sm" name="target_{{ s.st.id }}" value="{{ s.st.target }}"></td>
@@ -60,6 +62,64 @@
               <td><input type="number" class="form-control form-control-sm" name="wk_{{ s.st.id }}" value="{{ s.st.week_count }}"></td>
               <td><input type="number" step="any" class="form-control form-control-sm" name="base_{{ s.st.id }}" value="{{ s.st.actual_base }}"></td>
               <td class="small">{{ s.pct_str|default:'—' }}</td>
+            </tr>
+            <tr class="events-row" data-subtask="{{ s.st.id }}" {% if s.st.mode != 'events' %}style="display:none"{% endif %}>
+              <td></td>
+              <td colspan="7">
+                <div class="small fw-bold mb-1 text-primary">
+                  <i class="fas fa-calendar-day me-1"></i>Ratiba ya matukio (tarehe / mwezi / muhula + wiki)
+                </div>
+                <div class="events-editor" data-subtask="{{ s.st.id }}">
+                  {% for ev in s.events_list %}
+                  <div class="event-item border rounded p-2 mb-1" data-subtask="{{ s.st.id }}">
+                    <div class="d-flex gap-2 flex-wrap align-items-center">
+                      <select name="event_anchor_{{ s.st.id }}" class="form-select form-select-sm anchor-select" style="max-width:170px">
+                        <option value="date" {% if ev.anchor == 'date' %}selected{% endif %}>Tarehe maalum</option>
+                        <option value="month" {% if ev.anchor == 'month' %}selected{% endif %}>Mwezi (mf. Machi)</option>
+                        <option value="term_week" {% if ev.anchor == 'term_week' %}selected{% endif %}>Muhula + wiki</option>
+                      </select>
+                      <span class="anchor-fields anchor-date" {% if ev.anchor != 'date' %}style="display:none"{% endif %}>
+                        <input type="date" class="form-control form-control-sm" style="max-width:170px"
+                               name="event_date_{{ s.st.id }}" value="{{ ev.due_date|date:'Y-m-d' }}">
+                      </span>
+                      <span class="anchor-fields anchor-month d-flex gap-1" {% if ev.anchor != 'month' %}style="display:none"{% endif %}>
+                        <select name="event_month_{{ s.st.id }}" class="form-select form-select-sm" style="max-width:130px">
+                          {% for m in months %}<option value="{{ m.0 }}" {% if ev.month == m.0 %}selected{% endif %}>{{ m.1 }}</option>{% endfor %}
+                        </select>
+                        <input type="number" min="1" max="31" class="form-control form-control-sm" style="max-width:120px"
+                               name="event_day_{{ s.st.id }}" value="{{ ev.day|default_if_none:'' }}"
+                               placeholder="tarehe (hiari)">
+                      </span>
+                      <span class="anchor-fields anchor-term d-flex gap-1" {% if ev.anchor != 'term_week' %}style="display:none"{% endif %}>
+                        <select name="event_term_{{ s.st.id }}" class="form-select form-select-sm" style="max-width:120px">
+                          <option value="1" {% if ev.term == 1 %}selected{% endif %}>Muhula 1</option>
+                          <option value="2" {% if ev.term == 2 %}selected{% endif %}>Muhula 2</option>
+                        </select>
+                        <input type="number" min="1" max="40" class="form-control form-control-sm" style="max-width:100px"
+                               name="event_week_{{ s.st.id }}" value="{{ ev.term_week|default_if_none:'' }}"
+                               placeholder="wiki">
+                      </span>
+                      <input type="text" class="form-control form-control-sm" style="max-width:280px;min-width:160px"
+                             name="event_label_{{ s.st.id }}" value="{{ ev.label }}"
+                             placeholder="Maelezo (mf. Jaribio la 1)">
+                      <button type="button" class="btn btn-sm btn-outline-danger ms-auto" onclick="this.closest('.event-item').remove()">
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </div>
+                    <div class="text-muted mt-1" style="font-size:.72rem">
+                      <i class="fas fa-arrow-right me-1"></i>{{ ev.anchor_text }} — <b>{{ ev.due_date|date:'d M Y' }}</b>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-primary mt-1 add-event"
+                        data-subtask="{{ s.st.id }}">
+                  <i class="fas fa-plus me-1"></i>Ongeza tukio
+                </button>
+                <div class="text-muted mt-1" style="font-size:.72rem">
+                  Mwezi bila tarehe = mwisho wa mwezi. Muhula + wiki huresibiwa kutoka kufungua/kufunga kwa shule.
+                </div>
+              </td>
             </tr>
             {% endfor %}
           </tbody>
@@ -99,4 +159,76 @@
     </div>
   </div>
 </div>
+
+<script>
+(function () {
+  // Onyesha/ficha safu ya matukio kulingana na aina (mode) iliyochaguliwa.
+  document.querySelectorAll('.mode-select').forEach(function (sel) {
+    sel.addEventListener('change', function () {
+      var id = sel.getAttribute('data-subtask');
+      var row = document.querySelector('.events-row[data-subtask="' + id + '"]');
+      if (row) { row.style.display = (sel.value === 'events') ? '' : 'none'; }
+    });
+  });
+
+  // Chagua aina ya anchor (tarehe / mwezi / muhula+wiki) kwa kila tukio.
+  function bindAnchorSelect(sel) {
+    sel.addEventListener('change', function () {
+      var item = sel.closest('.event-item');
+      if (!item) { return; }
+      ['date', 'month', 'term'].forEach(function (k) {
+        var box = item.querySelector('.anchor-' + k);
+        if (box) { box.style.display = (sel.value === (k === 'term' ? 'term_week' : k)) ? '' : 'none'; }
+      });
+    });
+  }
+  document.querySelectorAll('.anchor-select').forEach(bindAnchorSelect);
+
+  var MONTHS = [
+    ['1', 'Januari'], ['2', 'Februari'], ['3', 'Machi'], ['4', 'Aprili'],
+    ['5', 'Mei'], ['6', 'Juni'], ['7', 'Julai'], ['8', 'Agosti'],
+    ['9', 'Septemba'], ['10', 'Oktoba'], ['11', 'Novemba'], ['12', 'Desemba']
+  ];
+  function monthOptions() {
+    return MONTHS.map(function (m) { return '<option value="' + m[0] + '">' + m[1] + '</option>'; }).join('');
+  }
+  // Ongeza mstari mpya wa tukio (na aina zote tatu za anchor).
+  document.querySelectorAll('.add-event').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var id = btn.getAttribute('data-subtask');
+      var editor = document.querySelector('.events-editor[data-subtask="' + id + '"]');
+      if (!editor) { return; }
+      var div = document.createElement('div');
+      div.className = 'event-item border rounded p-2 mb-1';
+      div.setAttribute('data-subtask', id);
+      div.innerHTML =
+        '<div class="d-flex gap-2 flex-wrap align-items-center">' +
+          '<select name="event_anchor_' + id + '" class="form-select form-select-sm anchor-select" style="max-width:170px">' +
+            '<option value="date">Tarehe maalum</option>' +
+            '<option value="month">Mwezi (mf. Machi)</option>' +
+            '<option value="term_week">Muhula + wiki</option>' +
+          '</select>' +
+          '<span class="anchor-fields anchor-date">' +
+            '<input type="date" class="form-control form-control-sm" style="max-width:170px" name="event_date_' + id + '">' +
+          '</span>' +
+          '<span class="anchor-fields anchor-month d-flex gap-1" style="display:none">' +
+            '<select name="event_month_' + id + '" class="form-select form-select-sm" style="max-width:130px">' + monthOptions() + '</select>' +
+            '<input type="number" min="1" max="31" class="form-control form-control-sm" style="max-width:120px" name="event_day_' + id + '" placeholder="tarehe (hiari)">' +
+          '</span>' +
+          '<span class="anchor-fields anchor-term d-flex gap-1" style="display:none">' +
+            '<select name="event_term_' + id + '" class="form-select form-select-sm" style="max-width:120px">' +
+              '<option value="1">Muhula 1</option><option value="2">Muhula 2</option>' +
+            '</select>' +
+            '<input type="number" min="1" max="40" class="form-control form-control-sm" style="max-width:100px" name="event_week_' + id + '" placeholder="wiki">' +
+          '</span>' +
+          '<input type="text" class="form-control form-control-sm" style="max-width:280px;min-width:160px" name="event_label_' + id + '" placeholder="Maelezo (mf. Jaribio la 2)">' +
+          '<button type="button" class="btn btn-sm btn-outline-danger ms-auto" onclick="this.closest(\'.event-item\').remove()"><i class="fas fa-times"></i></button>' +
+        '</div>';
+      editor.appendChild(div);
+      var sel = div.querySelector('.anchor-select');
+      if (sel) { bindAnchorSelect(sel); }
+    });
+  });
+})();
+</script>
 {% endblock %}

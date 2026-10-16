@@ -2,12 +2,19 @@ from django import forms
 from django.contrib import admin
 
 from .models import (AcademicCalendar, EssFillRun, MonthlyTarget, SubTask,
-                     Task, TeacherProfile, WeekEntry, WeeklyTarget)
+                     SubTaskEvent, Task, TeacherProfile, WeekEntry, WeeklyTarget)
 
 
 class SubTaskInline(admin.TabularInline):
     model = SubTask
     extra = 0
+
+
+class SubTaskEventInline(admin.TabularInline):
+    model = SubTaskEvent
+    extra = 0
+    fields = ('index', 'due_date', 'label')
+    ordering = ('due_date', 'index')
 
 
 class MonthlyTargetInline(admin.TabularInline):
@@ -101,6 +108,7 @@ class SubTaskAdmin(admin.ModelAdmin):
     list_display = ('position', 'description', 'task', 'mode', 'target')
     list_filter = ('mode',)
     search_fields = ('description',)
+    inlines = [SubTaskEventInline]
 
 
 @admin.register(WeekEntry)

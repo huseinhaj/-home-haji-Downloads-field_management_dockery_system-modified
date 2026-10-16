@@ -10,6 +10,8 @@ MODE_CHOICES = [
     ('annual', 'Mwaka mzima (100% mwisho wa mwaka)'),
     ('periods', 'Vipindi kwa wiki (vipindi_kwa_wiki x wiki)'),
     ('manual', 'Actual / Target'),
+    ('events', 'Ratiba ya matukio (tarehe za kila jaribio/mtihani)'),
+    ('count', 'Idadi (mwalimu ajaze nukuu X kati ya Y)'),
 ]
 
 RUN_STATUS_CHOICES = [
@@ -187,6 +189,64 @@ class SubTask(models.Model):
 
     def __str__(self):
         return f'{self.position}. {self.description[:60]}'
+
+
+ANCHOR_CHOICES = [
+    ('date', 'Tarehe maalum (mf. 2026-03-15)'),
+    ('month', 'Mwezi (mf. Jaribio 1: Machi)'),
+    ('term_week', 'Muhula + wiki (mf. Muhula 1, wiki ya 6)'),
+]
+
+
+class SubTaskEvent(models.Model):
+    """Tukio moja la sub-task ya 'events' (jaribio/mtihani/tathmini).
+
+    Mwalimu huweka ratiba ya kila tukio kwa njia moja kati ya tatu:
+      - tarehe maalum (mf. 2026-03-15),
+      - mwezi (mf. "Jaribio 1: Machi") — ukibaki bila tarehe halisi,
+        inahesabika mwishoni mwa mwezi,
+      - muhula + wiki ndani yake (mf. "Muhula 1, wiki ya 6") —
+        mfumo huresibu tarehe kutoka kufungua/kufunga kwa shule.
+
+    `due_date` daima ni tarehe ILIYOHESABIWA (resolved) kutoka anchor;
+    cap, "inasubiri" na kujaza kiotomatiki vinatumia `due_date`.
+    """
+
+    subtask = models.ForeignKey(
+        SubTask, on_delete=models.CASCADE, related_name='events')
+    index = models.PositiveSmallIntegerField(
+        help_text='Namba ya tukio (1, 2, 3...) kwa mujibu wa ratiba')
+    anchor = models.CharField(
+        max_length=10, choices=ANCHOR_CHOICES, default='date',
+        help_text='Mwalimu achague: tarehe maalum, mwezi, au muhula + wiki.')
+    month = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        help_text='Mwezi (1-12) kama anchor=month (mf. 3 = Machi).')
+    day = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        help_text='Tarehe ndani ya mwezi (1-31, hiari). Bila hii — mwisho wa mwezi.')
+    term = models.PositiveSmallIntegerField(
+        null=True, blank=True, choices=[(1, 'Muhula 1'), (2, 'Muhula 2')],
+        help_text='Muhula kama anchor=term_week.')
+    term_week = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        help_text='Wiki ndani ya muhula (1, 2, 3...) kama anchor=term_week.')
+    due_date = models.DateField(
+        help_text='Tarehe iliyohesabiwa kutoka anchor (mfumo hutumia hii).')
+    label = models.CharField(
+        max_length=200, blank=True,
+        help_text='Maelezo mafupi (mf. "Jaribio la 1 — Mtihani wa Muhula 1")')
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['due_date', 'index']
+        unique_together = [('subtask', 'index')]
+        verbose_name = 'Tukio la ratiba'
+        verbose_name_plural = 'Matukio ya ratiba'
+
+    def __str__(self):
+        return f'{self.label or f"Tukio {self.index}"} ({self.due_date})'
 
 
 class WeekEntry(models.Model):

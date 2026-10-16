@@ -22,7 +22,7 @@
 
 <div class="page-head wrap">
   <h4>e-Tendaji — {{ profile.full_name|default:profile.ess_username }}</h4>
-  <div class="sub">Jaza na fuatilia maendeleo yako ya ESS. Kitufe kikubwa hapa chini hufanya kazi yote — hakuna cha kuandika.</div>
+  <div class="sub">Jaza na fuatilia maendeleo yako ya ESS.</div>
 </div>
 
 <!-- ══ 1. HALI / TAARIFA ══ -->
@@ -84,8 +84,7 @@
   <div class="card-body text-center py-4">
     <div class="sec-title justify-content-center"><i class="fas fa-cloud-upload-alt"></i>Hatua kuu — Jaza ESS</div>
     <p class="sec-sub" style="max-width:620px;margin-left:auto;margin-right:auto;">
-      Bofya kitufe. Mfumo huingia ESS kwa akaunti yako na kuwasilisha maendeleo yote
-      (maazimio, nukuu, maandalio, zana, vipindi, tathmini, majaribio).
+      Bofya kitufe — mfumo huingia ESS na kuwasilisha maendeleo yote.
     </p>
     <form id="jaza-form" method="post" action="{% url 'ess_tracker:ess_fill' %}">
       {% csrf_token %}
@@ -107,7 +106,7 @@
         {% endwith %}
       </div>
       <div class="small text-muted mt-2" style="max-width:640px;margin-left:auto;margin-right:auto;">
-        <b>Jaza ESS sasa</b> = wasilisha mara moja. &nbsp;<b>Hifadhi kwa kiotomatiki</b> = mfumo ujaze kila siku.
+        <b>Jaza sasa</b> = mara moja. &nbsp;<b>Kiotomatiki</b> = ujaze kila siku.
       </div>
     </form>
   </div>
@@ -117,7 +116,7 @@
 <div class="wrap mb-2">
   <div class="sec-title"><i class="fas fa-list-check"></i>Maendeleo yako (sub-tasks)</div>
   <div class="sec-sub">
-    Tiki sub-task unazotaka kujaza, au acha wote — usipochagua lolote tunajaza <b>zote</b>.
+    Tiki unazotaka kujaza; usipochagua, tunajaza <b>zote</b>.
   </div>
 </div>
 
@@ -159,7 +158,13 @@
                    name="subtasks" value="{{ s.st.id }}">
           </td>
           <td>{{ s.st.position }}</td>
-          <td class="small">{{ s.st.description }}</td>
+          <td class="small">{{ s.st.description }}
+            {% if s.waiting and s.next_event %}
+            <div class="mt-1" style="font-size:.72rem;color:#b45309;">
+              <i class="fas fa-hourglass-half me-1"></i>Inasubiri <b>{{ s.next_event.label }}</b> — {{ s.next_event.anchor_text }}
+            </div>
+            {% endif %}
+          </td>
           <td class="text-end small d-none d-md-table-cell">{{ s.target }}</td>
           <td class="text-end small d-none d-md-table-cell">{{ s.actual }}{% if s.expected %} <span class="text-muted">(tarajio {{ s.expected }})</span>{% endif %}</td>
           <td>
@@ -176,7 +181,7 @@
                 <i class="fas fa-cloud-arrow-down me-1"></i>ESS {{ s.ess_pct_str }}</span>
             </div>
             {% endif %}
-            {% if s.expected_pct_str %}
+            {% if s.expected_pct_str and not s.waiting %}
               {% if s.status == 'behind' %}
               <span class="badge bg-danger mt-1" title="Ratiba ya sasa {{ s.expected_pct_str }} — umepungukiwa {{ s.gap }}%">
                 <i class="fas fa-triangle-exclamation me-1"></i>Chini ya ratiba {{ s.expected_pct_str }}</span>
@@ -203,6 +208,35 @@
             {% elif s.plan %}
               <div class="text-success" style="font-size:.72rem">
                 <i class="fas fa-flag-checkered me-1"></i>Imefikia lengo la ratiba {{ s.plan.goal|floatformat:"0" }}%</div>
+            {% endif %}
+
+            {% if s.is_events %}
+            <div class="mt-1 small">
+              <span class="badge {% if s.waiting %}bg-secondary{% else %}bg-info{% endif %}">
+                <i class="fas fa-calendar-day me-1"></i>Matukio {{ s.events_done }}/{{ s.events_total }}
+              </span>
+              {% if s.events_done is not None and s.events_total and not s.waiting and s.events_done == s.events_total %}
+              <div class="text-success mt-1" style="font-size:.72rem">
+                <i class="fas fa-check-circle me-1"></i>Matukio yote yamekamilika</div>
+              {% endif %}
+            </div>
+            {% endif %}
+
+            {% if s.is_count %}
+            <form method="post" action="{% url 'ess_tracker:ess_subtask_count' s.st.id %}"
+                  class="mt-1 d-flex align-items-center gap-1 flex-wrap">
+              {% csrf_token %}
+              <span class="small text-muted">Nukuu:</span>
+              <input type="number" step="any" min="0" name="count_done"
+                     value="{{ s.count_done|floatformat:'-1' }}"
+                     class="form-control form-control-sm" style="width:72px">
+              <span class="small text-muted">kati ya</span>
+              <input type="number" step="any" min="0" name="count_target"
+                     value="{{ s.count_target|floatformat:'-1' }}"
+                     class="form-control form-control-sm" style="width:72px"
+                     title="Jumla ya nukuu za mwaka (mf. 7)">
+              <button class="btn btn-sm btn-outline-primary py-0 px-2">Sasisha</button>
+            </form>
             {% endif %}
           </td>
         </tr>
