@@ -223,6 +223,7 @@ h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
           </div>
           <div class="d-flex align-items-center gap-3" style="display:flex;align-items:center;gap:12px;">
             <span class="badge {% if r.status == 'done' %}done{% elif r.status == 'error' %}error{% else %}running{% endif %}">{{ r.get_status_display }}</span>
+            {% if r.status == 'error' and r.error_step %}<span class="badge error" title="hatua iliyovunjika">{{ r.error_step }}</span>{% endif %}
             <span>{% if r.saved %}<i class="fas fa-check text-success me-1"></i>{{ r.saved }}{% endif %}</span>
             <a class="link" href="{% url 'ess_tracker:ess_fill_status' r.id %}">{% if LANG == 'sw' %}Angalia{% else %}View{% endif %}</a>
           </div>

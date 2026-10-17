@@ -107,6 +107,14 @@
   <i class="fas fa-spinner fa-spin me-2"></i>Kujaza kunafanyika — bonyeza hapa kuangalia...
 </a>
 {% endif %}
+
+{% if latest_run and latest_run.status == 'error' %}
+<a class="alert alert-danger d-block small text-decoration-none"
+   href="{% url 'ess_tracker:ess_fill_status' latest_run.id %}">
+  <i class="fas fa-triangle-exclamation me-2"></i>
+  Kujaza kwa mara ya mwisho <b>kumeshindwa</b>{% if latest_run.error_step %} (hatua: <b>{{ latest_run.error_step }}</b>){% endif %} — bonyeza kuona maelezo/picha.
+</a>
+{% endif %}
 </div>
 
 <!-- ══ 2. HATUA KUU: JAZA ══ -->

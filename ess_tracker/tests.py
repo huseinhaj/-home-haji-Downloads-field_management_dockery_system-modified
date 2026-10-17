@@ -765,6 +765,12 @@ class ErrorFeedbackUITests(TestCase):
         self.assertIn('/media/ess_artifacts/run_1_x.png', body)
         self.assertIn('/media/ess_artifacts/run_1_x.html', body)
 
+    def test_home_shows_error_banner_with_step(self):
+        body = self.client.get('/ess/').content.decode()
+        self.assertIn('kumeshindwa', body)
+        self.assertIn('subtasks_table', body)
+        self.assertIn(f'/ess/fill/{self.run.id}/', body)
+
 
 class EssProbeCommandTests(TestCase):
     """ess_probe: exit 1 + artifacts pale selector inapobadilika."""
