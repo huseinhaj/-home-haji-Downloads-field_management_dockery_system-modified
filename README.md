@@ -183,12 +183,15 @@ python manage.py ess_approve --all --dry-run     # onyesha tu (bila Verify)
 
 **Kiotomatiki:**
 > * **Railway (service moja ya web):** kipanga-saa kilichopachikwa
->   **`ess_approve_scheduler`** huthibitisha kila siku **20:00 EAT** (huzimwa kwa
->   `ESS_EMBED_APPROVER=0`; huwaka kiotomatiki kwenye `RAILWAY_*`). Log:
->   `/tmp/ess_approve_scheduler.log`.
+>   **`ess_approve_scheduler`** huthibitisha kila siku **22:00 EAT** (saa 10
+>   jioni; huzimwa kwa `ESS_EMBED_APPROVER=0`; huwaka kiotomatiki kwenye
+>   `RAILWAY_*`). Log: `/tmp/ess_approve_scheduler.log`.
 > * **docker-compose/VPS yenye beat:** `CELERY_BEAT_SCHEDULE` ina
->   **`ess-approve-daily`** (20:00 EAT) → `approve_due` → foleni **`essfill`**
+>   **`ess-approve-daily`** (22:00 EAT) → `approve_due` → foleni **`essfill`**
 >   (`run_ess_approve`). Hakikisha worker wa foleni `essfill` anaendesha.
+> * **Kipindi:** kwa kila mkuu — `auto_approve_weeks` = **0 (kila siku)**,
+>   **1 (kila wiki)** au **2 (kila wiki mbili)**; chagua kwenye ukurasa wa
+>   kuidhinisha. Dry-runs (Onyesho tu) **hazihesabiwi** kwenye ratiba.
 
 **Historia ya kujaza** (`/ess/fill/log/`) inaonyesha kila run ikiwa na safu
 **Aina** (`kind`: Kujaza/Sawazisha/Tuma/Soma/Kuidhinisha) na **Chanzo** (`source`:

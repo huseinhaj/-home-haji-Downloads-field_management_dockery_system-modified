@@ -131,11 +131,11 @@ class ProfileForm(forms.ModelForm):
     auto_approve_weeks = forms.ChoiceField(
         label='Kuidhinisha (verify) kiotomatiki mara ngapi?',
         required=False,
-        choices=[(1, 'Kila wiki'), (2, 'Kila wiki mbili')],
+        choices=[(0, 'Kila siku'), (1, 'Kila wiki'), (2, 'Kila wiki mbili')],
         widget=forms.Select(attrs={'class': 'form-select'}),
         help_text='Kwa wakuu/kiongozi (approver): mfumo huzinduliwa kila siku '
-                  '18:00 EAT (baada ya saa za kazi) na kuidhinisha kwa kipindi '
-                  'hiki — wiki 1 au wiki 2.')
+                  '22:00 EAT (baada ya saa za kazi) na kuidhinisha kwa kipindi '
+                  'hiki — kila siku, wiki 1 au wiki 2.')
 
     holidays = forms.ModelMultipleChoiceField(
         label='Likizo (chagua zinazohusu mwaka huu)',

@@ -329,17 +329,24 @@ def _approve_one(prof, dry_run, _log):
 
 
 def approve_interval_days(profile) -> int:
-    """Kipindi cha auto-approve kwa profile kwa siku (wiki 1 = 7)."""
-    weeks = int(getattr(profile, 'auto_approve_weeks', 1) or 1)
-    return max(1, weeks) * 7
+    """Kipindi cha auto-approve kwa profile kwa siku (0 = kila siku, wiki 1 = 7)."""
+    try:
+        weeks = int(getattr(profile, 'auto_approve_weeks', 1))
+    except (TypeError, ValueError):
+        weeks = 1
+    return max(0, weeks) * 7
 
 
 def approve_last_auto(profile_id):
-    """Run ya mwisho ya auto-approve ya profile (au None)."""
+    """Run ya mwisho ya auto-approve ya profile (au None).
+
+    Dry-runs (jaribio tu, halijakubali Verify) HUPUZWA — vinginevyo jaribio
+    la [DRY-RUN] lingeangusha ratiba nzima ya wiki/ziki bila kuona.
+    """
     from .models import EssFillRun
     return EssFillRun.objects.filter(
         profile_id=profile_id, kind='approve', source='auto'
-    ).order_by('-started').first()
+    ).exclude(log__startswith='[DRY-RUN]').order_by('-started').first()
 
 
 def approve_due_for(profile, now=None) -> bool:
@@ -367,7 +374,8 @@ def approve_next_due(profile):
     if last is None or last.started is None:
         return None
     last_day = last.started.astimezone(_eat_tz()).date()
-    return last_day + timedelta(days=approve_interval_days(profile))
+    # Kila siku (kipindi=0): ijayo ni kesho — si tarehe ile ile ya approve.
+    return last_day + timedelta(days=max(approve_interval_days(profile), 1))
 
 
 @shared_task(bind=True, time_limit=120, soft_time_limit=100)

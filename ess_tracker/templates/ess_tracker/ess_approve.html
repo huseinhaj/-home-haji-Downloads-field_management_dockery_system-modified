@@ -193,7 +193,7 @@ h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
           <i class="fas fa-calendar-week"></i>{% if LANG == 'sw' %}Kuidhinisha kiotomatiki{% else %}Auto-approve{% endif %}
         </h5>
         <div class="sect-sub">
-          {% if LANG == 'sw' %}Chagua kipindi. Mfumo huzinduliwa kila siku 18:00 EAT (baada ya saa za kazi) na hufanya approve tu kipindi kinapofika.{% else %}Choose an interval. The system runs daily at 18:00 EAT (after working hours) and approves only when the interval is due.{% endif %}
+          {% if LANG == 'sw' %}Chagua kipindi. Mfumo huzinduliwa kila siku 22:00 EAT (saa 10 jioni) na hufanya approve tu kipindi kinapofika.{% else %}Choose an interval. The system runs daily at 22:00 EAT and approves only when the interval is due.{% endif %}
           {% if approve_next_due %} {% if LANG == 'sw' %}Ijayo:{% else %}Next:{% endif %} <b>{{ approve_next_due|date:'d M Y' }}</b>.{% endif %}
         </div>
         <form method="post" action="{% url 'ess_tracker:ess_approve_schedule' %}">
@@ -201,6 +201,7 @@ h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
           <div style="display:flex;gap:10px;align-items:stretch;">
             <select name="auto_approve_weeks"
                     style="flex:1;border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:14px;background:#fff;">
+              <option value="0" {% if profile.auto_approve_weeks == 0 %}selected{% endif %}>{% if LANG == 'sw' %}Kila siku{% else %}Every day{% endif %}</option>
               <option value="1" {% if profile.auto_approve_weeks == 1 %}selected{% endif %}>{% if LANG == 'sw' %}Kila wiki{% else %}Every week{% endif %}</option>
               <option value="2" {% if profile.auto_approve_weeks == 2 %}selected{% endif %}>{% if LANG == 'sw' %}Kila wiki mbili{% else %}Every two weeks{% endif %}</option>
             </select>

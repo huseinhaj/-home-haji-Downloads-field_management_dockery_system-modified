@@ -68,13 +68,13 @@ Kituo: `ess_tracker/essapprove.py` — login, nenda department report ya mkuu, f
 ### Tasks na Scheduler
 `ess_tracker/tasks.py`:
 - `run_ess_fill/run_ess_sync/run_ess_push/run_ess_read/run_ess_approve` — async (queue='essfill', timeouts).
-- `approve_interval_days`, `approve_last_auto`, `approve_due_for` (si kurudia siku moja, na kizingiti), `approve_next_due`.
+- `approve_interval_days` (0=kila siku, wiki 1=7, wiki 2=14), `approve_last_auto` (**hupuuzwa dry-runs** — jaribio la [DRY-RUN] halihesabiwi), `approve_due_for` (si kurudia siku moja, na kizingiti), `approve_next_due`.
 - `approve_due` — chagua approvers `approver_enabled=True, ess_ready=True` walio `due_for`.
 - `run_approve_inline(profiles=None, only_due=False)` — "humuhumu ndani ya process" (inline); sasa na **thread concurrency** (`_approve_concurrency`, env `ESS_APPROVE_CONCURRENCY`, default 3, max 8), kila profile kwenye thread yake, `connection.close()` mwisho.
 - `auto_fill_due`, `run_auto_fill_inline`.
 
 Management commands:
-- `ess_approve_scheduler --hour 18 --catch-up` — embedded inline approver, default saa 18 (EAT).
+- `ess_approve_scheduler --hour 22 --catch-up` — embedded inline approver, default saa 22 (EAT).
 - `ess_scheduler` — embedded auto-fill inline (default 06:30).
 - `ess_approve`, `ess_auto_fill` — CLI.
 - `ess_key_check`, `ess_set_password`, `ess_enc_key`.
@@ -94,6 +94,7 @@ Management commands:
 | Verify/approve haikuhesabu kwa usahihi, loop isiyoisha au hazijatambuliwa | `_verify_submitted_in_details` hurudi `(verified, remaining)`, `MAX_ROUNDS=500`; `_process_main_row` hukubali 'Approve'/'Approve Progress'; `_next_page` imeboresha selectors; log inaonyesha `HAZIJATHIBITISHWA (N)`. | `9087a4c0` |
 | ESS models hazionekani kwenye `/admin/` (custom admin site) | Kusajili TeacherProfile/Task/SubTask/WeekEntry/EssFillRun/AcademicCalendar pia kwenye `field_app.admin.custom_admin_site` (katika `ess_tracker/admin.py`). | `c899918a` |
 | Hitaji: auto-approve kila wiki 1 au 2, kila siku 18:00 EAT | Model `auto_approve_weeks`, migration 0019, helpers (`approve_interval_days`, `approve_last_auto`, `approve_due_for`, `approve_next_due`), `approve_due` inatumia interval per-profile na kizingiti (si kurudia siku moja), scheduler default hour 18, beat `ess-approve-daily` hour 18, UI form kwenye approve page + `ess_approve_schedule` view, docker-entrypoint ujumbe. | `db31fc4e` |
+| Auto-approve haikufanya kazi jana (16 Okt) — ilibidi mkuu abofye "Idhinisha" mwenyewe | Sababu 2: (1) **dry-run ilihesabiwa kama approve** — jaribio la [DRY-RUN] la 15 Okt 07:00 EAT lilifanya `approve_last_auto` irudie (run #55), ikazima ratiba mpaka 29 Okt; (2) kipindi kilikuwa **wiki mbili**. Marekebisho: `approve_last_auto` sasa `.exclude(log__startswith='[DRY-RUN]')`; chaguo jipya **`auto_approve_weeks=0` (kila siku)** kwenye model/form/UI/views; kiendesha/beat/README yote saa **22:00 EAT** (jibu la mtumiaji: "saa 10 jioni"). | — |
 | Kasi kwa wakuu wengi | `run_approve_inline` inatumia `ThreadPoolExecutor` (concurrency configurable), `_approve_one` kwa kila mkuu, `connection.close()` kwa thread, env `ESS_APPROVE_CONCURRENCY` (default 3, max 8). Aggregation sahihi ya verified/processed/failed. | `976d83f1` |
 | UI ilikuwa na vitu vingi inakera watumiaji | Mpangilio upya wa `ess_home.html` na `ess_approve.html`: vichwa wazi (Hali, Hatua kuu, Maendeleo, Zana za ziada, Uhidhinishaji), kitufe kikuu mbele, zana za hiari zimepangika vizuri. Kila kipengele kimebaki. | `d21adac4` |
 | Django multi-line `{# #}` comment inaonekana kwenye header | Badilisha kwenda `{% comment %}...{% endcomment %}` kwenye `_ess_install.html` (Django 5.2 haitupi multi-line `{# #}`). | `1c2f7af1` |
@@ -131,11 +132,11 @@ Management commands:
 ### Beat (Celery)
 `field_management/settings.py:CELERY_BEAT_SCHEDULE`:
 - `ess-auto-fill-daily` — 06:30 EAT (crontab)
-- `ess-approve-daily` — 18:00 EAT (crontab) — **imebadilishwa saa 18**.
+- `ess-approve-daily` — 22:00 EAT (crontab) — **imebadilishwa saa 22** (saa 10 jioni).
 
 ### Embedded schedulers
 - `ess_scheduler` (mgmt cmd) — inline auto-fill kila siku 06:30.
-- `ess_approve_scheduler` (mgmt cmd) — inline approve kila siku 18:00, `--hour`, `--catch-up`, `--once`. Hupitisha `only_due=True`.
+- `ess_approve_scheduler` (mgmt cmd) — inline approve kila siku 22:00, `--hour`, `--catch-up`, `--once`. Hupitisha `only_due=True`.
 
 ### Docker
 - Multi-stage (builder/runtime), Playwright Chromium pre-installed.
@@ -150,8 +151,8 @@ Management commands:
 2. **Wasifu:** `/ess/profile/` — kuweka ess_username/ess_password, kalenda shule, entries_per_week, holidays.
 3. **Kujaza:** `/ess/` (nyumbani) — bofya **"Jaza ESS sasa"**. Hutoa POST `/ess/fill/` → `ess_fill` view au `run_ess_fill` (queue). Huangalia sub-tasks zilizochaguliwa au zote, inasoma hali kutoka ESS na kuwasilisha.
 4. **Kuidhinisha (mkono):** `/ess/approve/run/` (POST) → `ess_approve_now` → `run_ess_approve` (queue) au inline. Inapata approvers na kufungua ESS.
-5. **Auto-approve:** kila siku **18:00 EAT** — beat au embedded scheduler inaita `approve_due` → kwa approvers walio `due_for` hutoa `run_ess_approve` (queue). Concurrency inline (ThreadPool) kwa embedded.
+5. **Auto-approve:** kila siku **22:00 EAT** — beat au embedded scheduler inaita `approve_due` → kwa approvers walio `due_for` (`auto_approve_weeks`: 0=kila siku, 1=kila wiki, 2=kila wiki mbili) hutoa `run_ess_approve` (queue). Concurrency inline (ThreadPool) kwa embedded.
 6. **Onboarding approver:** admin (custom `/admin/`) → ESS e-Tendaji Tracker → Teacher profiles → chagua → action **"Washa kuidhinisha kwa waliochaguliwa"**. Kitufe kinaonekana kwenye nyumbani/approve.
 
 ## 6. Hitimisho
-Tumeunda mfumo imara wa ESS (fill + approve) na kuiratibu vizuri (mpangilio wa UI msafi kwa walimu), tumeongeza automation yenye kipindi (wiki 1/2) na trigger wa kila siku 18:00 EAT, tukaboresha kasi kwa concurrency, tukarekesha matatizo ya Docker/trixie, key ya crypto, approve selectors/data detection, na admin registration. Hivi karibuni tume**tenganisha kalenda na sub-task**: kalenda sasa ni "total score" tu (inayokua kwa miezi/wiki, ikilinganishwa na jumla ya maendeleo kwenye nyumbani + arifa 07:15), huku kila sub-task ikifuata ratiba yake mwenyewe. Documentation hii inasambaza muundo, suluhisho na namna ya kuendeshwa kwa usahihi.
+Tumeunda mfumo imara wa ESS (fill + approve) na kuiratibu vizuri (mpangilio wa UI msafi kwa walimu), tumeongeza automation yenye kipindi (kila siku/wiki 1/wiki 2) na trigger wa kila siku 22:00 EAT, tukaboresha kasi kwa concurrency, tukarekesha matatizo ya Docker/trixie, key ya crypto, approve selectors/data detection, na admin registration. Hivi karibuni tume**tenganisha kalenda na sub-task**: kalenda sasa ni "total score" tu (inayokua kwa miezi/wiki, ikilinganishwa na jumla ya maendeleo kwenye nyumbani + arifa 07:15), huku kila sub-task ikifuata ratiba yake mwenyewe. Documentation hii inasambaza muundo, suluhisho na namna ya kuendeshwa kwa usahihi.

@@ -636,13 +636,14 @@ def ess_approve_schedule(request):
         wk = int(request.POST.get('auto_approve_weeks'))
     except (TypeError, ValueError):
         wk = None
-    if wk not in (1, 2):
-        messages.error(request, 'Chagua kipindi: kila wiki au kila wiki mbili.')
+    if wk not in (0, 1, 2):
+        messages.error(request, 'Chagua kipindi: kila siku, kila wiki au kila wiki mbili.')
         return redirect('ess_tracker:ess_approve')
     profile.auto_approve_weeks = wk
     profile.save(update_fields=['auto_approve_weeks'])
     messages.success(request, 'Kipindi cha kuidhinisha kiotomatiki kimehifadhiwa: '
-                              + ('kila wiki.' if wk == 1 else 'kila wiki mbili.'))
+                              + {0: 'kila siku.', 1: 'kila wiki.',
+                                 2: 'kila wiki mbili.'}[wk])
     return redirect('ess_tracker:ess_approve')
 
 

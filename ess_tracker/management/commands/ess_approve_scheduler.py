@@ -6,7 +6,7 @@ ya walimu.
 
 Mifano:
     python manage.py ess_approve_scheduler --once            # mara moja sasa
-    python manage.py ess_approve_scheduler --hour 18 --minute 0
+    python manage.py ess_approve_scheduler --hour 22 --minute 0
     python manage.py ess_approve_scheduler --once --dry-run
 """
 import time as _time
@@ -23,9 +23,9 @@ class Command(BaseCommand):
             'wakuu waliochaguliwa — HUMU ndani (bila celery worker).')
 
     def add_arguments(self, parser):
-        parser.add_argument('--hour', type=int, default=18,
-                            help='Saa ya EAT (default 18 — jioni, baada ya '
-                                 'saa za kazi).')
+        parser.add_argument('--hour', type=int, default=22,
+                            help='Saa ya EAT (default 22 — saa 10 jioni, baada '
+                                 'ya saa za kazi).')
         parser.add_argument('--minute', type=int, default=0,
                             help='Dakika (default 0).')
         parser.add_argument('--once', action='store_true',
