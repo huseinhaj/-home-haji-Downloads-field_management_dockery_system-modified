@@ -15,7 +15,8 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.test import SimpleTestCase, TestCase, override_settings
+from django.test import (SimpleTestCase, TestCase, TransactionTestCase,
+                         override_settings)
 
 from ess_tracker import compute as C
 from ess_tracker.essfill import CACHE_PREFIX, subtask_snapshot
@@ -837,3 +838,72 @@ class EssProbeCommandTests(TestCase):
         data = json.loads(out.getvalue())
         self.assertEqual(data['summary']['passed'], 1)
         self.assertEqual(data['checks'][0]['name'], 'open')
+
+
+class OrmOffloadTests(TransactionTestCase):
+    """Kuhifadhi ndani ya `sync_playwright` lazima kupitia `_orm_offload`.
+
+    Playwright sync API huendesha asyncio loop kwenye thread ile ile ya
+    kazi, hivyo Django inakataa ORM ya moja kwa moja (Run #74 ilishindwa
+    hapa baada ya sub-task zote kujazwa).
+    """
+
+    def setUp(self):
+        U = get_user_model()
+        u = U.objects.create_user('mw_offload', password='x')
+        self.profile = TeacherProfile.objects.create(
+            user=u, full_name='M Offload', ess_username='mw_offload',
+            ess_password='x')
+
+    @contextmanager
+    def _running_loop(self):
+        import asyncio
+        try:
+            import greenlet
+        except ImportError:
+            self.skipTest('greenlet haipo')
+            return
+        loop = asyncio.new_event_loop()
+        parent = greenlet.getcurrent()
+        holder = {}
+
+        async def boot():
+            fut = loop.create_future()
+            holder['fut'] = fut
+            parent.switch()
+            await fut
+
+        worker = greenlet.greenlet(lambda: loop.run_until_complete(boot()))
+        worker.switch()
+        try:
+            yield loop
+        finally:
+            holder['fut'].set_result(None)
+            worker.switch()
+            loop.close()
+
+    def test_direct_save_is_rejected_inside_running_loop(self):
+        import asyncio
+
+        from django.core.exceptions import SynchronousOnlyOperation
+
+        run = EssFillRun.objects.create(profile=self.profile, status='running')
+        with self._running_loop() as loop:
+            self.assertIs(asyncio.get_running_loop(), loop)
+            with self.assertRaises(SynchronousOnlyOperation):
+                run.save()
+
+    def test_orm_offload_saves_and_returns_inside_running_loop(self):
+        from ess_tracker.essfill import _orm_offload
+
+        run = EssFillRun.objects.create(profile=self.profile, status='running')
+        with self._running_loop():
+            run.status = 'done'
+            run.log = 'zote zimejazwa'
+            _orm_offload(run.save, update_fields=['log', 'status'])
+            status = _orm_offload(
+                lambda: EssFillRun.objects.filter(pk=run.pk)
+                .values_list('status', flat=True).get())
+        self.assertEqual(status, 'done')
+        run.refresh_from_db()
+        self.assertEqual(run.log, 'zote zimejazwa')

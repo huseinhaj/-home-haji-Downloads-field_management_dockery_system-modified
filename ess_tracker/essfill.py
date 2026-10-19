@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 import time
 from datetime import date
 from difflib import SequenceMatcher
@@ -1077,6 +1078,37 @@ def _dialog_diagnostics(page):
 
 
 # ── Mtiririko mkuu ───────────────────────────────────────────────────
+def _orm_offload(fn, *args, **kwargs):
+    """Himiza mwito wa ORM (`fn`) kwenye thread nyingine na rudi matokeo.
+
+    Playwright sync API inashikilia running asyncio loop kwenye thread hii,
+    hivyo Django inakataa ORM hapa (SynchronousOnlyOperation: "You cannot
+    call this from an async context"). Thread mpya haina loop, kwa hivyo
+    ORM hufanya kazi; hitilafu za ndani hurudi kama zilivyokuwa.
+    """
+    from django.db import connections
+
+    box = {}
+
+    def _target():
+        try:
+            box['result'] = fn(*args, **kwargs)
+        except BaseException as exc:  # noqa: BLE001 - hurudi kwa mwitaji
+            box['error'] = exc
+        finally:
+            try:
+                connections.close_all()
+            except Exception:  # noqa: BLE001
+                pass
+
+    worker = threading.Thread(target=_target, daemon=True)
+    worker.start()
+    worker.join()
+    if 'error' in box:
+        raise box['error']
+    return box.get('result')
+
+
 def _set_progress(run_id, **kw):
     data = cache.get(CACHE_PREFIX + str(run_id)) or {}
     data.update(kw)
@@ -1377,7 +1409,7 @@ def run_fill(profile_id: int, run_id: int) -> dict:
             run.skipped = skipped
             run.not_found = not_found
             run.log = '\n'.join(log)
-            run.save()
+            _orm_offload(run.save)
             for _st, text, _note, _p, _t in remaining:
                 emit(f'# haijapatikana: {text[:60]}')
             _set_progress(run_id, done=True, status='done', saved=saved,
@@ -2044,7 +2076,7 @@ def run_read(profile_id: int, run_id: int) -> dict:
         _set_progress(run_id, msg=msg, log=list(log), done=False)
         try:
             run.log = '\n'.join(log)
-            run.save(update_fields=['log'])
+            _orm_offload(run.save, update_fields=['log'])
         except Exception:
             pass
 
@@ -2159,7 +2191,7 @@ def run_sync(profile_id: int, run_id: int) -> dict:
         _set_progress(run_id, msg=msg, log=list(log), done=False)
         try:
             run.log = '\n'.join(log)
-            run.save(update_fields=['log'])
+            _orm_offload(run.save, update_fields=['log'])
         except Exception:
             pass
 
@@ -2418,7 +2450,7 @@ def run_push(profile_id: int, run_id: int) -> dict:
         _set_progress(run_id, msg=msg, log=list(log), done=False)
         try:
             run.log = '\n'.join(log)
-            run.save(update_fields=['log'])
+            _orm_offload(run.save, update_fields=['log'])
         except Exception:
             pass
 
