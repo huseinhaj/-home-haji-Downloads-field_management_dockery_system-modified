@@ -37,6 +37,9 @@ KEEP_DEFAULT = 200
 # Error class / ujumbe → maelezo ya kimtongozi kwa admin (selectors yapi
 # yanahitaji kurekebishwa). Thamani ya kwanza inashinda.
 _HINTS = [
+    ('spa haijafunguka',
+     'ESS SPA haijafunguka (Angular haijapakia/yamechelewa) — SI fomu '
+     'imebadilika; angalia request zilizoshindwa kwenye kosa.'),
     ('fomu ya login', 'Login haikufunguka — ESS imebadilisha fomu ya login.'),
     ('wrong credentials', 'Jina/nywila ya ESS si sahihi (au imebadilika).'),
     ('login failed', 'Jina/nywila ya ESS si sahihi (au imebadilika).'),

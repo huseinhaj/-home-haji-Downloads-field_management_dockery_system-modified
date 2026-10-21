@@ -12,6 +12,7 @@ import json
 import re
 import threading
 import time
+from contextlib import contextmanager
 from datetime import date
 from difflib import SequenceMatcher
 
@@ -31,6 +32,23 @@ BASE_URL = 'https://ess.utumishi.go.tz/'
 SIGNIN_URL = 'https://ess.utumishi.go.tz/sessions/signin'
 DASHBOARD_URL = 'https://ess.utumishi.go.tz/dashboard'
 SUBTASKS_URL = 'https://ess.utumishi.go.tz/pepmis/implementation/progress'
+
+# Muda wa kusubiri fomu ya login. ESS (Angular) huonyesha ukurasa mara moja
+# lakini JITI ya fomu inachukua 15-60+ sekunde (ilipimwa 21 Okt 2026:
+# 16s/31s/58s/62s). Kipindi cha zamani (25s kisha reload) kilikatiza
+# bootstrap kila mara render inapochelewa zaidi ya 25s — chanzo cha Run #79.
+LOGIN_FORM_S = 75    # kipindi cha kwanza: subiri BILA kureload
+LOGIN_RELOAD_S = 60  # kipindi cha pili: baada ya reload MOJA
+
+# Vipimo vya fomu ya login (vinatumwa na `_auto_login` na `ess_probe`).
+LOGIN_FORM_JS = ("() => [\"input[formcontrolname='email']\","
+                 "\"input[name='email']\", \"input[type='email']\","
+                 "\"input[formcontrolname='username']\", \"input[name='username']\","
+                 "\"input[id='username']\", \"input[id='email']\","
+                 "\"input[type='password']\"].some(sel =>"
+                 " [...document.querySelectorAll(sel)].some(e => {"
+                 " const r = e.getBoundingClientRect();"
+                 " return r.width > 50 && r.height > 5; }))")
 
 
 def _parse_id_list(raw) -> set:
@@ -169,50 +187,122 @@ def _click_login(page, pw_el) -> None:
         pw_el.press('Enter')
 
 
+def _login_form_visible(page) -> bool:
+    """Fomu ya login imefunguka (input yenye ukubwa halisi)."""
+    try:
+        return bool(page.evaluate(LOGIN_FORM_JS))
+    except Exception:
+        return False
+
+
+def _has_token(page) -> bool:
+    """Token ya kikao ipo kwenye localStorage."""
+    try:
+        return bool(page.evaluate("() => !!localStorage.getItem('token')"))
+    except Exception:
+        return False
+
+
+def _angular_booted(page) -> bool:
+    """True kama Angular imekamilisha render (markup ya `_ngcontent`).
+
+    Hutofautisha 'SPA haijafunguka' (JS haijapakia/kushindwa) na
+    'ESS imebadilisha fomu ya login' (Angular ipo, fomu haipo).
+    """
+    try:
+        return bool(page.evaluate(
+            "() => { const r = document.querySelector('app-root');"
+            " if (!r) return false;"
+            " const h = r.innerHTML || '';"
+            " return h.includes('_ngcontent') || h.includes('_nghost')"
+            "   || h.includes('ng-version') || h.includes('formcontrolname')"
+            "   || h.includes('mat-mdc'); }"))
+    except Exception:
+        return False
+
+
+@contextmanager
+def _watch_network(page):
+    """Kusanya request zilizoshindwa/HTTP>=400 wakati wa kusubiri fomu.
+
+    Huondolewa wakati wa kufunga (`remove_listener`) ili usikusanye kwa
+    mara nyingi pale `_auto_login` inapoitwa (fill/approve/probe).
+    """
+    bad = []
+
+    def _on_failed(req):
+        why = req.failure or 'imeshindwa'
+        url = req.url or ''
+        if 'ERR_ABORTED' in why or url.startswith('data:') or 'favicon' in url:
+            return
+        bad.append('%s %s' % (why, url[:90]))
+
+    def _on_response(resp):
+        url = resp.url or ''
+        if resp.status >= 400 and 'favicon' not in url:
+            bad.append('HTTP %s %s' % (resp.status, url[:90]))
+
+    page.on('requestfailed', _on_failed)
+    page.on('response', _on_response)
+    try:
+        yield bad
+    finally:
+        for event, fn in (('requestfailed', _on_failed),
+                          ('response', _on_response)):
+            try:
+                page.remove_listener(event, fn)
+            except Exception:  # noqa: BLE001
+                pass
+
+
+def _login_missing_msg(page, net_bad) -> str:
+    """Kosa la login lenye utambuzi: SPA haijafunguka VS fomu imebadilika."""
+    url = getattr(page, 'url', '') or ''
+    seen = ' | '.join(dict.fromkeys(net_bad))[:170] or 'hakuna'
+    if _angular_booted(page):
+        return ('Fomu ya login ya ESS haikuonekana (URL: %s) — Angular '
+                'imefunguka bila fomu: ESS imebadilisha fomu ya login. '
+                'Request zilizoshindwa: %s' % (url, seen))
+    return ('ESS SPA haijafunguka (Angular haijafunguka) ndani ya %ds — '
+            'JS haijapakia/yamechelewa, SI fomu imebadilika. URL: %s | '
+            'request zilizoshindwa: %s | kimeonekana: %s'
+            % (LOGIN_FORM_S + LOGIN_RELOAD_S, url, seen,
+               _visible_text(page, 120) or '(tupu)'))
+
+
 def _auto_login(page, username, password) -> bool:
     """Rudi True — login imetengenezwa au tayari tumelogin."""
-    try:
-        if page.evaluate("() => !!localStorage.getItem('token')"):
-            return True
-    except Exception:
-        pass
+    if _has_token(page):
+        return True
 
-    # Subiri fomu ya login (Angular inaichelewa kuionesha); reload kama lazima.
-    login_js = ("() => [\"input[formcontrolname='email']\","
-                "\"input[name='email']\", \"input[type='email']\","
-                "\"input[formcontrolname='username']\", \"input[name='username']\","
-                "\"input[id='username']\", \"input[id='email']\","
-                "\"input[type='password']\"].some(sel =>"
-                " [...document.querySelectorAll(sel)].some(e => {"
-                " const r = e.getBoundingClientRect();"
-                " return r.width > 50 && r.height > 5; }))")
+    # Subiri fomu BILA kureload kwanza (Angular inauchukua muda: 15-60s).
+    # Reload MOJA tu baada ya kipindi cha kwanza — kureload wakati bado
+    # inapakia kuanzisha saa upya na hushindwa daima (Run #79).
     found = False
-    for attempt in range(3):
-        try:
-            page.wait_for_function(login_js, timeout=25000)
-            found = True
-            break
-        except Exception:
-            page.wait_for_timeout(2000)
-            try:
-                if page.evaluate("() => !!localStorage.getItem('token')"):
-                    return True
-            except Exception:
-                pass
-            try:
-                page.reload(wait_until='commit')
-            except Exception:
+    with _watch_network(page) as net_bad:
+        for attempt, budget in enumerate((LOGIN_FORM_S, LOGIN_RELOAD_S)):
+            if attempt:
                 try:
-                    _goto_retry(page, page.url)
-                except Exception:
-                    pass
-    if not found:
-        try:
-            if page.evaluate("() => !!localStorage.getItem('token')"):
-                return True
-        except Exception:
-            pass
-        raise RuntimeError('Fomu ya login ya ESS haikuonekana (URL: %s).' % page.url)
+                    page.reload(wait_until='commit', timeout=60000)
+                except Exception:  # noqa: BLE001
+                    try:
+                        _goto_retry(page, page.url)
+                    except Exception:  # noqa: BLE001
+                        pass
+            deadline = time.time() + budget
+            while time.time() < deadline:
+                if _login_form_visible(page):
+                    found = True
+                    break
+                if _has_token(page):
+                    return True
+                page.wait_for_timeout(1000)
+            if found:
+                break
+        if _has_token(page):
+            return True
+        if not found:
+            raise RuntimeError(_login_missing_msg(page, net_bad))
 
     if not username or not password:
         raise RuntimeError('Mwalimu hajaweka ESS username na password.')

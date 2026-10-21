@@ -19,6 +19,7 @@ from django.test import (SimpleTestCase, TestCase, TransactionTestCase,
                          override_settings)
 
 from ess_tracker import compute as C
+from ess_tracker import essfill as F
 from ess_tracker.essfill import CACHE_PREFIX, subtask_snapshot
 from ess_tracker.models import (EssFillRun, SubTask, SubTaskEvent, Task,
                                  TeacherProfile)
@@ -501,6 +502,101 @@ class ArtifactsHelperTests(SimpleTestCase):
                 removed = prune_artifacts(keep=2)
                 self.assertEqual(removed, 4)
                 self.assertTrue(keep.exists())
+
+
+class _LoginPage:
+    """Ukurasa wa ESS wa kuigwa kwa majaribio ya `_auto_login`."""
+
+    def __init__(self, url='https://ess.utumishi.go.tz/sessions/signin',
+                 token=False, form=False, booted=False,
+                 text='Please wait ... loading'):
+        self.url = url
+        self._token = token
+        self._form = form
+        self._booted = booted
+        self._text = text
+        self.reloads = 0
+
+    def evaluate(self, js):
+        if 'localStorage' in js:
+            return self._token
+        if 'app-root' in js:
+            return self._booted
+        return self._form
+
+    def inner_text(self, selector):
+        return self._text
+
+    def wait_for_timeout(self, ms):
+        pass
+
+    def reload(self, **kw):
+        self.reloads += 1
+
+    def on(self, event, fn):
+        pass
+
+    def remove_listener(self, event, fn):
+        pass
+
+    def query_selector_all(self, sel):
+        return []
+
+
+class LoginWaitDiagnosticsTests(SimpleTestCase):
+    """_auto_login: utambuzi wa 'SPA haijafunguka' VS 'fomu imebadilika'.
+
+    Kipindi cha zamani cha 25s + reload kilikatiza bootstrap kila mara ESS
+    inapochelewa (Run #79); sasa subiri ni 75s bila reload kisha reload moja.
+    """
+
+    def test_message_when_spa_never_booted(self):
+        msg = F._login_missing_msg(_LoginPage(booted=False), [])
+        self.assertIn('ESS SPA haijafunguka', msg)
+        self.assertIn('SI fomu imebadilika', msg)
+
+    def test_message_when_angular_booted_without_form(self):
+        msg = F._login_missing_msg(_LoginPage(booted=True), [])
+        self.assertIn('ESS imebadilisha fomu ya login', msg)
+
+    def test_message_includes_failed_requests(self):
+        msg = F._login_missing_msg(
+            _LoginPage(), ['net::ERR_CONNECTION_RESET https://ess/x/main.js'])
+        self.assertIn('net::ERR_CONNECTION_RESET', msg)
+
+    def test_hint_tells_apart_spa_vs_form_change(self):
+        spa = describe_failure(
+            RuntimeError('ESS SPA haijafunguka ndani ya 135s'), 'login', 'u')
+        self.assertIn('SPA haijafunguka', spa['hint'])
+        form = describe_failure(
+            RuntimeError('Fomu ya login ya ESS haikuonekana (URL: x) — '
+                         'ESS imebadilisha fomu ya login.'),
+            'login', 'u')
+        self.assertIn('imebadilisha fomu ya login', form['hint'])
+
+    def test_auto_login_short_circuits_when_token_present(self):
+        self.assertTrue(F._auto_login(_LoginPage(token=True), 'u', 'p'))
+
+    def test_auto_login_no_reload_while_form_arrives(self):
+        page = _LoginPage(form=True)
+        with self.assertRaises(RuntimeError) as ctx:
+            F._auto_login(page, 'u', 'p')
+        self.assertEqual(page.reloads, 0)
+        self.assertIn('fomu ya username', str(ctx.exception))
+
+    def test_auto_login_single_reload_then_spa_error(self):
+        page = _LoginPage(form=False, booted=False)
+        with mock.patch.object(F, 'LOGIN_FORM_S', 0.01), \
+                mock.patch.object(F, 'LOGIN_RELOAD_S', 0.01):
+            with self.assertRaises(RuntimeError) as ctx:
+                F._auto_login(page, 'u', 'p')
+        self.assertEqual(page.reloads, 1)
+        self.assertIn('ESS SPA haijafunguka', str(ctx.exception))
+
+    def test_wait_budgets_cover_slow_ess_render(self):
+        # ESS ilipimwa ikichukua 15-60s kulionyesha fomu (Okt 2026).
+        self.assertGreaterEqual(F.LOGIN_FORM_S, 60)
+        self.assertGreaterEqual(F.LOGIN_RELOAD_S, 45)
 
 
 class EssBrowserCaptureTests(SimpleTestCase):
