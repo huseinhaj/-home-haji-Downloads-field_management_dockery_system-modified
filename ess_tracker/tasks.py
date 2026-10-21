@@ -82,13 +82,39 @@ def _live_only_subtasks(prof) -> str:
     return ','.join(str(i) for i in live)
 
 
+def fill_lease_active(prof, now=None) -> bool:
+    """True kama mfumo bado anaweza kujaza kwa profile hii.
+
+    Mchakato wa moja kwa moja unadhibitiwa na kipindi (lease) cha mkuu:
+    - Mkuu mwenyewe: kipindi chake.
+    - Mwalimu: kipindi cha mkuu wa shule yake. Kama hakuna mkuu (approver)
+      katika shule hiyo, hakuna kizuizi.
+
+    Kipindi kikichisha = mfumo husimama (hakuna kujaza) hadi mkuu aweke
+    muda upya.
+    """
+    from .models import TeacherProfile
+    if getattr(prof, 'approver_enabled', False):
+        return approve_lease_active(prof, now=now)
+    if not prof.school_id:
+        return True
+    approvers = TeacherProfile.objects.filter(
+        school_id=prof.school_id, approver_enabled=True)
+    if not approvers.exists():
+        return True
+    for appr in approvers:
+        if approve_lease_active(appr, now=now):
+            return True
+    return False
+
+
 def auto_fill_decision(prof, today, cal_win, day_start, day_end):
     """(ready, reason) kwa mwalimu mmoja. reason ni '' kama yuko tayari.
 
     Hukumu ile ile hutumika kwenye auto_fill_due NA amri ya usimamizi
     `ess_auto_fill` (ili maamuzi yasitofautiane). Sababu zinazoweza
     kutokea: 'disabled', 'no-window', 'closed', 'not-fill-day', 'already',
-    'locked'.
+    'locked', 'lease-expired'.
     """
     from .compute import entries_per_week
     from .locks import is_locked
@@ -96,6 +122,8 @@ def auto_fill_decision(prof, today, cal_win, day_start, day_end):
 
     if not prof.auto_fill_enabled:
         return False, 'disabled'
+    if not fill_lease_active(prof):
+        return False, 'lease-expired'
     open_d, close_d = cal_win or (prof.school_open, prof.school_close)
     if not (open_d and close_d):
         return False, 'no-window'
@@ -227,7 +255,8 @@ def run_approve_inline(profiles=None, log=None, dry_run=False, only_due=False):
     Hutumika na amri `ess_approve --all` na kiendesha `ess_approve_scheduler`.
 
     Kama `only_due=True`, huchukua wale tu ambao kipindi chao
-    (`auto_approve_weeks`) kimefika — hutumika na kiendesha cha kila siku.
+    (`auto_lease_until`) bado kinaendelea na hawajawahi kuidhinishwa
+    leo — hutumika na kiendesha cha kila siku.
 
     Hurudisha {'date', 'verified', 'processed', 'failed', 'profiles'}.
     """
@@ -329,24 +358,88 @@ def _approve_one(prof, dry_run, _log):
 
 
 def approve_interval_days(profile) -> int:
-    """Kipindi cha auto-approve kwa profile kwa siku (0 = kila siku, wiki 1 = 7)."""
+    """Muda wa kipindi (lease) kwa profile kwa siku (0 = hakuna mwisho)."""
     try:
-        weeks = int(getattr(profile, 'auto_approve_weeks', 1))
+        weeks = int(getattr(profile, 'auto_approve_weeks', 0))
     except (TypeError, ValueError):
-        weeks = 1
+        weeks = 0
     return max(0, weeks) * 7
 
 
 def approve_interval_label(profile) -> str:
-    """Jina la kipindi kwa Kiswahili (kwa kuionyesha kwa mkuu)."""
+    """Jina la muda wa kipindi kwa Kiswahili (kwa kuionyesha kwa mkuu)."""
     days = approve_interval_days(profile)
     if days <= 0:
-        return 'kila siku'
+        return 'kila siku (hakuna mwisho)'
     if days == 7:
-        return 'kila wiki'
+        return 'kwa wiki 1'
     if days == 14:
-        return 'kila wiki mbili'
-    return 'kila wiki %d' % (days // 7)
+        return 'kwa wiki mbili'
+    if days == 28:
+        return 'kwa wiki 4'
+    if days % 28 == 0:
+        return 'kwa miezi %d' % (days // 28)
+    if days % 7 == 0:
+        return 'kwa wiki %d' % (days // 7)
+    return 'kwa siku %d' % days
+
+
+def approve_lease_until(profile):
+    """Mwisho wa kipindi cha mchakato wa moja kwa moja (None = hakuna mwisho)."""
+    return getattr(profile, 'auto_lease_until', None)
+
+
+def approve_lease_expired(profile, now=None) -> bool:
+    """True kama kipindi cha mchakato kimekwisha (mfumo husimama)."""
+    from django.utils import timezone
+    until = approve_lease_until(profile)
+    if until is None:
+        return False
+    now = now or timezone.now()
+    if timezone.is_naive(until):
+        until = timezone.make_aware(until, timezone.get_default_timezone())
+    return now >= until
+
+
+def approve_lease_active(profile, now=None) -> bool:
+    """True kama mfumo unaweza kuendelea kwa moja kwa moja kwa profile hii.
+
+    Ndani ya kipindi: verify (na kujaza) hufanyika KILA SIKU. Kipindi
+    kikichisha: mfumo husimama (hakuna kujaza, hakuna verify) hadi mtumiaji
+    aweke muda upya.
+    """
+    if not getattr(profile, 'approver_enabled', False):
+        return True
+    if approve_interval_days(profile) <= 0:
+        return True  # 'kila siku' = hakuna mwisho
+    return not approve_lease_expired(profile, now=now)
+
+
+def approve_lease_days_left(profile, now=None) -> int:
+    """Siku zilizobaki kwenye kipindi (-1 = hakuna kipindi/imekwisha)."""
+    from django.utils import timezone
+    until = approve_lease_until(profile)
+    if until is None:
+        return -1
+    now = now or timezone.now()
+    if timezone.is_naive(until):
+        until = timezone.make_aware(until, timezone.get_default_timezone())
+    if now >= until:
+        return 0
+    return (until - now).days
+
+
+def start_auto_lease(profile, weeks=None, now=None):
+    """Anza kipindi (lease) mpya kwa profile (muda tayari uliwekwa)."""
+    from datetime import timedelta
+    from django.utils import timezone
+    now = now or timezone.now()
+    if weeks is None:
+        weeks = int(getattr(profile, 'auto_approve_weeks', 0) or 0)
+    weeks = max(0, weeks)
+    profile.auto_lease_set_at = now
+    profile.auto_lease_until = (now + timedelta(weeks=weeks)) if weeks else None
+    return profile
 
 
 def _approve_auto_runs(profile_id):
@@ -385,15 +478,15 @@ def approve_last_auto(profile_id, include_failed=False):
 def approve_due_for(profile, now=None) -> bool:
     """True kama ni wakati wa kuidhinisha kiotomatiki kwa profile hii.
 
-    Heshimu kipindi (`auto_approve_weeks` x wiki). Huzuia pia run ya pili
-    siku hiyo hiyo (catch-up + ratiba hazigongani).
+    Ndani ya kipindi (`auto_lease_until`): kuidhinisha hufanyika KILA SIKU.
+    Kipindi kikikosea: mfumo husimama (False) hadi mtumiaji aweke upya.
 
-    Kipindi hicho hupimwa kutoka run ya mwisho ILIYOFANYIKA ('done'):
-    run iliyoshindwa au iliyosimama haichukui kipindi (mfumo hujaribu
-    siku inayofuata).
+    Pia huzuia run ya pili siku hiyo hiyo (catch-up + ratiba hazigongani).
     """
     from django.utils import timezone
     now = now or timezone.now()
+    if not approve_lease_active(profile, now=now):
+        return False
     today = now.astimezone(_eat_tz()).date()
     last_run = approve_last_run(profile.id)
     if (last_run is not None and last_run.started is not None
@@ -401,29 +494,31 @@ def approve_due_for(profile, now=None) -> bool:
         last_day = last_run.started.astimezone(_eat_tz()).date()
         if last_day >= today:
             return False  # ilikwisha endeshwa (au inaendelea) leo
-    last = approve_last_auto(profile.id)
-    if last is None or last.started is None:
-        return True
-    last_day = last.started.astimezone(_eat_tz()).date()
-    return (today - last_day).days >= approve_interval_days(profile)
+    return True
 
 
-def approve_next_due(profile):
-    """Tarehe inayofuata ya auto-approve (au None kama haijawahi kuendeshwa)."""
+def approve_next_due(profile, now=None):
+    """Tarehe inayofuata ya auto-approve (leo kama bado, kesho kama tayari)."""
     from datetime import timedelta
-    last = approve_last_auto(profile.id)
-    if last is None or last.started is None:
+    from django.utils import timezone
+    now = now or timezone.now()
+    if not approve_lease_active(profile, now=now):
         return None
-    last_day = last.started.astimezone(_eat_tz()).date()
-    # Kila siku (kipindi=0): ijayo ni kesho — si tarehe ile ile ya approve.
-    return last_day + timedelta(days=max(approve_interval_days(profile), 1))
+    today = now.astimezone(_eat_tz()).date()
+    last_run = approve_last_run(profile.id)
+    if (last_run is not None and last_run.started is not None
+            and last_run.status != 'error'
+            and last_run.started.astimezone(_eat_tz()).date() >= today):
+        return today + timedelta(days=1)
+    return today
 
 
 def approve_status(profile, now=None) -> dict:
     """Muhtasari wa hali ya auto-approve ya mkuu (kwa UI na diagnostics).
 
-    Zana: {'weeks', 'interval_days', 'interval_label', 'due', 'next_due',
-    'last_auto', 'last_failed'}.
+    Zana: {'weeks', 'interval_days', 'interval_label', 'lease_until',
+    'lease_set_at', 'lease_active', 'lease_expired', 'lease_days_left',
+    'due', 'next_due', 'last_auto', 'last_failed'}.
     """
     from django.utils import timezone
     now = now or timezone.now()
@@ -432,13 +527,19 @@ def approve_status(profile, now=None) -> dict:
     failed = None
     if last_run is not None and last_run.status == 'error':
         failed = last_run
-    days = approve_interval_days(profile)
+    until = approve_lease_until(profile)
+    expired = approve_lease_expired(profile, now=now)
     return {
-        'weeks': int(getattr(profile, 'auto_approve_weeks', 1) or 0),
-        'interval_days': days,
+        'weeks': int(getattr(profile, 'auto_approve_weeks', 0) or 0),
+        'interval_days': approve_interval_days(profile),
         'interval_label': approve_interval_label(profile),
+        'lease_until': until,
+        'lease_set_at': getattr(profile, 'auto_lease_set_at', None),
+        'lease_active': approve_lease_active(profile, now=now),
+        'lease_expired': expired,
+        'lease_days_left': approve_lease_days_left(profile, now=now),
         'due': approve_due_for(profile, now=now),
-        'next_due': approve_next_due(profile),
+        'next_due': approve_next_due(profile, now=now),
         'last_auto': last,
         'last_failed': failed,
     }
@@ -449,9 +550,9 @@ def approve_due(self):
     """Weka foleni uhidhinishaji (verify) kwa wakuu waliochaguliwa (beat).
 
     Hulinganisha na `auto_fill_due`: hupanga `run_ess_approve` kwa kila mkuu
-    mwenye `approver_enabled=True` ambaye kipindi chake (`auto_approve_weeks`)
-    kimefika. Hutumika na `CELERY_BEAT_SCHEDULE` (docker-compose/VPS yenye
-    beat); kwenye Railway huendeshwa na kiendesha kilichopachikwa
+    mwenye `approver_enabled=True` ambaye kipindi chake (`auto_lease_until`)
+    bado kinaendelea. Hutumika na `CELERY_BEAT_SCHEDULE` (docker-compose/VPS
+    yenye beat); kwenye Railway huendeshwa na kiendesha kilichopachikwa
     `ess_approve_scheduler` badala yake.
     """
     from .models import EssFillRun, TeacherProfile

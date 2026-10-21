@@ -1,16 +1,17 @@
 """Onyesha hali ya kuidhinisha (verify) kwa mkuu — diagnostics.
 
-Inaonyesha kama kipindi cha auto-approve (`auto_approve_weeks`) inashikiliwaji
-au la. Tumia kwenye production (Railway/docker) kuangalia hali halisi:
+Inaonyesha kama kipindi cha mchakato (lease: `auto_lease_until`) kimesimama
+au bado kinaendelea. Tumia kwenye production (Railway/docker) kuangalia hali
+halisi:
 
     python manage.py ess_approve_status
     python manage.py ess_approve_status --profile 3
     python manage.py ess_approve_status --profile 3 --runs 20
 
 Safu za kila mkuu:
-  - kipindi kilichowekwa + kwa siku ngapi
+  - muda uliowekwa (wiki) + mwisho wa kipindi
   - run ya mwisho ya kiotomatiki (ikiwa imeshindwa?)
-  - tarehe inayofuata ya auto-approve
+  - kama mfumo bado unaweza kujaza/kuidhinisha kwa kiotomatiki
   - historia ya hivi karibuni ya approve (kiotomatiki au mkono)
 """
 from django.core.management.base import BaseCommand, CommandError
@@ -48,8 +49,18 @@ class Command(BaseCommand):
             st = tasks.approve_status(p, now=now)
             self.stdout.write(
                 f'  approver_enabled={p.approver_enabled} ess_ready={p.ess_ready}'
-                f' | kipindi={st["interval_label"]} ({st["interval_days"]} siku,'
+                f' | muda={st["interval_label"]} ({st["interval_days"]} siku,'
                 f' auto_approve_weeks={st["weeks"]})')
+            until = st['lease_until']
+            if until is None:
+                lease_txt = ('hakuna mwisho (kila siku)' if st['weeks'] == 0
+                             else 'hauekwisha kuanzishwa')
+            else:
+                lease_txt = (f'hadi {until:%d %b %Y} '
+                             f'({st["lease_days_left"]} siku zimebaki)')
+            self.stdout.write(
+                f'  kipindi: {lease_txt} | mfumo bado unaweza: '
+                f'{"NDIYO" if st["lease_active"] else "HAPANA (kimekwisha!)"}')
             last = st['last_auto']
             if last is None:
                 self.stdout.write('  auto-approve: HAJAENDESHWA bado '
@@ -67,7 +78,7 @@ class Command(BaseCommand):
             nxt = st['next_due']
             self.stdout.write(
                 '  ijayo: %s | inafaa kwa sasa: %s'
-                % (nxt.strftime('%d %b %Y') if nxt else '— (hakijawahi kuendeshwa)',
+                % (nxt.strftime('%d %b %Y') if nxt else '— (mfumo umesimama)',
                    'NDIYO' if st['due'] else 'HAPANA'))
             runs = list(EssFillRun.objects.filter(
                 profile=p, kind='approve').order_by('-started')[:opts['runs']])
@@ -118,5 +129,6 @@ class Command(BaseCommand):
             f'  ESS_EMBED_SCHEDULER={embed_sched} (alarm: kujaza 06:30 EAT) | '
             f'ESS_EMBED_APPROVER={embed_appr} (alarm: verify 22:00 EAT) | '
             f'beat: ess-auto-fill-daily 06:30 + ess-approve-daily 22:00')
-        self.stdout.write('  Kumbuka: kujaza za walimu ni kila siku (ratiba ya '
-                         'mwalimu) — kipindi cha kuidhinisha hakigusa kujaza.')
+        self.stdout.write('  Kumbuka: ndani ya kipindi (lease) mfumo hujaza na '
+                         'huidhinisha KILA SIKU; kipindi kikichisha mfumo '
+                         'husimama hadi mtumiaji aweke muda upya.')

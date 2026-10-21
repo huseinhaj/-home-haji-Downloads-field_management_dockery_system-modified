@@ -182,24 +182,18 @@ h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
         {% if LANG == 'sw' %}Uidhinishaji wa kiotomatiki wa mwisho ulishindwa ({{ approve_status.last_failed.started|date:'d M Y H:i' }}) — mfumo hujaribu tena siku inayofuata.{% else %}The last automatic approval failed ({{ approve_status.last_failed.started|date:'d M Y H:i' }}) — it will retry the next day.{% endif %}
       </div>
       {% endif %}
-      {% if not approve_status.due %}
+      {% if approve_status.lease_expired %}
       <div class="alert warn" style="margin-top:14px;text-align:left;">
-        <i class="fas fa-calendar-week me-1"></i>
+        <i class="fas fa-pause-circle me-1"></i>
         {% if LANG == 'sw' %}
-          Kipindi chako cha kuidhinisha kiotomatiki ni <b>{{ approve_status.interval_label }}</b>{% if approve_next_due %} — ijayo <b>{{ approve_next_due|date:'d M Y' }}</b>{% endif %}.
-          Kitufe hapa hakiidhinishi mpaka kipindi kikafike.
+          <b>Kipindi chako kimekwisha</b>{% if approve_status.lease_until %} (tarehe {{ approve_status.lease_until|date:'d M Y' }}){% endif %}.
+          Mchakato wa moja kwa moja (kujaza na kuidhinisha kwa kiotomatiki) <b>umesimama</b>.
+          Bofya <b>Hifadhi</b> hapa chini kuiendelea.
         {% else %}
-          Your automatic approval interval is <b>{{ approve_status.interval_label }}</b>{% if approve_next_due %} — next due <b>{{ approve_next_due|date:'d M Y' }}</b>{% endif %}.
-          This button will not approve until the interval is due.
+          <b>Your period has ended</b>{% if approve_status.lease_until %} (on {{ approve_status.lease_until|date:'d M Y' }}){% endif %}.
+          The automatic process (filling and approving) has <b>stopped</b>.
+          Press <b>Save</b> below to continue.
         {% endif %}
-        <form method="post" action="{% url 'ess_tracker:ess_approve_now' %}" style="margin-top:10px;">
-          {% csrf_token %}
-          <input type="hidden" name="override" value="1">
-          <button class="btn ghost mini" type="submit" {% if not profile.ess_ready or not profile.approver_enabled %}disabled{% endif %}
-                  onclick="return confirm('{% if LANG == "sw" %}Mkono huu utaidhinisha sasa hata kama kipindi hakijafika. Endelea?{% else %}This will approve now even though the interval is not due. Continue?{% endif %}')">
-            <i class="fas fa-forward"></i>{% if LANG == 'sw' %}Ndio, idhinisha sasa{% else %}Yes, approve now{% endif %}
-          </button>
-        </form>
       </div>
       {% endif %}
       <div style="text-align:center;">
@@ -216,18 +210,24 @@ h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
       {% if profile.approver_enabled %}
       <div class="divider">
         <h5 class="sect">
-          <i class="fas fa-calendar-week"></i>{% if LANG == 'sw' %}Kuidhinisha kiotomatiki{% else %}Auto-approve{% endif %}
+          <i class="fas fa-calendar-week"></i>{% if LANG == 'sw' %}Mchakato wa moja kwa moja{% else %}Automation period{% endif %}
         </h5>
         <div class="sect-sub">
-          {% if LANG == 'sw' %}Chagua kipindi. Mfumo huzinduliwa kila siku 22:00 EAT (saa 10 jioni) na hufanya approve tu kipindi kinapofika.{% else %}Choose an interval. The system runs daily at 22:00 EAT and approves only when the interval is due.{% endif %}
-          {% if LANG == 'sw' %}<br>Kipindi cha sasa: <b>{{ approve_status.interval_label }}</b>.{% else %}<br>Current interval: <b>{{ approve_status.interval_label }}</b>.{% endif %}
-          {% if approve_next_due %} {% if LANG == 'sw' %}Ijayo:{% else %}Next:{% endif %} <b>{{ approve_next_due|date:'d M Y' }}</b>.{% endif %}
+          {% if LANG == 'sw' %}Chagua muda ambao mfumo unaweza kuendelea kwa moja kwa moja. Ndani ya muda huu mfumo huzinduliwa kila siku 22:00 EAT (saa 10 jioni) na hujaza na kuidhinisha <b>kila siku</b>. Muda ukiisha, mfumo husimama hadi uweke upya.{% else %}Choose how long the system may keep running on its own. During that period the system runs daily at 22:00 EAT and fills and approves <b>every day</b>. When the period ends, the system stops until you set it again.{% endif %}
+          {% if LANG == 'sw' %}<br>Muda wa sasa: <b>{{ approve_status.interval_label }}</b>.{% else %}<br>Current period: <b>{{ approve_status.interval_label }}</b>.{% endif %}
+          {% if approve_status.lease_until %}
+            {% if LANG == 'sw' %}Kipindi kinaendelea hadi <b>{{ approve_status.lease_until|date:'d M Y' }}</b> (siku {{ approve_status.lease_days_left }} zimebaki).{% else %}The period runs until <b>{{ approve_status.lease_until|date:'d M Y' }}</b> ({{ approve_status.lease_days_left }} days left).{% endif %}
+          {% elif approve_status.weeks == 0 %}
+            {% if LANG == 'sw' %}Hakuna mwisho — mfumo unaendelea kila siku.{% else %}No end date — the system keeps running daily.{% endif %}
+          {% else %}
+            {% if LANG == 'sw' %}Kipindi hikijaanza mara tu unapoenda kuweka muda.{% else %}This period starts as soon as you save a duration.{% endif %}
+          {% endif %}
           {% if approve_status.last_auto %} {% if LANG == 'sw' %}Uidhinishaji wa mwisho wa kiotomatiki:{% else %}Last automatic approval:{% endif %} <b>{{ approve_status.last_auto.started|date:'d M Y H:i' }}</b>.{% endif %}
           <br>
           {% if LANG == 'sw' %}
-            Mfumo hujiamsha kila siku (alarm/beat): <b>06:30 EAT</b> hujaza maendeleo ya walimu (kila siku kwa ratiba yao) na <b>22:00 EAT</b> hukagua kama kipindi chako kimefika. Kipindi chako cha kuidhinisha <b>hagusa</b> kujaza za walimu.
+            Mfumo hujiamsha kila siku (alarm/beat): <b>06:30 EAT</b> hujaza maendeleo ya walimu (kila siku kwa ratiba yao) na <b>22:00 EAT</b> huidhinisha (verify). Kipindi chako ndani ya muda huu ndicho huo.
           {% else %}
-            The system wakes up daily (alarm/beat): <b>06:30 EAT</b> fills teacher progress (daily, on their own schedule) and <b>22:00 EAT</b> checks whether your interval is due. Your approval interval does <b>not</b> affect the daily filling.
+            The system wakes up daily (alarm/beat): <b>06:30 EAT</b> fills teacher progress (daily, on their own schedule) and <b>22:00 EAT</b> verifies (approves). Your period covers both.
           {% endif %}
         </div>
         <form method="post" action="{% url 'ess_tracker:ess_approve_schedule' %}">
@@ -235,9 +235,11 @@ h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
           <div style="display:flex;gap:10px;align-items:stretch;">
             <select name="auto_approve_weeks"
                     style="flex:1;border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:14px;background:#fff;">
-              <option value="0" {% if profile.auto_approve_weeks == 0 %}selected{% endif %}>{% if LANG == 'sw' %}Kila siku{% else %}Every day{% endif %}</option>
-              <option value="1" {% if profile.auto_approve_weeks == 1 %}selected{% endif %}>{% if LANG == 'sw' %}Kila wiki{% else %}Every week{% endif %}</option>
-              <option value="2" {% if profile.auto_approve_weeks == 2 %}selected{% endif %}>{% if LANG == 'sw' %}Kila wiki mbili{% else %}Every two weeks{% endif %}</option>
+              <option value="0" {% if profile.auto_approve_weeks == 0 %}selected{% endif %}>{% if LANG == 'sw' %}Kila siku (hakuna mwisho){% else %}Every day (no end){% endif %}</option>
+              <option value="1" {% if profile.auto_approve_weeks == 1 %}selected{% endif %}>{% if LANG == 'sw' %}Kwa wiki 1{% else %}For 1 week{% endif %}</option>
+              <option value="2" {% if profile.auto_approve_weeks == 2 %}selected{% endif %}>{% if LANG == 'sw' %}Kwa wiki mbili{% else %}For 2 weeks{% endif %}</option>
+              <option value="4" {% if profile.auto_approve_weeks == 4 %}selected{% endif %}>{% if LANG == 'sw' %}Kwa wiki 4{% else %}For 4 weeks{% endif %}</option>
+              <option value="12" {% if profile.auto_approve_weeks == 12 %}selected{% endif %}>{% if LANG == 'sw' %}Kwa miezi 3{% else %}For 3 months{% endif %}</option>
             </select>
             <button class="btn mini" type="submit" style="margin-top:0;">
               <i class="fas fa-floppy-disk"></i>{% if LANG == 'sw' %}Hifadhi{% else %}Save{% endif %}

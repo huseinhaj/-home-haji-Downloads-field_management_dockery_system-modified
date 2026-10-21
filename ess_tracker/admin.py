@@ -91,7 +91,9 @@ class TeacherProfileAdmin(admin.ModelAdmin):
                                         'entries_per_week', 'holidays')}),
         ('Kujaza / Uidhinishaji', {'fields': ('auto_subtasks', 'auto_fill_enabled',
                                               'approver_enabled',
-                                              'auto_approve_weeks')}),
+                                              'auto_approve_weeks',
+                                              'auto_lease_until',
+                                              'auto_lease_set_at')}),
     )
 
 

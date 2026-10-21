@@ -129,13 +129,15 @@ class ProfileForm(forms.ModelForm):
                   'au kujaza kwa mkono kwa kitufe cha "Jaza" kwenye nyumbani.')
 
     auto_approve_weeks = forms.ChoiceField(
-        label='Kuidhinisha (verify) kiotomatiki mara ngapi?',
+        label='Mchakato wa moja kwa moja uendelee kwa muda gani?',
         required=False,
-        choices=[(0, 'Kila siku'), (1, 'Kila wiki'), (2, 'Kila wiki mbili')],
+        choices=[(0, 'Kila siku (hakuna mwisho)'), (1, 'Kwa wiki 1'),
+                 (2, 'Kwa wiki mbili'), (4, 'Kwa wiki 4'), (12, 'Kwa miezi 3')],
         widget=forms.Select(attrs={'class': 'form-select'}),
-        help_text='Kwa wakuu/kiongozi (approver): mfumo huzinduliwa kila siku '
-                  '22:00 EAT (baada ya saa za kazi) na kuidhinisha kwa kipindi '
-                  'hiki — kila siku, wiki 1 au wiki 2.')
+        help_text='Kwa wakuu/kiongozi (approver): ndani ya muda huu mfumo '
+                  'huzinduliwa kila siku 22:00 EAT (baada ya saa za kazi) na '
+                  'kujaza na kuidhinisha kila siku. Muda ukiisha, mfumo husimama '
+                  'hadi uweke upya.')
 
     holidays = forms.ModelMultipleChoiceField(
         label='Likizo (chagua zinazohusu mwaka huu)',
@@ -188,6 +190,7 @@ class ProfileForm(forms.ModelForm):
 
     def save(self, commit=True):
         profile = super().save(commit=False)
+        old_wk = int(getattr(profile, 'auto_approve_weeks', 0) or 0)
         new_pw = self.cleaned_data.get('ess_password')
         if new_pw:
             profile.set_ess_password(new_pw)
@@ -200,8 +203,14 @@ class ProfileForm(forms.ModelForm):
         profile.auto_subtasks = ','.join(str(s.id) for s in chosen)
         profile.auto_fill_enabled = bool(self.cleaned_data.get('auto_fill_enabled'))
         wk = self.cleaned_data.get('auto_approve_weeks')
-        if wk:
-            profile.auto_approve_weeks = int(wk)
+        if wk not in (None, ''):
+            wk = int(wk)
+            profile.auto_approve_weeks = wk
+            # Kipindi (lease) huanzishwa mpaka muda unabadilishwe (au
+            # kipindi kikosewe) — kuingereza wasifu hakusimamishi mfumo.
+            if wk != old_wk or (wk > 0 and not profile.auto_lease_until):
+                from .tasks import start_auto_lease
+                start_auto_lease(profile, weeks=wk)
         if commit:
             profile.save()
             profile.holidays.set(self.cleaned_data.get('holidays') or [])

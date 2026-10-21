@@ -198,11 +198,11 @@ python manage.py ess_approve_status --profile 3    # mkuu mmoja
 > * **docker-compose/VPS yenye beat:** `CELERY_BEAT_SCHEDULE` ina
 >   **`ess-approve-daily`** (22:00 EAT) → `approve_due` → foleni **`essfill`**
 >   (`run_ess_approve`). Hakikisha worker wa foleni `essfill` anaendesha.
-> * **Kipindi:** kwa kila mkuu — `auto_approve_weeks` = **0 (kila siku)**,
->   **1 (kila wiki)** au **2 (kila wiki mbili)**; chagua kwenye ukurasa wa
->   kuidhinisha. Dry-runs (Onyesho tu) **hazihesabiwi** kwenye ratiba.
->   Run iliyoshindwa (hitilafu) **haichukui** kipindi — hujaribu tena siku
->   inayofuata.
+> * **Kipindi (lease):** kwa kila mkuu — `auto_approve_weeks` = muda wa
+>   kipindi: **0 (kila siku, hakuna mwisho)**, **1 (wiki 1)**, **2 (wiki
+>   mbili)**, **4 (wiki 4)** au **12 (miezi 3)**. Ndani ya kipindi mfumo
+>   hujaza na huidhinisha **kila siku**; kipindi kikichisha mfumo **husimama**
+>   (hakuna kujaza, hakuna verify) hadi mkuu aweke muda upya.
 
 ### 🔁 Mzunguko wa kila siku (alarm + beat)
 
@@ -211,7 +211,7 @@ Mfumo hujiamsha **kila siku** na kufanya kazi mawili tofauti:
 | Saa (EAT) | Kazi | Hali |
 |---|---|---|
 | **06:30** | **Kujaza** maendeleo ya walimu (kila mwalimu kwa ratiba yake: `entries_per_week`) | Kila siku — **kipindi cha kuidhinisha hakigusa kujaza** |
-| **22:00** | **Kukaguli** kama kipindi cha mkuu kimefika → kama ndio, verify (approve) maendeleo ya SUBMITTED | Kwa kila mkuu: kila siku (0), kila wiki (1) au kila wiki mbili (2) |
+| **22:00** | **Verify (approve)** maendeleo ya SUBMITTED ya walimu | Kila siku, **ndani ya kipindi** cha mkuu (mf. wiki mbili) |
 
 Mfumo hujiamka kwa njia mbili: **alarm** = kiendesha kilichopachikwa kwenye
 container ya web (`ess_scheduler` 06:30 + `ess_approve_scheduler` 22:00) na
@@ -219,6 +219,13 @@ container ya web (`ess_scheduler` 06:30 + `ess_approve_scheduler` 22:00) na
 `ess-approve-daily` 22:00). Hakuna matokeo mbadala: `auto_fill_decision`
 (huruka mwalimu aliyejaza leo) na `approve_due_for` (huruka mkuu aliyefanyikiwa
 leo) hushindana kama zote zikiwa nafasi.
+
+**Kipindi (lease) ni kitufe mstari mrefu:** mkuu anaweka muda (mf. wiki mbili)
+→ mfumo hufanya kazi (kujaza + verify) **kila siku** ndani ya muda huo →
+muda ukimalika mfumo **husimama** (hakuna kujaza, hakuna verify) na mkuu
+lazima aweke upya ili kuendelea. Kuzuizi cha kujaza kwa walimu hanafanyika
+kwa mkuu mmoja bado; kinatoka kwa **kipindi cha mkuu wa shule** (mwalimu
+wenye hakuna mkuu katika shule yake hafungwiwi).
 
 Kukagua hali hii kwenye server:
 

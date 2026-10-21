@@ -1006,21 +1006,26 @@ class OrmOffloadTests(TransactionTestCase):
         self.assertEqual(run.log, 'zote zimejazwa')
 
 
-class AutoApproveCadenceTests(TestCase):
-    """Kipindi cha auto-approve (kila siku / wiki / wiki mbili) hushikiliwaji.
+class AutoApproveLeaseTests(TestCase):
+    """Kipindi (lease) cha mchakato wa moja kwa moja.
 
-    Hii ndiyo sehemu iliyokuwa ikisababisha 'kila siku ninajiona approved'
-    wakati mkuu alikuwa ameweka 'kila wiki mbili'.
+    Maana: mkuu anaweka muda (mf. wiki mbili) → ndani ya muda huo mfumo
+    hujamsha KILA SIKU (kujaza + kuidhinisha). Muda ukiisha, mfumo husimama
+    hadi mkuu aweke upya.
     """
 
     def setUp(self):
         U = get_user_model()
-        self.user = U.objects.create_user('mkuu_cadence', password='x')
+        self.user = U.objects.create_user('mkuu_lease', password='x')
         self.profile = TeacherProfile.objects.create(
-            user=self.user, full_name='Mkuu Cadence', ess_username='mkuu1',
+            user=self.user, full_name='Mkuu Lease', ess_username='mkuu1',
             ess_password='x', approver_enabled=True, ess_ready=True,
             auto_approve_weeks=2)
         self.now = timezone.now()
+        # Anza kipindi (mwaka mzito = wiki mbili)
+        from ess_tracker import tasks as T
+        T.start_auto_lease(self.profile, weeks=2)
+        self.profile.save(update_fields=['auto_lease_until', 'auto_lease_set_at'])
 
     def _run(self, when=None, source='auto', status='done',
              log='Kuanza kuidhinisha (verify) ESS...'):
@@ -1034,79 +1039,100 @@ class AutoApproveCadenceTests(TestCase):
 
     def test_interval_days_per_weeks(self):
         from ess_tracker import tasks as T
-        for weeks, days in ((0, 0), (1, 7), (2, 14)):
+        for weeks, days in ((0, 0), (1, 7), (2, 14), (4, 28), (12, 84)):
             self.profile.auto_approve_weeks = weeks
             self.assertEqual(T.approve_interval_days(self.profile), days)
         self.profile.auto_approve_weeks = 2
         self.assertEqual(T.approve_interval_label(self.profile),
-                         'kila wiki mbili')
+                         'kwa wiki mbili')
+        self.profile.auto_approve_weeks = 0
+        self.assertEqual(T.approve_interval_label(self.profile),
+                         'kila siku (hakuna mwisho)')
 
-    def test_week_two_only_due_on_day_14(self):
+    def test_lease_starts_on_save_and_ends_after_14_days(self):
         from ess_tracker import tasks as T
-        self._run(when=self.now)
+        self.client.force_login(self.user)
+        resp = self.client.post('/ess/approve/schedule/',
+                                {'auto_approve_weeks': '2'})
+        self.assertEqual(resp.status_code, 302)
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.auto_approve_weeks, 2)
+        self.assertIsNotNone(self.profile.auto_lease_until)
+        days = (self.profile.auto_lease_until - self.profile.auto_lease_set_at).days
+        self.assertEqual(days, 14)
+        self.assertTrue(T.approve_lease_active(self.profile))
+
+    def test_verify_runs_every_day_inside_the_lease(self):
+        """Ndani ya kipindi: kuidhinisha kila siku (siku 0, 1, 2 ... 13)."""
+        from ess_tracker import tasks as T
         for d in range(0, 14):
-            self.assertFalse(
+            self.assertTrue(
                 T.approve_due_for(self.profile, now=self.now + dt.timedelta(days=d)),
                 msg='haipaswi kuwa due siku %d' % d)
-        self.assertTrue(
-            T.approve_due_for(self.profile, now=self.now + dt.timedelta(days=14)))
-        self.assertTrue(
-            T.approve_due_for(self.profile, now=self.now + dt.timedelta(days=15)))
 
-    def test_every_day_interval_is_due_next_day(self):
+    def test_only_one_auto_run_per_day(self):
         from ess_tracker import tasks as T
-        self.profile.auto_approve_weeks = 0
         self._run(when=self.now)
         self.assertFalse(T.approve_due_for(self.profile, now=self.now))
         self.assertTrue(
             T.approve_due_for(self.profile, now=self.now + dt.timedelta(days=1)))
 
-    def test_failed_auto_run_does_not_consume_the_period(self):
-        """Auto-approve iliyoshindwa haisombui ratiba — jaribio tena siku inayo."""
+    def test_lease_expired_stops_the_system(self):
+        """Baada ya kipindi: mfumo husimama (hakuna verify, hakuna kujaza)."""
+        from ess_tracker import tasks as T
+        after = self.now + dt.timedelta(days=15)
+        self.assertFalse(T.approve_lease_active(self.profile, now=after))
+        self.assertFalse(T.approve_due_for(self.profile, now=after))
+        st = T.approve_status(self.profile, now=after)
+        self.assertTrue(st['lease_expired'])
+        self.assertEqual(st['lease_days_left'], 0)
+        self.assertIsNone(st['next_due'])
+
+    def test_every_day_option_has_no_expiry(self):
+        from ess_tracker import tasks as T
+        self.profile.auto_approve_weeks = 0
+        T.start_auto_lease(self.profile, weeks=0)
+        self.assertIsNone(self.profile.auto_lease_until)
+        far = self.now + dt.timedelta(days=400)
+        self.assertTrue(T.approve_lease_active(self.profile, now=far))
+        self.assertTrue(T.approve_due_for(self.profile, now=far))
+
+    def test_failed_auto_run_does_not_consume_the_day(self):
+        """Auto-approve iliyoshindwa hairuhusu kurudiwa siku ile ile."""
         from ess_tracker import tasks as T
         self._run(when=self.now, status='error', log='Hitilafu: timeout')
         self.assertTrue(T.approve_due_for(self.profile, now=self.now))
         st = T.approve_status(self.profile, now=self.now)
         self.assertIsNotNone(st['last_failed'])
 
-    def test_stuck_running_run_does_not_consume_the_period(self):
-        """Run iliyosimama (status='running') haichukui kipindi cha wiki."""
+    def test_running_run_today_blocks_a_second_run(self):
+        """Run iliyosimama LEO hairuzii run ya pili ya leo."""
+        from ess_tracker import tasks as T
+        self._run(when=self.now, status='running', log='Umeanza...')
+        self.assertFalse(T.approve_due_for(self.profile, now=self.now))
+
+    def test_stale_running_run_does_not_block(self):
+        """Run ya zamani (zamani) inaweza kureapwa; si kizuizi."""
         from ess_tracker import tasks as T
         self._run(when=self.now - dt.timedelta(days=3), status='running',
                   log='Umeanza...')
         self.assertTrue(T.approve_due_for(self.profile, now=self.now))
 
-    def test_dry_run_does_not_consume_the_period(self):
+    def test_dry_run_does_not_consume_the_day(self):
         from ess_tracker import tasks as T
         self._run(when=self.now, log='[DRY-RUN] Uhidhinishaji umeanza...')
         self.assertTrue(T.approve_due_for(self.profile, now=self.now))
 
-    def test_manual_run_is_not_the_anchor_of_the_auto_cadence(self):
-        """Run ya mkono haisombui ratiba ya kiotomatiki."""
-        from ess_tracker import tasks as T
-        self._run(when=self.now - dt.timedelta(days=3), source='auto')
-        self._run(when=self.now, source='manual')
-        self.assertFalse(T.approve_due_for(self.profile, now=self.now))
-        self.assertTrue(
-            T.approve_due_for(self.profile, now=self.now + dt.timedelta(days=11)))
-
-    def test_next_due_follows_the_interval(self):
-        from ess_tracker import tasks as T
-        self._run(when=self.now)
-        self.assertEqual(T.approve_next_due(self.profile),
-                         self.now.astimezone(T._eat_tz()).date()
-                         + dt.timedelta(days=14))
-
-    def test_approve_page_shows_interval_and_source(self):
+    def test_approve_page_shows_lease_and_source(self):
         self._run(when=self.now)
         self.client.force_login(self.user)
         resp = self.client.get('/ess/approve/')
         self.assertEqual(resp.status_code, 200)
         body = resp.content.decode()
-        self.assertIn('kila wiki mbili', body)
+        self.assertIn('kwa wiki mbili', body)
         self.assertIn('Automatic', body)  # chanzo cha run kwenye historia
 
-    def test_approve_page_swahili_shows_interval_and_override(self):
+    def test_approve_page_swahili_shows_period_and_daily_cycle(self):
         self._run(when=self.now)
         session = self.client.session
         session['ui_lang'] = 'sw'
@@ -1115,34 +1141,38 @@ class AutoApproveCadenceTests(TestCase):
         resp = self.client.get('/ess/approve/')
         self.assertEqual(resp.status_code, 200)
         body = resp.content.decode()
-        self.assertIn('Ndio, idhinisha sasa', body)
-        self.assertIn('Kipindi chako cha kuidhinisha kiotomatiki ni', body)
+        self.assertIn('Mchakato wa moja kwa moja', body)
+        self.assertIn('Kipindi kinaendelea hadi', body)
         self.assertIn('Kiotomatiki', body)  # noqa
 
-    def test_manual_approve_blocked_until_interval_due(self):
-        """Kitufe cha mkono hakiidhinishi kabla ya kipindi kukafika."""
+    def test_expired_lease_shows_stopped_banner(self):
         from ess_tracker import tasks as T
-        self._run(when=self.now)
+        T.start_auto_lease(self.profile, weeks=2)
+        self.profile.auto_lease_until = self.now - dt.timedelta(days=1)
+        self.profile.save(update_fields=['auto_lease_until'])
+        session = self.client.session
+        session['ui_lang'] = 'sw'
+        session.save()
         self.client.force_login(self.user)
-        with mock.patch('ess_tracker.runs.launch_run') as launch:
-            resp = self.client.post('/ess/approve/run/')
-        self.assertEqual(resp.status_code, 302)
-        self.assertFalse(launch.called)  # hakuna approve yoyote iliyofanyika
-        self.assertFalse(T.approve_due_for(self.profile, now=self.now))
+        resp = self.client.get('/ess/approve/')
+        body = resp.content.decode()
+        self.assertIn('Kipindi chako kimekwisha', body)
+        self.assertIn('umesimama', body)
 
-    def test_manual_approve_allowed_with_override(self):
-        from ess_tracker import tasks as T
-        self._run(when=self.now)
+    def test_manual_approve_always_allowed(self):
+        """Mkuu anaweza kuidhinisha mwenyewe hata kama kipindi kimekwisha."""
         self.client.force_login(self.user)
         with mock.patch('ess_tracker.runs.launch_run') as launch:
             launch.return_value.id = 1
-            resp = self.client.post('/ess/approve/run/', {'override': '1'})
+            resp = self.client.post('/ess/approve/run/')
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(launch.called)
 
-    def test_manual_approve_allowed_when_due(self):
+    def test_manual_approve_allowed_when_lease_expired(self):
         from ess_tracker import tasks as T
-        self._run(when=self.now - dt.timedelta(days=14))
+        T.start_auto_lease(self.profile, weeks=2)
+        self.profile.auto_lease_until = self.now - dt.timedelta(days=1)
+        self.profile.save(update_fields=['auto_lease_until'])
         self.client.force_login(self.user)
         with mock.patch('ess_tracker.runs.launch_run') as launch:
             launch.return_value.id = 1
@@ -1159,31 +1189,32 @@ class AutoApproveCadenceTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(launch.called)
 
-    def test_schedule_saves_two_weeks(self):
-        self.client.force_login(self.user)
-        resp = self.client.post('/ess/approve/schedule/',
-                                {'auto_approve_weeks': '2'})
-        self.assertEqual(resp.status_code, 302)
-        self.profile.refresh_from_db()
-        self.assertEqual(self.profile.auto_approve_weeks, 2)
 
+class AutoApproveLeaseBlocksFillTests(TestCase):
+    """Kipindi kikichisha husimamisha MFUMO KWAUTOA (kujaza na kuidhinisha).
 
-class AutoApproveDoesNotBlockFillTests(TestCase):
-    """Kipindi cha kuidhinisha (mf. kila wiki mbili) hakigusi kujaza za walimu.
-
-    Mfumo hujiamsha kila siku (alarm/beat) na hujaza maendeleo ya walimu
-    kila siku (kwa ratiba yao); kipindi hiki ni cha kuidhinisha (verify)
-    pekee.
+    Ndani ya kipindi: kila siku. Baada ya kipindi: mfumo husimama hadi
+    mtumiaji aweke muda upya.
     """
 
     def setUp(self):
+        from field_app.models import District, Region, School
         U = get_user_model()
+        region = Region.objects.create(name='Mkoa wa Test')
+        district = District.objects.create(name='Wilaya ya Test', region=region)
+        self.school = School.objects.create(name='Shule ya Test', district=district,
+                                            level='Primary', ownership='government')
+        self.mkuu_user = U.objects.create_user('mkuu_fill', password='x')
+        self.mkuu = TeacherProfile.objects.create(
+            user=self.mkuu_user, full_name='Mkuu Fill', ess_username='mk1',
+            ess_password='x', approver_enabled=True, ess_ready=True,
+            school=self.school, auto_approve_weeks=2)
         self.user = U.objects.create_user('mwalimu_fill', password='x')
         self.profile = TeacherProfile.objects.create(
             user=self.user, full_name='Mwalimu Fill', ess_username='mf1',
-            ess_password='x', school_open=dt.date(2026, 1, 7),
+            ess_password='x', school=self.school, school_open=dt.date(2026, 1, 7),
             school_close=dt.date(2026, 12, 20), entries_per_week=3,
-            auto_fill_enabled=True, auto_approve_weeks=2)
+            auto_fill_enabled=True)
         # Jumatano (weekday=2) = siku ya kujaza kwa entries_per_week=3
         self.today = dt.date(2026, 10, 21)
 
@@ -1192,15 +1223,35 @@ class AutoApproveDoesNotBlockFillTests(TestCase):
         start, end = T._eat_day_bounds(self.today)
         return T.auto_fill_decision(self.profile, self.today, None, start, end)
 
-    def test_daily_fill_is_not_blocked_by_approve_interval(self):
+    def _lease(self, until):
         from ess_tracker import tasks as T
+        T.start_auto_lease(self.mkuu, weeks=2)
+        self.mkuu.auto_lease_until = until
+        self.mkuu.save(update_fields=['auto_lease_until'])
+
+    def test_fill_runs_daily_inside_the_lease(self):
+        from ess_tracker import tasks as T
+        self._lease(timezone.now() + dt.timedelta(days=14))
         ready, why = self._decision()
         self.assertTrue(ready, msg='kujaza kimesitishwa: %s' % why)
-        # Mfumo bado anajaza kila siku hata kama auto-approve ni wiki mbili.
-        self.assertEqual(T.approve_interval_days(self.profile), 14)
 
-    def test_fill_still_runs_when_approve_is_due_today(self):
+    def test_expired_lease_stops_the_fill(self):
+        self._lease(timezone.now() - dt.timedelta(days=1))
+        ready, why = self._decision()
+        self.assertFalse(ready)
+        self.assertEqual(why, 'lease-expired')
+
+    def test_teacher_without_head_teacher_is_not_blocked(self):
+        """Mwalimu bila mkuu katika shule yake: hakuna kizuizi."""
         from ess_tracker import tasks as T
+        self.mkuu.delete()
+        ready, why = self._decision()
+        self.assertTrue(ready, msg='kujaza kimesitishwa: %s' % why)
+        self.assertTrue(T.fill_lease_active(self.profile))
+
+    def test_fill_still_runs_when_approve_already_ran_today(self):
+        from ess_tracker import tasks as T
+        self._lease(timezone.now() + dt.timedelta(days=14))
         run = EssFillRun.objects.create(profile=self.profile, kind='fill',
                                         source='auto', status='done')
         EssFillRun.objects.filter(pk=run.pk).update(started=timezone.now())

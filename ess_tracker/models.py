@@ -71,11 +71,19 @@ class TeacherProfile(models.Model):
         help_text='Mkuu/kiongozi: washa ili mfumo uidhinishe (verify) maendeleo '
                   'SUBMITTED ya walimu walio chini yake kwenye e-Utendaji.')
     auto_approve_weeks = models.PositiveSmallIntegerField(
-        default=1,
-        choices=[(0, 'Kila siku'), (1, 'Kila wiki'), (2, 'Kila wiki mbili')],
-        help_text='Mkuu/kiongozi: kuidhinisha (verify) kiotomatiki kila siku, '
-                  'kila wiki au kila wiki mbili. Mfumo huzinduliwa kila siku '
-                  '22:00 EAT.')
+        default=0,
+        choices=[(0, 'Kila siku (hazui mwisho)'), (1, 'Kwa wiki 1'),
+                 (2, 'Kwa wiki mbili'), (4, 'Kwa wiki 4'), (12, 'Kwa miezi 3')],
+        help_text='Mkuu/kiongozi: muda (kwa wiki) ambao mfumo wa moja kwa moja '
+                  'unaweza kuendelea kwaweka kila siku (kujaza na kuidhinisha). '
+                  'Mwisho wa muda: mfumo husimama hadi uweke upya.')
+    auto_lease_until = models.DateTimeField(
+        null=True, blank=True,
+        help_text='Mwisho wa kipindi cha mchakato wa moja kwa moja (lease). '
+                  'Mfungulwe kuweka muda (wiki) upya.')
+    auto_lease_set_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text='Wakati ambapo kipindi kiliposhwa kwa mara ya mwisho.')
     holidays = models.ManyToManyField(
         'Holiday', blank=True, related_name='profiles',
         help_text='Likizo zilizochaguliwa — zinatolewa kwenye hesabu ya siku za shule (194)')
@@ -106,6 +114,16 @@ class TeacherProfile(models.Model):
 
     def save(self, *args, **kwargs):
         self.ess_ready = bool(self.ess_username and self.ess_password)
+        # Wasifu mpya wa kiongozi: anza kipindi (lease) ili mfumo awache
+        # kwa wiki ulizochagua.
+        if (self._state.adding and self.approver_enabled
+                and (self.auto_approve_weeks or 0) > 0
+                and not self.auto_lease_until):
+            from datetime import timedelta
+            from django.utils import timezone
+            now = timezone.now()
+            self.auto_lease_set_at = now
+            self.auto_lease_until = now + timedelta(weeks=self.auto_approve_weeks)
         super().save(*args, **kwargs)
 
 

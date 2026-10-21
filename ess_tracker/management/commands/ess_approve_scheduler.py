@@ -93,7 +93,7 @@ class Command(BaseCommand):
                              second=0, microsecond=0)
         if now < target:
             return False
-        # Kuna mkuu yeyote ambaye kipindi chake kimefika?
+        # Kuna mkuu yeyote ambaye kipindi chake bado kinaendelea?
         qs = TeacherProfile.objects.filter(
             approver_enabled=True, ess_ready=True)
         return any(tasks.approve_due_for(p) for p in qs)

@@ -626,7 +626,12 @@ def ess_approve_page(request):
 @login_required
 @require_POST
 def ess_approve_schedule(request):
-    """Weka kipindi cha kuidhinisha kiotomatiki (wiki 1 au 2) kwa mkuu."""
+    """Weka muda (kipindi/lease) wa mchakato wa moja kwa moja kwa mkuu.
+
+    Ndani ya kipindi: mfumo hujaza na huidhinisha KILA SIKU. Kipindi
+    kikichisha: mfumo husimama (hakuna kujaza, hakuna kuidhinisha) hadi
+    mkuu aweke muda upya.
+    """
     profile = _me(request)
     if profile is None:
         return redirect('ess_tracker:ess_profile')
@@ -637,14 +642,26 @@ def ess_approve_schedule(request):
         wk = int(request.POST.get('auto_approve_weeks'))
     except (TypeError, ValueError):
         wk = None
-    if wk not in (0, 1, 2):
-        messages.error(request, 'Chagua kipindi: kila siku, kila wiki au kila wiki mbili.')
+    valid = [c[0] for c in TeacherProfile._meta.get_field('auto_approve_weeks').choices]
+    if wk not in valid:
+        messages.error(request, 'Chagua muda: kila siku, wiki 1, wiki mbili, wiki 4 '
+                                'au miezi 3.')
         return redirect('ess_tracker:ess_approve')
+    from . import tasks as ess_tasks
     profile.auto_approve_weeks = wk
-    profile.save(update_fields=['auto_approve_weeks'])
-    messages.success(request, 'Kipindi cha kuidhinisha kiotomatiki kimehifadhiwa: '
-                              + {0: 'kila siku.', 1: 'kila wiki.',
-                                 2: 'kila wiki mbili.'}[wk])
+    ess_tasks.start_auto_lease(profile, weeks=wk)
+    profile.save(update_fields=['auto_approve_weeks', 'auto_lease_until',
+                                 'auto_lease_set_at'])
+    if wk == 0:
+        messages.success(request, 'Mchakato wa moja kwa moja umewezeshwa: kila siku, '
+                                  'hakuna mwisho (hautasimama).')
+    else:
+        until = profile.auto_lease_until
+        messages.success(
+            request,
+            'Mchakato wa moja kwa moja umewezeshwa: kila siku hadi %s '
+            '(baada ya hapo mfumo husimama hadi uweke upya).'
+            % (until.strftime('%d/%m/%Y') if until else '-'))
     return redirect('ess_tracker:ess_approve')
 
 
@@ -653,10 +670,9 @@ def ess_approve_schedule(request):
 def ess_approve_now(request):
     """Idhinisha (verify) maendeleo SUBMITTED kwa akaunti hii ya mkuu.
 
-    Kipindi (`auto_approve_weeks`) hiheshimiwa hata hapa: kama kipindi
-    bado hakijafika, mkuu lazima atoe mwenyewe ukibofya "Ndio, idhinisha
-    sasa" (`override=1`). Bila hivyo hakuna kitufe chenyewe linalopindua
-    ratiba (ulinzi wa kila siku kuidhinisha).
+    Kitendo cha mwenyewe (mkuu) kinaweza kufanyika wakati wowote — hata
+    kama kipindi kimekwisha (mfumo wa kiotomatiki ndiyo husimama, si
+    mwalimu).
     """
     profile = _me(request)
     if profile is None:
@@ -677,16 +693,12 @@ def ess_approve_now(request):
     from . import tasks as ess_tasks
     status = ess_tasks.approve_status(profile)
     dry_run = request.POST.get('dry_run') == '1'
-    # Dry-run (onyesho tu) haibofyeni Verify — huu hauhitaji override.
-    if not dry_run and not status['due'] and request.POST.get('override') != '1':
-        nxt = status['next_due']
+    if status['lease_expired']:
         messages.warning(
             request,
-            'Kipindi chako cha kuidhinisha kiotomatiki ni %s%s. '
-            'Ikiwa unataka kuidhinisha sasa, bonyeza "Ndio, idhinisha sasa".'
-            % (status['interval_label'],
-               (' — ijayo %s' % nxt.strftime('%d/%m/%Y')) if nxt else ''))
-        return redirect('ess_tracker:ess_approve')
+            'Kipindi chako cha mchakato kimekwisha — mfumo wa kiotomatiki '
+            'umesimama. Bofya "Hifadhi muda" ili kuendelea. (Unaweza pia '
+            'kuidhinisha mwenyewe hapa chini.)')
     from .runs import launch_run
     run = launch_run(
         profile=profile, kind='approve', thread_target=_run_approve,
