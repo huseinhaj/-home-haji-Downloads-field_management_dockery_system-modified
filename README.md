@@ -204,6 +204,28 @@ python manage.py ess_approve_status --profile 3    # mkuu mmoja
 >   Run iliyoshindwa (hitilafu) **haichukui** kipindi — hujaribu tena siku
 >   inayofuata.
 
+### 🔁 Mzunguko wa kila siku (alarm + beat)
+
+Mfumo hujiamsha **kila siku** na kufanya kazi mawili tofauti:
+
+| Saa (EAT) | Kazi | Hali |
+|---|---|---|
+| **06:30** | **Kujaza** maendeleo ya walimu (kila mwalimu kwa ratiba yake: `entries_per_week`) | Kila siku — **kipindi cha kuidhinisha hakigusa kujaza** |
+| **22:00** | **Kukaguli** kama kipindi cha mkuu kimefika → kama ndio, verify (approve) maendeleo ya SUBMITTED | Kwa kila mkuu: kila siku (0), kila wiki (1) au kila wiki mbili (2) |
+
+Mfumo hujiamka kwa njia mbili: **alarm** = kiendesha kilichopachikwa kwenye
+container ya web (`ess_scheduler` 06:30 + `ess_approve_scheduler` 22:00) na
+**beat** = `CELERY_BEAT_SCHEDULE` (`ess-auto-fill-daily` 06:30 +
+`ess-approve-daily` 22:00). Hakuna matokeo mbadala: `auto_fill_decision`
+(huruka mwalimu aliyejaza leo) na `approve_due_for` (huruka mkuu aliyefanyikiwa
+leo) hushindana kama zote zikiwa nafasi.
+
+Kukagua hali hii kwenye server:
+
+```bash
+python manage.py ess_approve_status     # sehemu ya "UJASIRI WA KILA SIKU"
+```
+
 **Historia ya kujaza** (`/ess/fill/log/`) inaonyesha kila run ikiwa na safu
 **Aina** (`kind`: Kujaza/Sawazisha/Tuma/Soma/Kuidhinisha) na **Chanzo** (`source`:
 **Kiotomatiki** kwa beat, **Mwenyewe** kwa kubofya). Run za **kujaza**

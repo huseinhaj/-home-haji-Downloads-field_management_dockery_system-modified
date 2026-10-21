@@ -1166,3 +1166,44 @@ class AutoApproveCadenceTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.profile.refresh_from_db()
         self.assertEqual(self.profile.auto_approve_weeks, 2)
+
+
+class AutoApproveDoesNotBlockFillTests(TestCase):
+    """Kipindi cha kuidhinisha (mf. kila wiki mbili) hakigusi kujaza za walimu.
+
+    Mfumo hujiamsha kila siku (alarm/beat) na hujaza maendeleo ya walimu
+    kila siku (kwa ratiba yao); kipindi hiki ni cha kuidhinisha (verify)
+    pekee.
+    """
+
+    def setUp(self):
+        U = get_user_model()
+        self.user = U.objects.create_user('mwalimu_fill', password='x')
+        self.profile = TeacherProfile.objects.create(
+            user=self.user, full_name='Mwalimu Fill', ess_username='mf1',
+            ess_password='x', school_open=dt.date(2026, 1, 7),
+            school_close=dt.date(2026, 12, 20), entries_per_week=3,
+            auto_fill_enabled=True, auto_approve_weeks=2)
+        # Jumatano (weekday=2) = siku ya kujaza kwa entries_per_week=3
+        self.today = dt.date(2026, 10, 21)
+
+    def _decision(self):
+        from ess_tracker import tasks as T
+        start, end = T._eat_day_bounds(self.today)
+        return T.auto_fill_decision(self.profile, self.today, None, start, end)
+
+    def test_daily_fill_is_not_blocked_by_approve_interval(self):
+        from ess_tracker import tasks as T
+        ready, why = self._decision()
+        self.assertTrue(ready, msg='kujaza kimesitishwa: %s' % why)
+        # Mfumo bado anajaza kila siku hata kama auto-approve ni wiki mbili.
+        self.assertEqual(T.approve_interval_days(self.profile), 14)
+
+    def test_fill_still_runs_when_approve_is_due_today(self):
+        from ess_tracker import tasks as T
+        run = EssFillRun.objects.create(profile=self.profile, kind='fill',
+                                        source='auto', status='done')
+        EssFillRun.objects.filter(pk=run.pk).update(started=timezone.now())
+        ready, why = self._decision()
+        self.assertFalse(ready)
+        self.assertEqual(why, 'already')

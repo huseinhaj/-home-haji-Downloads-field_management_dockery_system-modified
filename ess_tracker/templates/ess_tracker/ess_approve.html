@@ -223,6 +223,12 @@ h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
           {% if LANG == 'sw' %}<br>Kipindi cha sasa: <b>{{ approve_status.interval_label }}</b>.{% else %}<br>Current interval: <b>{{ approve_status.interval_label }}</b>.{% endif %}
           {% if approve_next_due %} {% if LANG == 'sw' %}Ijayo:{% else %}Next:{% endif %} <b>{{ approve_next_due|date:'d M Y' }}</b>.{% endif %}
           {% if approve_status.last_auto %} {% if LANG == 'sw' %}Uidhinishaji wa mwisho wa kiotomatiki:{% else %}Last automatic approval:{% endif %} <b>{{ approve_status.last_auto.started|date:'d M Y H:i' }}</b>.{% endif %}
+          <br>
+          {% if LANG == 'sw' %}
+            Mfumo hujiamsha kila siku (alarm/beat): <b>06:30 EAT</b> hujaza maendeleo ya walimu (kila siku kwa ratiba yao) na <b>22:00 EAT</b> hukagua kama kipindi chako kimefika. Kipindi chako cha kuidhinisha <b>hagusa</b> kujaza za walimu.
+          {% else %}
+            The system wakes up daily (alarm/beat): <b>06:30 EAT</b> fills teacher progress (daily, on their own schedule) and <b>22:00 EAT</b> checks whether your interval is due. Your approval interval does <b>not</b> affect the daily filling.
+          {% endif %}
         </div>
         <form method="post" action="{% url 'ess_tracker:ess_approve_schedule' %}">
           {% csrf_token %}

@@ -41,6 +41,7 @@ class Command(BaseCommand):
             raise CommandError(
                 'Hakuna wasifu. Tumia --profile, --check-number au --all.')
         now = timezone.now()
+        self._automation_state(now)
         for p in profiles:
             self.stdout.write(self.style.MIGRATE_HEADING(
                 f'— {p.full_name or p.ess_username} (profile #{p.id}) —'))
@@ -86,3 +87,36 @@ class Command(BaseCommand):
         if opts['all']:
             return list(qs.filter(approver_enabled=True))
         return list(qs.filter(approver_enabled=True))
+
+    def _automation_state(self, now):
+        """Hali ya 'alarm' ya kila siku: kujaza za walimu + kaguzi wa 22:00."""
+        import os
+
+        self.stdout.write(self.style.MIGRATE_HEADING('— UJASIRI WA KILA SIKU —'))
+        last_fill = EssFillRun.objects.filter(
+            kind='fill', source='auto').order_by('-started').first()
+        if last_fill is None:
+            self.stdout.write('  kujaza kiotomatiki: HAJAENDEKA bado.')
+        else:
+            self.stdout.write(
+                f'  kujaza kiotomatiki ya mwisho: {last_fill.started:%d %b %Y %H:%M} '
+                f'(status={last_fill.status})')
+        day = now.astimezone(tasks._eat_tz()).date()
+        start, end = tasks._eat_day_bounds(day)
+        today_fill = EssFillRun.objects.filter(
+            kind='fill', source='auto',
+            started__gte=start, started__lt=end).count()
+        today_appr = EssFillRun.objects.filter(
+            kind='approve', source='auto',
+            started__gte=start, started__lt=end).count()
+        self.stdout.write(
+            f'  leo ({day:%d %b %Y}): kujaza={today_fill} run, '
+            f'auto-approve={today_appr} run')
+        embed_sched = os.environ.get('ESS_EMBED_SCHEDULER', '(automatiki)')
+        embed_appr = os.environ.get('ESS_EMBED_APPROVER', '(automatiki)')
+        self.stdout.write(
+            f'  ESS_EMBED_SCHEDULER={embed_sched} (alarm: kujaza 06:30 EAT) | '
+            f'ESS_EMBED_APPROVER={embed_appr} (alarm: verify 22:00 EAT) | '
+            f'beat: ess-auto-fill-daily 06:30 + ess-approve-daily 22:00')
+        self.stdout.write('  Kumbuka: kujaza za walimu ni kila siku (ratiba ya '
+                         'mwalimu) — kipindi cha kuidhinisha hakigusa kujaza.')
