@@ -181,6 +181,15 @@ python manage.py ess_approve --all               # wakuu wote waliochaguliwa
 python manage.py ess_approve --all --dry-run     # onyesha tu (bila Verify)
 ```
 
+> Kitufe cha mkono **hiheshimu kipindi**: kama kipindi chako (mf. kila wiki
+> mbili) bado hakijafika, mfumo hukubali kuidhinisha baada ya bonyeza
+> "Ndio, idhinisha sasa" — ili kila siku usikidhinishe bila kujua.
+
+```bash
+python manage.py ess_approve_status                # hali ya kila mkuu
+python manage.py ess_approve_status --profile 3    # mkuu mmoja
+```
+
 **Kiotomatiki:**
 > * **Railway (service moja ya web):** kipanga-saa kilichopachikwa
 >   **`ess_approve_scheduler`** huthibitisha kila siku **22:00 EAT** (saa 10
@@ -192,6 +201,8 @@ python manage.py ess_approve --all --dry-run     # onyesha tu (bila Verify)
 > * **Kipindi:** kwa kila mkuu — `auto_approve_weeks` = **0 (kila siku)**,
 >   **1 (kila wiki)** au **2 (kila wiki mbili)**; chagua kwenye ukurasa wa
 >   kuidhinisha. Dry-runs (Onyesho tu) **hazihesabiwi** kwenye ratiba.
+>   Run iliyoshindwa (hitilafu) **haichukui** kipindi — hujaribu tena siku
+>   inayofuata.
 
 **Historia ya kujaza** (`/ess/fill/log/`) inaonyesha kila run ikiwa na safu
 **Aina** (`kind`: Kujaza/Sawazisha/Tuma/Soma/Kuidhinisha) na **Chanzo** (`source`:

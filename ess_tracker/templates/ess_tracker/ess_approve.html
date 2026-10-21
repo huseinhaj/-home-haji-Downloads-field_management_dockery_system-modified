@@ -176,6 +176,32 @@ h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
       <div class="note">
         {% if LANG == 'sw' %}Huidhinisha description zilizowasilishwa na walimu walio chini yako.{% else %}Verifies SUBMITTED descriptions of teachers under you.{% endif %}
       </div>
+      {% if approve_status.last_failed %}
+      <div class="alert err" style="margin-top:14px;">
+        <i class="fas fa-triangle-exclamation me-1"></i>
+        {% if LANG == 'sw' %}Uidhinishaji wa kiotomatiki wa mwisho ulishindwa ({{ approve_status.last_failed.started|date:'d M Y H:i' }}) — mfumo hujaribu tena siku inayofuata.{% else %}The last automatic approval failed ({{ approve_status.last_failed.started|date:'d M Y H:i' }}) — it will retry the next day.{% endif %}
+      </div>
+      {% endif %}
+      {% if not approve_status.due %}
+      <div class="alert warn" style="margin-top:14px;text-align:left;">
+        <i class="fas fa-calendar-week me-1"></i>
+        {% if LANG == 'sw' %}
+          Kipindi chako cha kuidhinisha kiotomatiki ni <b>{{ approve_status.interval_label }}</b>{% if approve_next_due %} — ijayo <b>{{ approve_next_due|date:'d M Y' }}</b>{% endif %}.
+          Kitufe hapa hakiidhinishi mpaka kipindi kikafike.
+        {% else %}
+          Your automatic approval interval is <b>{{ approve_status.interval_label }}</b>{% if approve_next_due %} — next due <b>{{ approve_next_due|date:'d M Y' }}</b>{% endif %}.
+          This button will not approve until the interval is due.
+        {% endif %}
+        <form method="post" action="{% url 'ess_tracker:ess_approve_now' %}" style="margin-top:10px;">
+          {% csrf_token %}
+          <input type="hidden" name="override" value="1">
+          <button class="btn ghost mini" type="submit" {% if not profile.ess_ready or not profile.approver_enabled %}disabled{% endif %}
+                  onclick="return confirm('{% if LANG == "sw" %}Mkono huu utaidhinisha sasa hata kama kipindi hakijafika. Endelea?{% else %}This will approve now even though the interval is not due. Continue?{% endif %}')">
+            <i class="fas fa-forward"></i>{% if LANG == 'sw' %}Ndio, idhinisha sasa{% else %}Yes, approve now{% endif %}
+          </button>
+        </form>
+      </div>
+      {% endif %}
       <div style="text-align:center;">
         <form method="post" action="{% url 'ess_tracker:ess_approve_now' %}">
           {% csrf_token %}
@@ -194,7 +220,9 @@ h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
         </h5>
         <div class="sect-sub">
           {% if LANG == 'sw' %}Chagua kipindi. Mfumo huzinduliwa kila siku 22:00 EAT (saa 10 jioni) na hufanya approve tu kipindi kinapofika.{% else %}Choose an interval. The system runs daily at 22:00 EAT and approves only when the interval is due.{% endif %}
+          {% if LANG == 'sw' %}<br>Kipindi cha sasa: <b>{{ approve_status.interval_label }}</b>.{% else %}<br>Current interval: <b>{{ approve_status.interval_label }}</b>.{% endif %}
           {% if approve_next_due %} {% if LANG == 'sw' %}Ijayo:{% else %}Next:{% endif %} <b>{{ approve_next_due|date:'d M Y' }}</b>.{% endif %}
+          {% if approve_status.last_auto %} {% if LANG == 'sw' %}Uidhinishaji wa mwisho wa kiotomatiki:{% else %}Last automatic approval:{% endif %} <b>{{ approve_status.last_auto.started|date:'d M Y H:i' }}</b>.{% endif %}
         </div>
         <form method="post" action="{% url 'ess_tracker:ess_approve_schedule' %}">
           {% csrf_token %}
@@ -224,6 +252,7 @@ h1,h2,h3,h4,h5,.btn,.tt,.lang-a{font-family:'Poppins',system-ui,sans-serif;}
           </div>
           <div class="d-flex align-items-center gap-3" style="display:flex;align-items:center;gap:12px;">
             <span class="badge {% if r.status == 'done' %}done{% elif r.status == 'error' %}error{% else %}running{% endif %}">{{ r.get_status_display }}</span>
+            <span class="badge" style="background:#EEF2FF;color:#3730A3;">{% if r.source == 'auto' %}{% if LANG == 'sw' %}Kiotomatiki{% else %}Automatic{% endif %}{% else %}{% if LANG == 'sw' %}Mkono{% else %}Manual{% endif %}{% endif %}</span>
             {% if r.status == 'error' and r.error_step %}<span class="badge error" title="hatua iliyovunjika">{{ r.error_step }}</span>{% endif %}
             <span>{% if r.saved %}<i class="fas fa-check text-success me-1"></i>{{ r.saved }}{% endif %}</span>
             <a class="link" href="{% url 'ess_tracker:ess_fill_status' r.id %}">{% if LANG == 'sw' %}Angalia{% else %}View{% endif %}</a>

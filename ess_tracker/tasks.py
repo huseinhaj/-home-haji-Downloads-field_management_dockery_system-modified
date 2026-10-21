@@ -337,16 +337,49 @@ def approve_interval_days(profile) -> int:
     return max(0, weeks) * 7
 
 
-def approve_last_auto(profile_id):
-    """Run ya mwisho ya auto-approve ya profile (au None).
+def approve_interval_label(profile) -> str:
+    """Jina la kipindi kwa Kiswahili (kwa kuionyesha kwa mkuu)."""
+    days = approve_interval_days(profile)
+    if days <= 0:
+        return 'kila siku'
+    if days == 7:
+        return 'kila wiki'
+    if days == 14:
+        return 'kila wiki mbili'
+    return 'kila wiki %d' % (days // 7)
 
-    Dry-runs (jaribio tu, halijakubali Verify) HUPUZWA — vinginevyo jaribio
-    la [DRY-RUN] lingeangusha ratiba nzima ya wiki/ziki bila kuona.
-    """
+
+def _approve_auto_runs(profile_id):
+    """Query ya run zote za auto-approve (zisizo dry-run)."""
     from .models import EssFillRun
     return EssFillRun.objects.filter(
         profile_id=profile_id, kind='approve', source='auto'
-    ).exclude(log__startswith='[DRY-RUN]').order_by('-started').first()
+    ).exclude(log__startswith='[DRY-RUN]')
+
+
+def approve_last_run(profile_id):
+    """Run ya mwisho ya auto-approve (hata ikiwa iko 'running' au imeshindwa).
+
+    Inafanyika kama "kiwango" cha usiku wa sasa: kama ilikuwa ikifanyika
+    leo, tusingie run ya pili.
+    """
+    return _approve_auto_runs(profile_id).order_by('-started').first()
+
+
+def approve_last_auto(profile_id, include_failed=False):
+    """Run ya mwisho ya auto-approve ILIYOFANYIKA (status='done').
+
+    Dry-runs (jaribio tu, halijakubali Verify) HUPUZWA — vinginevyo jaribio
+    la [DRY-RUN] lingeangusha ratiba nzima ya wiki/ziki bila kuona.
+
+    Pia, run iliyoshindwa (`status='error'`) haisombui ratiba: kama
+    auto-approve imeshindwa (mf. Playwright/timeout), mfumo hujaribu tena
+    siku inayofuata badala ya kusubiri wiki nzima.
+    """
+    qs = _approve_auto_runs(profile_id)
+    if include_failed:
+        return qs.order_by('-started').first()
+    return qs.filter(status='done').order_by('-started').first()
 
 
 def approve_due_for(profile, now=None) -> bool:
@@ -354,16 +387,24 @@ def approve_due_for(profile, now=None) -> bool:
 
     Heshimu kipindi (`auto_approve_weeks` x wiki). Huzuia pia run ya pili
     siku hiyo hiyo (catch-up + ratiba hazigongani).
+
+    Kipindi hicho hupimwa kutoka run ya mwisho ILIYOFANYIKA ('done'):
+    run iliyoshindwa au iliyosimama haichukui kipindi (mfumo hujaribu
+    siku inayofuata).
     """
     from django.utils import timezone
     now = now or timezone.now()
+    today = now.astimezone(_eat_tz()).date()
+    last_run = approve_last_run(profile.id)
+    if (last_run is not None and last_run.started is not None
+            and last_run.status != 'error'):
+        last_day = last_run.started.astimezone(_eat_tz()).date()
+        if last_day >= today:
+            return False  # ilikwisha endeshwa (au inaendelea) leo
     last = approve_last_auto(profile.id)
     if last is None or last.started is None:
         return True
     last_day = last.started.astimezone(_eat_tz()).date()
-    today = now.astimezone(_eat_tz()).date()
-    if last_day >= today:
-        return False  # ilikwisha endeshwa leo
     return (today - last_day).days >= approve_interval_days(profile)
 
 
@@ -376,6 +417,31 @@ def approve_next_due(profile):
     last_day = last.started.astimezone(_eat_tz()).date()
     # Kila siku (kipindi=0): ijayo ni kesho — si tarehe ile ile ya approve.
     return last_day + timedelta(days=max(approve_interval_days(profile), 1))
+
+
+def approve_status(profile, now=None) -> dict:
+    """Muhtasari wa hali ya auto-approve ya mkuu (kwa UI na diagnostics).
+
+    Zana: {'weeks', 'interval_days', 'interval_label', 'due', 'next_due',
+    'last_auto', 'last_failed'}.
+    """
+    from django.utils import timezone
+    now = now or timezone.now()
+    last = approve_last_auto(profile.id)
+    last_run = approve_last_run(profile.id)
+    failed = None
+    if last_run is not None and last_run.status == 'error':
+        failed = last_run
+    days = approve_interval_days(profile)
+    return {
+        'weeks': int(getattr(profile, 'auto_approve_weeks', 1) or 0),
+        'interval_days': days,
+        'interval_label': approve_interval_label(profile),
+        'due': approve_due_for(profile, now=now),
+        'next_due': approve_next_due(profile),
+        'last_auto': last,
+        'last_failed': failed,
+    }
 
 
 @shared_task(bind=True, time_limit=120, soft_time_limit=100)

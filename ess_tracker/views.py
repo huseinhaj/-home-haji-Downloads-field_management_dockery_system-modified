@@ -612,12 +612,13 @@ def ess_approve_page(request):
     runs = profile.fill_runs.filter(kind='approve')[:15]
     running_run = profile.fill_runs.filter(kind='approve', status='running').first()
     from . import tasks as ess_tasks
-    approve_next_due = ess_tasks.approve_next_due(profile)
+    status = ess_tasks.approve_status(profile)
     return render(request, 'ess_tracker/ess_approve.html', {
         'profile': profile,
         'runs': runs,
         'running_run': running_run,
-        'approve_next_due': approve_next_due,
+        'approve_next_due': status['next_due'],
+        'approve_status': status,
         'hide_navbar': True,
     })
 
@@ -650,7 +651,13 @@ def ess_approve_schedule(request):
 @login_required
 @require_POST
 def ess_approve_now(request):
-    """Idhinisha (verify) maendeleo SUBMITTED kwa akaunti hii ya mkuu."""
+    """Idhinisha (verify) maendeleo SUBMITTED kwa akaunti hii ya mkuu.
+
+    Kipindi (`auto_approve_weeks`) hiheshimiwa hata hapa: kama kipindi
+    bado hakijafika, mkuu lazima atoe mwenyewe ukibofya "Ndio, idhinisha
+    sasa" (`override=1`). Bila hivyo hakuna kitufe chenyewe linalopindua
+    ratiba (ulinzi wa kila siku kuidhinisha).
+    """
     profile = _me(request)
     if profile is None:
         return redirect('ess_tracker:ess_profile')
@@ -667,7 +674,19 @@ def ess_approve_now(request):
     if existing:
         messages.info(request, 'Uhidhinishaji unaendelea tayari — subiri kukamilika.')
         return redirect('ess_tracker:ess_fill_status', run_id=existing.id)
+    from . import tasks as ess_tasks
+    status = ess_tasks.approve_status(profile)
     dry_run = request.POST.get('dry_run') == '1'
+    # Dry-run (onyesho tu) haibofyeni Verify — huu hauhitaji override.
+    if not dry_run and not status['due'] and request.POST.get('override') != '1':
+        nxt = status['next_due']
+        messages.warning(
+            request,
+            'Kipindi chako cha kuidhinisha kiotomatiki ni %s%s. '
+            'Ikiwa unataka kuidhinisha sasa, bonyeza "Ndio, idhinisha sasa".'
+            % (status['interval_label'],
+               (' — ijayo %s' % nxt.strftime('%d/%m/%Y')) if nxt else ''))
+        return redirect('ess_tracker:ess_approve')
     from .runs import launch_run
     run = launch_run(
         profile=profile, kind='approve', thread_target=_run_approve,
