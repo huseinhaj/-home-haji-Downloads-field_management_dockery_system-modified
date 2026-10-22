@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   db:
     image: postgres:16-alpine
@@ -10,6 +8,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    # MUHIMU: bila hii, kila reboot/kill ya host inaua Postgres kwa SIGKILL
+    # baada ya sekunde 10 → WAL inakosewa → "could not locate a valid checkpoint
+    # record" (mfano: tukio la 2026-10-22). SIGINT = fast shutdown safi.
+    stop_signal: SIGINT
+    stop_grace_period: 120s
 
   redis:
     image: redis:7-alpine

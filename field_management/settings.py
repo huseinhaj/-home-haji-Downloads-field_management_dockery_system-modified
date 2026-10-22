@@ -265,8 +265,33 @@ CLICKPESA_CLIENT_ID = os.environ.get('CLICKPESA_CLIENT_ID', '')
 CLICKPESA_API_KEY = os.environ.get('CLICKPESA_API_KEY', '')
 
 # GDAL Configuration for GeoDjango
-GDAL_LIBRARY_PATH = os.environ.get('GDAL_LIBRARY_PATH', '/usr/lib/x86_64-linux-gnu/libgdal.so')
-GEOS_LIBRARY_PATH = os.environ.get('GEOS_LIBRARY_PATH', '/usr/lib/x86_64-linux-gnu/libgeos_c.so')
+# NOTE: Debian haiwa na 'libgdal.so' (si 'libgdal.so.36') — hapa tunatafuta
+# version inayofaa ikiwa default. Bila hii, kila `manage.py` inayopewa
+# `docker compose exec` hufaulu kwa "libgdal.so: cannot open shared object file".
+def _detect_native_lib(env_var, fallback_name, search_dirs=(
+        '/usr/lib/x86_64-linux-gnu', '/usr/lib', '/usr/local/lib')):
+    """Ruta ya native library: env var kama kipaumbele, kisha fallback, kisha glob."""
+    import glob as _glob
+
+    def _version_key(path):
+        ver = os.path.basename(path)[len(fallback_name) + 1:]
+        return [int(p) if p.isdigit() else 0 for p in ver.split('.')]
+
+    env_value = os.environ.get(env_var)
+    if env_value and os.path.exists(env_value):
+        return env_value
+    for d in search_dirs:
+        plain = os.path.join(d, fallback_name)
+        if os.path.exists(plain):
+            return plain
+        matches = _glob.glob(os.path.join(d, fallback_name + '.*'))
+        if matches:
+            return max(matches, key=_version_key)
+    return fallback_name
+
+
+GDAL_LIBRARY_PATH = _detect_native_lib('GDAL_LIBRARY_PATH', 'libgdal.so')
+GEOS_LIBRARY_PATH = _detect_native_lib('GEOS_LIBRARY_PATH', 'libgeos_c.so')
 
 # Cache configuration - Redis (Railway/production) au LocMem (development)
 _REDIS_URL = os.environ.get('REDIS_URL') or os.environ.get('REDISCLOUD_URL')
