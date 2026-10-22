@@ -3,17 +3,35 @@ name: Deploy to Railway
 on:
   push:
     branches: [main]
+  workflow_dispatch:      # inawezesha kuchukua upya deploy bila push
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Deploy to Railway
-        run: railway up --detach
+      # ── Diagnostiki ──────────────────────────────────────────────────────
+      # Run ya 743 za mwisho zilishindwa kwa sababu ya "project not linked":
+      # `railway up` haijui ni project gani au ni service gani. Hapa tunasema
+      # wazi kabisa kama mazingira yako yamefika, ili hitilafu isionekane
+      # kabla ya kujaribu kupeleka.
+      - name: Check Railway link
+        run: railway status
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE || 'hikari' }}
+          RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT || 'production' }}
+
+      - name: Deploy to Railway
+        run: railway up --detach --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE || 'hikari' }}
+          RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT || 'production' }}
