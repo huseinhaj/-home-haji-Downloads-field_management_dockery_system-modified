@@ -133,10 +133,11 @@ VISION_TIMEOUT_S = 60
 MAX_TOKENS_OPENROUTER = 16384
 
 PROMPT = (
-    "This is a PHOTO of a scoresheet — a table with a row number column "
-    "('Na.'), student names, and their marks written by a teacher "
-    "(handwritten or typed). Read EVERY row carefully and extract the ROW "
-    "NUMBER, NAME and SCORE for each student.\n\n"
+    "This is a PHOTO of a scoresheet — a table with FOUR columns: a row "
+    "number column ('Na.'), student names, their marks written by a teacher "
+    "('Alama'), and a signature column ('Saini / Sign') that each student "
+    "signs by hand. Read EVERY row carefully and extract the ROW NUMBER, "
+    "NAME and SCORE for each student.\n\n"
     "Return ONLY a JSON array — no explanations — in this exact format:\n"
     '[{"row": 1, "name": "Full Name", "score": 78}, '
     '{"row": 2, "name": "Another Name", "score": 8}, '
@@ -149,6 +150,14 @@ PROMPT = (
     "even if its score cell is empty — see rule 3.\n"
     "2. SCORES: Read the exact number. '00' = 0, '08' = 8, '05' = 5, '10' = 10. "
     "NEVER change the number — write EXACTLY what is written.\n"
+    "2a. THE SCORE COMES FROM THE 'Alama' COLUMN ONLY. The sheet has a fourth "
+    "column, 'Saini / Sign', where every student signs by hand — that column "
+    "holds SIGNATURES (scribbles, initials, a name, a tick, a cross), NEVER "
+    "a mark. Read the score from the 'Alama' column and ignore the 'Saini' "
+    "column completely. A signature that happens to look like a digit, an "
+    "'X' or a checkmark is a SIGNATURE — never report it as the score, and "
+    "never let it turn a good score into 'X' (absent). If the 'Alama' cell "
+    "is empty, report 'BLANK' — the signature does not fill it in.\n"
     "3. ABSENT MARKS: If you see 'X', 'XX', 'x', 'xx', a cross mark (✕), "
     "a checkmark, or any non-numeric symbol in the SCORE cell, "
     "set score to 'X' (meaning absent — student did not take the exam). "
@@ -163,7 +172,8 @@ PROMPT = (
     "neighbouring row's mark, and never guess from handwriting elsewhere "
     "on the page. A row with no visible mark must come back as 'BLANK'.\n"
     "5. IGNORE headers, dates, signatures, and ID numbers — but never a row "
-    "that has a printed row number and a name, even with a blank score.\n"
+    "that has a printed row number and a name, even with a blank score. The "
+    "whole 'Saini / Sign' column is a signature (see rule 2a) — skip it.\n"
     "6. Scores must be between 0 and 100. They MAY contain DECIMALS — "
     "write them exactly as written: '10.6' stays 10.6, do NOT round it to "
     "11, and '7.5' stays 7.5. Only 'X' for absent or 'BLANK' for empty "

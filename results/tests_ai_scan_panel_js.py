@@ -569,3 +569,16 @@ class SpecialCaseUiTests(unittest.TestCase):
         self.assertIn('UNCLEAR MARKS', src)
         self.assertIn('uncertain', src)
         self.assertIn('raw_score', src)
+
+    def test_ai_is_instructed_to_read_the_score_from_the_marks_column_only(self):
+        """Scoresheet ya majina sasa ina safu ya 'Saini' baada ya 'Alama'.
+
+        Bila maelekezo, AI inaweza kusoma saini ya mwanafunzi (inayofanana na
+        'X', alama ya kidole au namba) kuwa alama ya mtihani — na kuzifanya
+        mwanafunzi kukosewa (absent) wakati alama yake ipo kwenye 'Alama'.
+        """
+        src = (Path(__file__).resolve().parent
+               / 'services' / 'scoresheet_ocr_service.py').read_text(encoding='utf-8')
+        self.assertIn("'Alama' COLUMN ONLY", src)
+        self.assertIn("'Saini / Sign'", src)
+        self.assertIn('SIGNATURE', src)

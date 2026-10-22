@@ -910,11 +910,12 @@ def _add_student_to_stored_roster(teacher, exam, subject, student_id, name):
 @require_GET
 def download_scoresheet_names_pdf(request):
     """PDF ya majina yaliyokwisha-sajiliwa (na Mtaaluma/StoredRoster) kwa
-    mtihani+somo fulani, yenye safu tupu ya 'Alama' — mwalimu anaipakua,
-    anaichapisha, anajaza alama kwa mkono, kisha anapiga picha/scan na
-    kuipakia kupitia 'Pakia Picha/PDF ya Scoresheet'. Hii inafunga mzunguko:
-    Mtaaluma anasajili wanafunzi -> Mwalimu anapakua majina -> anajaza kwa
-    mkono -> anapakia tena kama picha/PDF."""
+    mtihani+somo fulani, yenye safu tupu ya 'Alama' na safu ya 'Saini'
+    (kila mwanafunzi anasaini ili kuonyesha kwamba alifanya mtihani) —
+    mwalimu anaipakua, anaichapisha, anajaza alama kwa mkono, kisha anapiga
+    picha/scan na kuipakia kupitia 'Pakia Picha/PDF ya Scoresheet'. Hii
+    inafunga mzunguko: Mtaaluma anasajili wanafunzi -> Mwalimu anapakua majina
+    -> anajaza kwa mkono -> anapakia tena kama picha/PDF."""
     teacher = request.user
     exam = _teacher_exam(teacher, request.GET.get('exam_id') or request.GET.get('exam'))
     if exam is None:
@@ -956,21 +957,26 @@ def download_scoresheet_names_pdf(request):
     elements.append(Paragraph(f"Mwalimu / Teacher: {_pdf_escape(teacher.full_name or teacher.email)}", sub_style))
     elements.append(Spacer(1, 4 * mm))
     elements.append(Paragraph(
-        '💡 Jaza alama kwa mkono kwenye safu ya "Alama", kisha piga picha au scan '
-        'ukurasa huu, na uupakie kwenye "Pakia Picha/PDF ya Scoresheet" kwenye ukurasa wa Marks Entry.',
+        '💡 Jaza alama kwa mkono kwenye safu ya "Alama". Kila mwanafunzi anayefanya '
+        'mtihani asaini kwenye safu ya "Saini" ili kuonyesha kwamba alifanya mtihani. '
+        'Kisha piga picha au scan ukurasa huu, na uupakie kwenye '
+        '"Pakia Picha/PDF ya Scoresheet" kwenye ukurasa wa Marks Entry.',
         hint_style,
     ))
     elements.append(Spacer(1, 6 * mm))
 
-    hdr = ['Na.', 'Jina la Mwanafunzi', 'Alama']
+    # Safu ya "Saini" — kila mwanafunzi anasaini safu yake mwenyewe ili
+    # kuonyesha kwamba alifanya mtihani. Jumla ya upana 16.8cm (ukingo wa
+    # A4 kwa margin 2cm = 17cm).
+    hdr = ['Na.', 'Jina la Mwanafunzi', 'Alama', 'Saini / Sign']
     rows = [hdr]
     if roster:
         for i, s in enumerate(roster, 1):
-            rows.append([str(i), s['name'], ''])
+            rows.append([str(i), s['name'], '', ''])
     else:
-        rows.append(['', 'Hakuna wanafunzi waliosajiliwa bado.', ''])
+        rows.append(['', 'Hakuna wanafunzi waliosajiliwa bado.', '', ''])
 
-    t = Table(rows, colWidths=[1.5 * cm, 11 * cm, 3 * cm])
+    t = Table(rows, colWidths=[1.3 * cm, 9.5 * cm, 2.5 * cm, 3.5 * cm])
     t.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), GREEN),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -981,12 +987,13 @@ def download_scoresheet_names_pdf(request):
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 1), (-1, -1), 10),
         ('ALIGN', (0, 1), (0, -1), 'CENTER'),
-        ('ALIGN', (-1, 1), (-1, -1), 'CENTER'),
+        ('ALIGN', (2, 1), (3, -1), 'CENTER'),
         *[('BACKGROUND', (0, i), (-1, i), GREY) for i in range(2, len(rows), 2)],
         ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
         ('BOX', (0, 0), (-1, -1), 1.2, GREEN),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        # Nafasi ya kutosha ili mwanafunzi awe na nafasi ya kuweka saini
+        ('TOPPADDING', (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 9),
     ]))
     elements.append(t)
     elements.append(Spacer(1, 10 * mm))

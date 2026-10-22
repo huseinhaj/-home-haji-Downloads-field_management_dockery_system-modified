@@ -751,6 +751,47 @@ class DownloadScoresheetNamesPdfTests(TestCase):
 		})
 		self.assertEqual(response.status_code, 403)
 
+	def test_has_signature_column_for_students_to_sign(self):
+		"""Kila mwanafunzi anapaswa kuwa na safu ya 'Saini' ili asaini
+		akionyesha kwamba alifanya mtihani."""
+		response = self.client.get(reverse('download_scoresheet_names_pdf'), {
+			'exam_id': self.exam.id, 'subject_id': self.subject.id,
+		})
+		self.assertEqual(response.status_code, 200)
+		content = b''.join(response.streaming_content) if response.streaming else response.content
+
+		import io
+		import pdfplumber
+		with pdfplumber.open(io.BytesIO(content)) as pdf:
+			text = '\n'.join(page.extract_text() or '' for page in pdf.pages)
+		self.assertIn('Saini', text)
+		# Safu zote zinapaswa kuwa kwenye ukurasa wa pamoja.
+		self.assertIn('Alama', text)
+		self.assertIn('Jina la Mwanafunzi', text)
+
+	def test_signature_column_does_not_overflow_page_width(self):
+		"""Jedwali (Na. + Jina + Alama + Saini) lazima litoshe ndani ya A4
+		kwa margin 2cm — 17cm."""
+		response = self.client.get(reverse('download_scoresheet_names_pdf'), {
+			'exam_id': self.exam.id, 'subject_id': self.subject.id,
+		})
+		content = b''.join(response.streaming_content) if response.streaming else response.content
+
+		import io
+		import pdfplumber
+		with pdfplumber.open(io.BytesIO(content)) as pdf:
+			page = pdf.pages[0]
+			self.assertLessEqual(page.width, 21 * 28.3465)  # A4 = 21cm
+			table = page.find_tables()
+			self.assertTrue(table, 'Jedwali la majina haikupatikana kwenye PDF')
+			for row in table[0].rows:
+				for cell in row.cells:
+					if cell is not None:
+						self.assertLessEqual(
+							cell[2] - cell[0], 17 * 28.3465 + 1,
+							'K safu imeiva za ukingo wa ukurasa',
+						)
+
 
 class MarksEntryPreviewPdfTests(TestCase):
 	"""The teacher's own review-before-save PDF — posted from the Marks
