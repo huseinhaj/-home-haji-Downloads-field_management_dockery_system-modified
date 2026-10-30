@@ -728,6 +728,89 @@ def run_ess_sync(self, profile_id, run_id):
         return run_sync(profile_id, run_id)
 
 
+@shared_task(bind=True, time_limit=180, soft_time_limit=160)
+def auto_sync_due(self):
+    """Sawazisha majina ya ESS kiotomatiki (mwalimu hana kufungua app).
+
+    Mwalimu anayetumia ESS official tu hatawezi kubofya "Sawazisha". Huu
+    task huendesha sync kwa kila mwalimu ambaye:
+      - ana akunti ya ESS iliyounganishwa (ess_ready), na
+      - hakujasawazishwa kwa wiki moja (au hana task kabisa).
+
+    Sync ndio inayojipanga mode/target/dirisha (adopt.provision_profile),
+    kwa hiyo mwalimu hapataji kuchosea chochote.
+    """
+    ready, skipped = sync_candidates()
+    triggered = []
+    for prof in ready:
+        run = EssFillRun.objects.create(profile=prof, kind='sync',
+                                        source='auto')
+        from .tasks import run_ess_sync
+        run_ess_sync.apply_async(args=[prof.id, run.id], queue='essfill')
+        triggered.append(prof.id)
+    return {'triggered': triggered, 'skipped': skipped}
+
+
+def sync_candidates():
+    """(walimu wanaohitaji sync, walimu waliokwepwa) kwa sasa."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from .models import EssFillRun, TeacherProfile
+
+    now = timezone.now()
+    cutoff = now - timedelta(days=7)
+    ready = []
+    skipped = []
+    qs = TeacherProfile.objects.filter(ess_ready=True, auto_fill_enabled=True)
+    for prof in qs.select_related('user'):
+        has_tasks = prof.tasks.exists()
+        last = EssFillRun.objects.filter(profile=prof, kind='sync') \
+            .order_by('-started').first()
+        if has_tasks and last and last.started >= cutoff:
+            skipped.append({'id': prof.id, 'why': 'recent'})
+            continue
+        ready.append(prof)
+    return ready, skipped
+
+
+def run_auto_sync_inline(log=None):
+    """Sawazisha majina ya ESS HUMU ndani ya process hii (bila broker).
+
+    Hutumika na kiendesha cha `ess_scheduler` (Railway bila celery worker).
+    """
+    from .essfill import run_sync
+    from .locks import profile_lock
+    from .models import EssFillRun
+
+    def _log(msg):
+        if log:
+            try:
+                log(msg)
+            except Exception:  # noqa: BLE001
+                pass
+
+    ready, skipped = sync_candidates()
+    done, failed = [], []
+    for prof in ready:
+        run = EssFillRun.objects.create(profile=prof, kind='sync',
+                                        source='auto')
+        try:
+            with profile_lock(prof.id) as got:
+                if not got:
+                    continue
+                res = run_sync(prof.id, run.id)
+            if (res or {}).get('status') == 'error':
+                failed.append(prof.id)
+            else:
+                done.append(prof.id)
+        except Exception as exc:  # noqa: BLE001
+            failed.append(prof.id)
+            _log(f'sync ya {prof.id} imeshindikana: {exc}')
+    return {'synced': done, 'failed': failed, 'skipped': skipped}
+
+
 @shared_task(bind=True, queue='essfill', time_limit=600, soft_time_limit=560,
              max_retries=3)
 def run_ess_push(self, profile_id, run_id):

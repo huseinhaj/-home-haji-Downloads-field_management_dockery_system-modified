@@ -17,6 +17,10 @@ class Command(BaseCommand):
                             help='Saa ya EAT (default 6).')
         parser.add_argument('--minute', type=int, default=30,
                             help='Dakika (default 30).')
+        parser.add_argument('--sync-hour', type=int, default=5,
+                            help='Saa ya EAT ya kusawazisha majina (default 5).')
+        parser.add_argument('--sync-minute', type=int, default=45,
+                            help='Dakika ya kusawazisha majina (default 45).')
         parser.add_argument('--once', action='store_true',
                             help='Endesha mara moja sasa kisha toka.')
         parser.add_argument('--catch-up', action='store_true',
@@ -26,9 +30,12 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         self.hour = opts['hour']
         self.minute = opts['minute']
+        self.sync_hour = opts['sync_hour']
+        self.sync_minute = opts['sync_minute']
         self.stdout.write(self.style.SUCCESS(
             f'[ess-scheduler] imeanza — kila siku {self.hour:02d}:'
-            f'{self.minute:02d} EAT'))
+            f'{self.minute:02d} EAT (jazo), {self.sync_hour:02d}:'
+            f'{self.sync_minute:02d} EAT (majina)'))
 
         if opts['once']:
             self._run_once()
@@ -44,26 +51,46 @@ class Command(BaseCommand):
                 self.stderr.write(f'[ess-scheduler] catch-up error: {exc}')
 
         while True:
-            secs = self._seconds_until_next()
+            kind, secs = self._seconds_until_next()
             self.stdout.write(
-                f'[ess-scheduler] kujaza ijayo baada ya {secs / 3600:.2f} h '
-                f'({self.hour:02d}:{self.minute:02d} EAT)')
+                f'[ess-scheduler] {kind} ijayo baada ya {secs / 3600:.2f} h')
             self._sleep(secs)
             try:
-                self._run_once()
+                if kind == 'sync':
+                    self._run_sync_once()
+                else:
+                    self._run_once()
             except Exception as exc:  # noqa: BLE001
                 self.stderr.write(f'[ess-scheduler] error: {exc}')
 
     def _now_eat(self):
         return timezone.now().astimezone(tasks._eat_tz())
 
+    def _actions(self):
+        """(kind, wakati) ya hatua zote za leo na kesho."""
+        now = self._now_eat()
+        out = []
+        for kind, hour, minute in (
+                ('sync', self.sync_hour, self.sync_minute),
+                ('fill', self.hour, self.minute)):
+            target = now.replace(hour=hour, minute=minute, second=0,
+                                 microsecond=0)
+            out.append((kind, target))
+            out.append((kind, target + timedelta(days=1)))
+        return out
+
     def _seconds_until_next(self):
         now = self._now_eat()
-        target = now.replace(hour=self.hour, minute=self.minute,
-                             second=0, microsecond=0)
-        if target <= now:
-            target += timedelta(days=1)
-        return (target - now).total_seconds()
+        best = None
+        for kind, target in self._actions():
+            secs = (target - now).total_seconds()
+            if secs <= 0:
+                continue
+            if best is None or secs < best[1]:
+                best = (kind, secs)
+        if best is None:
+            return 'fill', 60.0
+        return best[0], best[1]
 
     def _sleep(self, secs):
         # Lala kwa vipande ili signals/restarts zijibiwe haraka.
@@ -95,3 +122,13 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(
             f'[ess-scheduler] imekamilika: filled={res.get("filled")} '
             f'failed={res.get("failed")}'))
+
+    def _run_sync_once(self):
+        """Sawazisha majina ya ESS kwa walimu wasiofungua app."""
+        self.stdout.write(
+            f'[ess-scheduler] kusawazisha majina ya ESS ({self._now_eat()})...')
+        res = tasks.run_auto_sync_inline(
+            log=lambda m: self.stdout.write(str(m)))
+        self.stdout.write(self.style.SUCCESS(
+            f'[ess-scheduler] majina: synced={len(res.get("synced") or [])} '
+            f'failed={len(res.get("failed") or [])}'))

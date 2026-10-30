@@ -2403,6 +2403,14 @@ def run_sync(profile_id: int, run_id: int) -> dict:
             _supervise_official_rows(profile, official_rows, emit)
         except Exception as exc:
             emit(f'Kuhifadhi asilimia za ESS: {exc}')
+        try:
+            from .adopt import provision_profile
+            prov = provision_profile(profile, emit=emit)
+            emit(f'Pangilio: {prov["classified"]} sub-task, '
+                 f'mara {prov["entries_per_week"]}/wiki, '
+                 f'dirisha {prov["window"][0]} — {prov["window"][1]}.')
+        except Exception as exc:
+            emit(f'Pangilio la profile: {exc}')
     except Exception as exc:  # noqa: BLE001
         err = state.get('error') or describe_failure(
             exc, state.get('step') or '', '')

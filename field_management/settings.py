@@ -400,6 +400,14 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=6, minute=30),
         "options": {"expires": 1800, **_QUEUE},
     },
+    "ess-auto-sync-weekly": {
+        # Jumapili 05:45 EAT: sawazisha majina ya ESS kwa walimu ambao
+        # hawatumii app (mf. walimu mpya wa ESS-native). Sync ndio
+        # inayojipanga mode/target/dirisha (adopt.provision_profile).
+        "task": "ess_tracker.tasks.auto_sync_due",
+        "schedule": crontab(day_of_week='1', hour=5, minute=45),
+        "options": {"expires": 1800, **_QUEUE},
+    },
     "ess-approve-daily": {
         # Kila siku 22:00 EAT (saa 10 jioni, baada ya saa za kazi): mkuu/
         # kiongozi aidhinishe (verify) maendeleo SUBMITTED ya walimu. Ndani ya

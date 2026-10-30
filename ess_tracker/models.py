@@ -73,10 +73,16 @@ class TeacherProfile(models.Model):
     auto_approve_weeks = models.PositiveSmallIntegerField(
         default=0,
         choices=[(0, 'Kila siku (hazui mwisho)'), (1, 'Kwa wiki 1'),
-                 (2, 'Kwa wiki mbili'), (4, 'Kwa wiki 4'), (12, 'Kwa miezi 3')],
+                 (2, 'Kwa wiki mbili'), (4, 'Kwa mwezi 1'),
+                 (9, 'Kwa miezi 2'), (13, 'Kwa miezi 3')],
         help_text='Mkuu/kiongozi: muda (kwa wiki) ambao mfumo wa moja kwa moja '
                   'unaweza kuendelea kwaweka kila siku (kujaza na kuidhinisha). '
                   'Mwisho wa muda: mfumo husimama hadi uweke upya.')
+    ess_native = models.BooleanField(
+        default=True,
+        help_text='Njia ya ESS-native: mfumo hujipanga mwenyewe kutoka ESS '
+                  '(mode, target, dirisha) bila mwalimu achosea chochote. '
+                  'Wasimamizi wa kwanza walioipanga app zenyewe: washa vizuri.')
     auto_lease_until = models.DateTimeField(
         null=True, blank=True,
         help_text='Mwisho wa kipindi cha mchakato wa moja kwa moja (lease). '

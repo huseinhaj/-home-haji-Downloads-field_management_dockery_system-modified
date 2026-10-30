@@ -1249,12 +1249,126 @@ class AutoApproveLeaseBlocksFillTests(TestCase):
         self.assertTrue(ready, msg='kujaza kimesitishwa: %s' % why)
         self.assertTrue(T.fill_lease_active(self.profile))
 
-    def test_fill_still_runs_when_approve_already_ran_today(self):
+    def test_fill_does_not_run_twice_a_day(self):
         from ess_tracker import tasks as T
         self._lease(timezone.now() + dt.timedelta(days=14))
         run = EssFillRun.objects.create(profile=self.profile, kind='fill',
                                         source='auto', status='done')
-        EssFillRun.objects.filter(pk=run.pk).update(started=timezone.now())
+        day_start, _ = T._eat_day_bounds(self.today)
+        EssFillRun.objects.filter(pk=run.pk).update(
+            started=day_start + dt.timedelta(hours=1))
         ready, why = self._decision()
         self.assertFalse(ready)
         self.assertEqual(why, 'already')
+
+
+class AdoptFromEssTests(TestCase):
+    """Onboarding ya ESS-native: mwalimu hapezi password tu.
+
+    Mfumo lazima ajipange mwenyewe kutoka ESS: mode/target kwa kila
+    sub-task, dirisha la shule, na mara kwa wiki.
+    """
+
+    def setUp(self):
+        U = get_user_model()
+        self.user = U.objects.create_user('walimu', password='x')
+        self.profile = TeacherProfile.objects.create(
+            user=self.user, full_name='Walimu ESS', ess_username='u1',
+            ess_password='p')
+        self.task = Task.objects.create(
+            profile=self.profile, name='Kufundisha Hisabati',
+            somo='Hisabati', kidato='1', topics_total=8,
+            start=dt.date(2026, 1, 5), end=dt.date(2026, 12, 18))
+        self.azimio = SubTask.objects.create(
+            task=self.task, position=1,
+            description='Kuandaa azimio la kazi la somo la Hisabati',
+            mode='manual')
+        self.nukuu = SubTask.objects.create(
+            task=self.task, position=2,
+            description='Kuandaa nukuu 8 za somo la Hisabati kwa kila mada',
+            mode='manual')
+        self.vipindi = SubTask.objects.create(
+            task=self.task, position=5,
+            description='Kufundisha vipindi 40 na kutoa zoezi kwa kila kipindi',
+            mode='manual')
+        self.mitihani = SubTask.objects.create(
+            task=self.task, position=6,
+            description='Kutoa, kuashisha na kufanya tathmini ya matokeo ya mitihani',
+            mode='manual')
+
+    def test_classify_key_from_ess_text(self):
+        from ess_tracker.adopt import classify_key
+        self.assertEqual(classify_key('Kuandaa azimio la kazi'), 'maazimio')
+        self.assertEqual(classify_key('Kuandaa nukuu 8 za somo'), 'nukuu')
+        self.assertEqual(classify_key('Kufundisha vipindi 40'), 'kufundisha')
+        self.assertEqual(classify_key('matokeo ya mitihani'), 'mitihani')
+        self.assertIsNone(classify_key('Jambo lisilo la maana'))
+
+    def test_provision_classifies_subtasks(self):
+        from ess_tracker.adopt import provision_profile
+        res = provision_profile(self.profile)
+        self.assertEqual(res['classified'], 2)
+        self.azimio.refresh_from_db()
+        self.assertEqual(self.azimio.mode, 'annual')
+        self.nukuu.refresh_from_db()
+        self.assertEqual(self.nukuu.mode, 'manual')
+        self.vipindi.refresh_from_db()
+        self.assertEqual(self.vipindi.mode, 'periods')
+        self.assertTrue(float(self.vipindi.vila_per_week) > 0)
+        self.assertTrue(self.vipindi.week_count > 0)
+        self.mitihani.refresh_from_db()
+        self.assertEqual(self.mitihani.mode, 'manual')
+
+    def test_provision_skips_profiles_that_configured_the_app(self):
+        from ess_tracker.adopt import provision_profile
+        self.profile.ess_native = False
+        self.profile.save(update_fields=['ess_native'])
+        res = provision_profile(self.profile)
+        self.assertEqual(res['classified'], 0)
+        self.azimio.refresh_from_db()
+        self.assertEqual(self.azimio.mode, 'manual')
+
+    def test_provision_sets_window_and_entries_per_week(self):
+        from ess_tracker.adopt import provision_profile
+        provision_profile(self.profile)
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.school_open, dt.date(2026, 1, 5))
+        self.assertEqual(self.profile.school_close, dt.date(2026, 12, 18))
+        self.assertEqual(self.profile.entries_per_week, 3)
+
+    def test_provision_never_overwrites_teacher_settings(self):
+        from ess_tracker.adopt import provision_profile
+        self.nukuu.mode = 'manual'
+        self.nukuu.target = Decimal('3')
+        self.nukuu.save()
+        provision_profile(self.profile)
+        self.nukuu.refresh_from_db()
+        self.assertEqual(self.nukuu.mode, 'manual')
+        self.assertEqual(float(self.nukuu.target), 3.0)
+
+    def test_provision_keeps_existing_window(self):
+        from ess_tracker.adopt import provision_profile
+        self.profile.school_open = dt.date(2026, 2, 2)
+        self.profile.school_close = dt.date(2026, 11, 11)
+        self.profile.entries_per_week = 5
+        self.profile.save()
+        provision_profile(self.profile)
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.school_open, dt.date(2026, 2, 2))
+        self.assertEqual(self.profile.entries_per_week, 5)
+
+    def test_sync_candidates_skips_recent_sync(self):
+        from ess_tracker import tasks as T
+        EssFillRun.objects.create(profile=self.profile, kind='sync',
+                                  source='auto', status='done')
+        ready, skipped = T.sync_candidates()
+        self.assertNotIn(self.profile, ready)
+        self.assertTrue(skipped)
+
+    def test_sync_candidates_picks_profile_without_tasks(self):
+        from ess_tracker import tasks as T
+        empty = TeacherProfile.objects.create(
+            user=self.user.__class__.objects.create_user('walimu2', password='x'),
+            ess_username='u2', ess_password='p')
+        ready, _skipped = T.sync_candidates()
+        self.assertIn(empty, ready)

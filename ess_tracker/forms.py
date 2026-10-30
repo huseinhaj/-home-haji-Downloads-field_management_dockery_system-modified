@@ -128,11 +128,22 @@ class ProfileForm(forms.ModelForm):
         help_text='Kikizimwa, mfumo haitajazi yenyewe. Waweza kuwasha tena '
                   'au kujaza kwa mkono kwa kitufe cha "Jaza" kwenye nyumbani.')
 
+    ess_native = forms.BooleanField(
+        label='Njia ya ESS-native (mfumo ajipange mwenyewe)',
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        help_text='Mfumo hujipanga mwenyewe kutoka ESS official: sub-tasks, '
+                  'ratiba, dirisha la shule. Unachohitaji kutoa ni username na '
+                  'password yako ya e-Tendaji. Wachoma kama unataka kuchagua '
+                  'kila kitu mwenyewe.')
+
     auto_approve_weeks = forms.ChoiceField(
         label='Mchakato wa moja kwa moja uendelee kwa muda gani?',
         required=False,
         choices=[(0, 'Kila siku (hakuna mwisho)'), (1, 'Kwa wiki 1'),
-                 (2, 'Kwa wiki mbili'), (4, 'Kwa wiki 4'), (12, 'Kwa miezi 3')],
+                 (2, 'Kwa wiki mbili'), (4, 'Kwa mwezi 1'),
+                 (9, 'Kwa miezi 2'), (13, 'Kwa miezi 3')],
         widget=forms.Select(attrs={'class': 'form-select'}),
         help_text='Kwa wakuu/kiongozi (approver): ndani ya muda huu mfumo '
                   'huzinduliwa kila siku 22:00 EAT (baada ya saa za kazi) na '
@@ -156,6 +167,7 @@ class ProfileForm(forms.ModelForm):
                 task__profile=self.instance).order_by('task_id', 'position')
             self.fields['auto_subtasks'].initial = self.instance.auto_subtask_ids()
             self.fields['auto_fill_enabled'].initial = self.instance.auto_fill_enabled
+            self.fields['ess_native'].initial = self.instance.ess_native
             self.fields['holidays'].queryset = Holiday.objects.filter(
                 Q(profile__isnull=True) | Q(profile=self.instance))
             self.fields['holidays'].initial = self.instance.holidays.all()
