@@ -2169,7 +2169,7 @@ def generate_results_pdf_response(exam, style='normal', request=None, student_id
 # ══════════════════════════════════════════════════════════════════════════════
 def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=None,
                                      scores=None, subjects=None, subject_ranks=None,
-                                     style='normal', request=None):
+                                     summary=None, style='normal', request=None):
     """Full NECTA-style report card for a single ProcessedResult — same
     official header as the full class report, personalised below it with
     this student's own subjects/scores/grades (each with its own
@@ -2243,18 +2243,27 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
         subjects = list(Subject.objects.filter(examresult__exam=exam, examresult__student=student).distinct().order_by('name'))
     if total_students is None:
         total_students = ProcessedResult.objects.filter(exam=exam).count()
+    # Ripoti ya muhula: summary inaweza kuwa wastani wa mitihani miwili
+    # (tazama combined_report_service.py) — thamani za report card
+    # zinachukuliwa hapo, si zile zilizohifadhiwa kwa mtihani mmoja.
+    summary = summary or {}
+    total_score = summary.get('total_score', result.total_score)
+    average_score = summary.get('average_score', result.average_score)
+    points = summary.get('points', result.points)
+    division = summary.get('division', result.division)
+    position = summary.get('position', result.position)
     division_label = (
-        _grade_for_score(float(result.average_score), exam.form, primary=True)
+        _grade_for_score(float(average_score), exam.form, primary=True)
         if is_primary
-        else dict(ProcessedResult.DIVISION_CHOICES).get(result.division, result.division)
+        else dict(ProcessedResult.DIVISION_CHOICES).get(division, division)
     )
     # INC/ABS markers: hakuna jumla halali ya kuonyesha — aggregate ina '-'
     # na position ni NULL kwa zote mbili (hakuna division halisi, hakuna nafasi).
-    marker = result.division if result.division in ('INC', 'ABS') else ''
+    marker = division if division in ('INC', 'ABS') else ''
     if marker:
         division_label = dict(ProcessedResult.DIVISION_CHOICES).get(marker, marker)
     position_label = (
-        f"{result.position} / {total_students}" if result.position is not None else "-"
+        f"{position} / {total_students}" if position is not None else "-"
     )
 
     page_w, page_h = A4
@@ -2315,16 +2324,16 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
                     ["JUMLA", "WASTANI", "POINTS", "DIVISION", "NAFASI"])
     if is_primary:
         summary_row = [
-            str(result.total_score),
-            str(result.average_score),
+            str(total_score),
+            str(average_score),
             division_label,
-            f"{result.position} / {total_students}",
+            f"{position} / {total_students}" if position is not None else "-",
         ]
     else:
         summary_row = [
-            '-' if marker else str(result.total_score),
-            '-' if marker else str(result.average_score),
-            '-' if marker else str(result.points),
+            '-' if marker else str(total_score),
+            '-' if marker else str(average_score),
+            '-' if marker else str(points),
             division_label,
             position_label,
         ]
@@ -2465,9 +2474,42 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     return buf
 
 
+def _combined_payload_for(exam, request=None):
+    """Payload ya wastani wa mitihani ya muhula, au None.
+
+    Report card ya mwanafunzi hupata wastani wa mtihani wa kati na wa
+    mwisho wa muhula (3+6, 9+11/12) automatic. `?combine=0` kwenye URL
+    huzima mchanganyiko kwa download hiyo moja (mtihani mmoja pekee).
+    """
+    if request is not None:
+        flag = (request.GET.get('combine') or '').strip().lower()
+        if flag in ('0', 'false', 'no', 'off'):
+            return None
+    try:
+        from .combined_report_service import build_combined_payload
+        return build_combined_payload(exam)
+    except Exception:
+        logger.warning(
+            "Combined term report failed (exam=%s)",
+            getattr(exam, 'id', '?'), exc_info=True,
+        )
+        return None
+
+
 def generate_student_result_pdf_response(result, request=None):
     """Single-student download — see _build_student_result_pdf_bytes."""
-    buf = _build_student_result_pdf_bytes(result, request=request)
+    combined = _combined_payload_for(result.exam, request)
+    kwargs = {}
+    if combined and result.student_id in combined['summary_by_student']:
+        sid = result.student_id
+        kwargs = {
+            'scores': combined['scores_by_student'].get(sid, {}),
+            'subjects': combined['subjects_by_student'].get(sid, []),
+            'subject_ranks': combined['subject_ranks'],
+            'summary': combined['summary_by_student'].get(sid),
+            'total_students': combined['total_students'],
+        }
+    buf = _build_student_result_pdf_bytes(result, request=request, **kwargs)
     resp = HttpResponse(buf, content_type='application/pdf')
     safe_name = _student_name(result).replace(' ', '_')
     resp['Content-Disposition'] = f'attachment; filename="Matokeo_{safe_name}.pdf"'
@@ -2495,31 +2537,43 @@ def generate_bulk_student_results_pdf_response(exam, style='normal', request=Non
         resp = HttpResponse('Hakuna matokeo yaliyokamilika kwa mtihani huu bado.', status=404)
         return resp
 
-    # Compute exam-wide values once instead of per-student inside the loop
-    # below (school type does a cross-DB lookup; total_students was already
-    # this same queryset's length).
-    total_students = len(results)
+    # Ripoti ya muhula: wastani wa mitihani ya muhula (3+6, 9+11/12)
+    # ukiwepo, hutumika kwa report card zote za download hii — data
+    # iliyohifadhiwa haibadilishwi.
+    combined = _combined_payload_for(exam, request)
+    summary_by_student = {}
+    if combined:
+        total_students = combined['total_students']
+        scores_by_student = combined['scores_by_student']
+        subjects_by_student = combined['subjects_by_student']
+        subject_ranks = combined['subject_ranks']
+        summary_by_student = combined['summary_by_student']
+    else:
+        # Compute exam-wide values once instead of per-student inside the loop
+        # below (school type does a cross-DB lookup; total_students was already
+        # this same queryset's length).
+        total_students = len(results)
+
+        class_ids = [r.student_id for r in results]
+        scores_by_student = {}
+        subjects_by_student = {}
+        # {subject_id: [(score, student_id), ...]} — for the per-subject NAFASI
+        # column; absent/no-score entries don't get ranked, same as
+        # subject_pdf_service.py's existing single-subject ranking.
+        scored_by_subject = defaultdict(list)
+        for er in ExamResult.objects.filter(exam=exam, student_id__in=class_ids).select_related('subject'):
+            scores_by_student.setdefault(er.student_id, {})[er.subject_id] = er.score
+            subjects_by_student.setdefault(er.student_id, {})[er.subject_id] = er.subject
+            if er.score is not None and not er.is_absent:
+                scored_by_subject[er.subject_id].append((er.score, er.student_id))
+        for sid, subj_map in subjects_by_student.items():
+            subjects_by_student[sid] = sorted(subj_map.values(), key=lambda s: s.name)
+
+        subject_ranks = {}  # {subject_id: {student_id: rank}}
+        for subject_id, pairs in scored_by_subject.items():
+            pairs.sort(key=lambda p: -p[0])
+            subject_ranks[subject_id] = {sid: i + 1 for i, (_score, sid) in enumerate(pairs)}
     school_type = get_school_type_for_exam(exam)
-
-    class_ids = [r.student_id for r in results]
-    scores_by_student = {}
-    subjects_by_student = {}
-    # {subject_id: [(score, student_id), ...]} — for the per-subject NAFASI
-    # column; absent/no-score entries don't get ranked, same as
-    # subject_pdf_service.py's existing single-subject ranking.
-    scored_by_subject = defaultdict(list)
-    for er in ExamResult.objects.filter(exam=exam, student_id__in=class_ids).select_related('subject'):
-        scores_by_student.setdefault(er.student_id, {})[er.subject_id] = er.score
-        subjects_by_student.setdefault(er.student_id, {})[er.subject_id] = er.subject
-        if er.score is not None and not er.is_absent:
-            scored_by_subject[er.subject_id].append((er.score, er.student_id))
-    for sid, subj_map in subjects_by_student.items():
-        subjects_by_student[sid] = sorted(subj_map.values(), key=lambda s: s.name)
-
-    subject_ranks = {}  # {subject_id: {student_id: rank}}
-    for subject_id, pairs in scored_by_subject.items():
-        pairs.sort(key=lambda p: -p[0])
-        subject_ranks[subject_id] = {sid: i + 1 for i, (_score, sid) in enumerate(pairs)}
 
     merged = pdfium.PdfDocument.new()
     buffers = []
@@ -2533,6 +2587,7 @@ def generate_bulk_student_results_pdf_response(exam, style='normal', request=Non
                 scores=scores_by_student.get(result.student_id, {}),
                 subjects=subjects_by_student.get(result.student_id, []),
                 subject_ranks=subject_ranks,
+                summary=summary_by_student.get(result.student_id),
                 style=style,
                 request=request,
             )
