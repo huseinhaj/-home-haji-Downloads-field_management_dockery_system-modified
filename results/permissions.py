@@ -2,8 +2,25 @@ from functools import wraps
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.shortcuts import redirect
 
-results_login_required = login_required(login_url='results_login')
+from .models import TeacherAccount
+
+
+def results_login_required(view_func):
+    """Kurasa za /shule/ ni za akaunti za shule (TeacherAccount) tu.
+
+    CustomUser wa mfumo mkuu/ESS anaweza kuwa ameingia kwenye session
+    hiyo hiyo; hana `school`, hivyo tumpeleke kwenye login ya matokeo
+    badala ya kusababisha AttributeError kwenye views.
+    """
+    @wraps(view_func)
+    @login_required(login_url='results_login')
+    def _wrapped(request, *args, **kwargs):
+        if not isinstance(request.user, TeacherAccount):
+            return redirect('results_login')
+        return view_func(request, *args, **kwargs)
+    return _wrapped
 
 
 def _role_required(is_role_fn, message):
