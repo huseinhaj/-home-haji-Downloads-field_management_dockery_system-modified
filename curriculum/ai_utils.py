@@ -29,6 +29,51 @@ FALLBACK_MODELS_GROQ = [
     "openai/gpt-oss-120b",
 ]
 
+# Gemini direct (bure). Google hufunga modeli za zamani na huweka moja kwenye
+# "high demand" (503) wakati nyingine zinajibu — kwa hiyo tunajaribu mnyororo
+# huu hadi moja ifanye kazi.
+GEMINI_MODEL = (os.getenv("GEMINI_MODEL") or "").strip().strip('"').strip("'").strip() or "gemini-3.5-flash"
+FALLBACK_MODELS_GEMINI = [
+    "gemini-3.5-flash",
+    "gemini-3-flash-preview",
+    "gemini-3.1-flash-lite",
+    "gemini-3.6-flash",
+    "gemini-3.7-flash",
+    "gemini-3.8-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-flash-lite-latest",
+]
+
+
+def _gemini_models() -> list:
+    seen = []
+    for name in [GEMINI_MODEL] + FALLBACK_MODELS_GEMINI:
+        name = (name or "").strip()
+        if name and name not in seen:
+            seen.append(name)
+    return seen
+
+
+def _gemini_model_retryable(exc) -> bool:
+    """503/429/404 = modeli imejaa/haipo, jaribu inayofuata. 400/401/403 =
+    ufunguo/ombi linakataliwa, kubadilisha modeli hakutasaidia."""
+    msg = str(exc).lower()
+    # Mtandao/DNS/timeout: kubadilisha modeli hakutatui na kungerudia
+    # modeli 8 × sekunde 60 kunavuka kikomo cha gunicorn. Achana mara moja.
+    if any(t in msg for t in (
+        "timed out", "timeout", "connection", "connect", "dns",
+        "resolve", "name resolution", "eof", "reset", "refused",
+        "unreachable",
+    )):
+        return False
+    if any(t in msg for t in (
+        " 400", " 401", " 403", "unauthenticated", "permission_denied",
+        "api key not valid", "api_key_invalid",
+    )):
+        return False
+    return True
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -112,9 +157,10 @@ def _call_openrouter_stream(messages, model, api_key, temperature=0.7, max_token
                     continue
 
 
-def _call_gemini(prompt_text, api_key):
+def _call_gemini(prompt_text, api_key, model: str = ""):
     """Call Gemini API via direct HTTP. Returns response text."""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={api_key}"
+    model = (model or GEMINI_MODEL).strip()
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
     payload = {
         "contents": [{"parts": [{"text": prompt_text}]}],
         "generationConfig": {
@@ -136,9 +182,10 @@ def _call_gemini(prompt_text, api_key):
     return text
 
 
-def _call_gemini_stream(prompt_text, api_key):
+def _call_gemini_stream(prompt_text, api_key, model: str = ""):
     """Call Gemini API streaming via direct HTTP. Yields text chunks."""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse&key={api_key}"
+    model = (model or GEMINI_MODEL).strip()
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse&key={api_key}"
     payload = {
         "contents": [{"parts": [{"text": prompt_text}]}],
         "generationConfig": {
@@ -350,14 +397,17 @@ class _UnifiedModels:
         # ── 3rd TRY GEMINI (FREE, no per-request size ceiling like Groq) ──
         _gemini_error = None
         if self._gemini_key:
-            try:
-                logger.info("[AI] Gemini (direct HTTP, FREE fallback)")
-                text = _call_gemini(_prompt_text(contents), self._gemini_key)
-                logger.info("[AI] Gemini success!")
-                return _Response(text)
-            except Exception as e:
-                _gemini_error = e
-                logger.warning(f"[AI] Gemini failed: {type(e).__name__}: {str(e)[:200]}")
+            for gm in _gemini_models():
+                try:
+                    logger.info(f"[AI] Gemini (direct HTTP, FREE fallback): {gm}")
+                    text = _call_gemini(_prompt_text(contents), self._gemini_key, model=gm)
+                    logger.info(f"[AI] Gemini success: {gm}")
+                    return _Response(text)
+                except Exception as e:
+                    _gemini_error = e
+                    logger.warning(f"[AI] Gemini {gm} failed: {type(e).__name__}: {str(e)[:200]}")
+                    if not _gemini_model_retryable(e):
+                        break
 
         # All failed — surface the most useful error. If Gemini was configured
         # but also failed, that's the one worth showing (it's the free
@@ -434,14 +484,21 @@ class _UnifiedModels:
         # ── 3rd GEMINI (FREE, no per-request size ceiling like Groq) ──
         _gemini_error = None
         if self._gemini_key:
-            try:
-                logger.info("[AI] Gemini stream (FREE fallback)")
-                for chunk_text in _call_gemini_stream(_prompt_text(contents), self._gemini_key):
-                    yield _Chunk(chunk_text)
-                return
-            except Exception as e:
-                _gemini_error = e
-                logger.warning(f"[AI] Gemini stream failed: {type(e).__name__}: {str(e)[:200]}")
+            for gm in _gemini_models():
+                emitted = False
+                try:
+                    logger.info(f"[AI] Gemini stream (FREE fallback): {gm}")
+                    for chunk_text in _call_gemini_stream(_prompt_text(contents), self._gemini_key, model=gm):
+                        emitted = True
+                        yield _Chunk(chunk_text)
+                    return
+                except Exception as e:
+                    _gemini_error = e
+                    logger.warning(f"[AI] Gemini stream {gm} failed: {type(e).__name__}: {str(e)[:200]}")
+                    # Chunks zimetumwa tayari — kuanza modeli nyingine
+                    # kungerudia maandishi; toa kosa badala yake.
+                    if emitted or not _gemini_model_retryable(e):
+                        break
 
         last_error = _gemini_error or _groq_error
         if last_error:

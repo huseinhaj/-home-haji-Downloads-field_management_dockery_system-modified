@@ -1,5 +1,6 @@
 """Kosa la AI ya kusoma scoresheet linaelezwa kwa lugha rahisi."""
 import contextlib
+import io
 import os
 from unittest import mock
 
@@ -420,3 +421,81 @@ class WrongDocumentTests(SimpleTestCase):
         # uumbizaji mbaya. Hatutaki kudai alikuwa alipakia nini.
         msg = self._err_for("Total students counted: 3. The overall average is 74.5.")
         self.assertIn('Jibu la AI', msg)
+
+
+class ScoreCaptureProviderOrderTests(SimpleTestCase):
+    """Capture Scores (picha za karatasi zilizosahihishwa) lazima zitumie
+    Gemini (bure) kwanza. OpenRouter iliyofungwa (401 User not found) isipigwe
+    kwa kila ukurasa."""
+
+    def setUp(self):
+        from results.services import ai_grader as ag
+        self.ag = ag
+        ag._OR_DISABLED_UNTIL = 0.0
+        self.addCleanup(lambda: setattr(ag, '_OR_DISABLED_UNTIL', 0.0))
+        buf = io.BytesIO()
+        Image.new('RGB', (40, 20), 'white').save(buf, format='JPEG')
+        self.img = buf.getvalue()
+
+    def _read(self):
+        from results.services import score_capture as sc
+        return sc
+
+    def test_gemini_success_never_calls_openrouter(self):
+        sc = self._read()
+        with mock.patch.object(sc, 'GOOGLE_API_KEY', 'k'), \
+                mock.patch.object(sc, '_openrouter_usable', return_value=True), \
+                mock.patch.object(sc, '_gemini_models', return_value=['gemini-3.5-flash']), \
+                mock.patch.object(sc, '_call_gemini_multi',
+                                  return_value='{"has_header": true, "score": "45"}') as gem, \
+                mock.patch.object(sc, '_call_openrouter_multi') as orr:
+            out = sc.read_paper_header(self.img)
+        self.assertTrue(out['has_header'])
+        self.assertEqual(gem.call_count, 1)
+        self.assertEqual(orr.call_count, 0)
+
+    def test_dead_openrouter_is_skipped_after_401(self):
+        sc = self._read()
+        with mock.patch.object(sc, 'GOOGLE_API_KEY', 'k'), \
+                mock.patch.object(sc, '_gemini_models', return_value=['gemini-3.5-flash']), \
+                mock.patch.object(sc, '_gemini_model_retryable', return_value=False), \
+                mock.patch.object(sc, '_call_gemini_multi',
+                                  side_effect=RuntimeError('Gemini down')), \
+                mock.patch.object(sc, '_call_openrouter_multi',
+                                  side_effect=RuntimeError('OpenRouter vision error 401: User not found')):
+            with self.assertRaises(sc.AIGradeError):
+                sc.read_paper_header(self.img)
+        self.assertFalse(self.ag._openrouter_usable())
+
+        # Ukurasa unaofuata haupigi OpenRouter tena.
+        with mock.patch.object(sc, 'GOOGLE_API_KEY', 'k'), \
+                mock.patch.object(sc, '_gemini_models', return_value=['gemini-3.5-flash']), \
+                mock.patch.object(sc, '_gemini_model_retryable', return_value=False), \
+                mock.patch.object(sc, '_call_gemini_multi',
+                                  side_effect=RuntimeError('Gemini down')), \
+                mock.patch.object(sc, '_call_openrouter_multi') as orr:
+            with self.assertRaises(sc.AIGradeError):
+                sc.read_paper_header(self.img)
+        self.assertEqual(orr.call_count, 0)
+
+
+class TimetableAiFallbackTests(SimpleTestCase):
+    """Timtable AI parser lazima itumie Gemini (bure) kwanza badala ya
+    OpenRouter iliyofungwa."""
+
+    def test_gemini_called_before_openrouter(self):
+        from results.services import ai_timetable_service as tt
+
+        resp = mock.Mock(status_code=200)
+        resp.json.return_value = {
+            "candidates": [{"content": {"parts": [{"text": '{"suggestions": []}'}]}}],
+        }
+        with mock.patch.object(tt, 'GOOGLE_API_KEY', 'k'), \
+                mock.patch.object(tt, 'OPENROUTER_API_KEY', 'dead'), \
+                mock.patch.object(tt.requests, 'post', return_value=resp) as post:
+            result = tt._call_llm('weka Hisabati asubuhi')
+
+        self.assertEqual(result, '{"suggestions": []}')
+        first_url = post.call_args_list[0].args[0]
+        self.assertIn('generativelanguage.googleapis.com', first_url)
+        self.assertEqual(post.call_count, 1)

@@ -25,12 +25,16 @@ import re
 from .ai_grader import (
     AIGradeError,
     GOOGLE_API_KEY,
-    OPENROUTER_API_KEY,
     _call_gemini_multi,
     _call_openrouter_multi,
+    _disable_openrouter,
     _extract_json_object,
+    _gemini_model_retryable,
+    _gemini_models,
+    _is_openrouter_dead,
     _jpeg_bytes,
     _norm_name,
+    _openrouter_usable,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,23 +68,30 @@ Return ONLY a JSON object — no markdown, no explanations — exactly:
 def read_paper_header(image_bytes: bytes) -> dict:
     """Soma reg number + jina + alama ya jumla kutoka ukurasa mmoja.
 
-    Chain ile ile ya ai_grader: OpenRouter (Gemini) → Gemini direct.
+    Chain ile ile ya ai_grader: Gemini direct (bure) → OpenRouter fallback.
     Inatoa AIGradeError kama zote zimeshindikana.
     """
     images = [_jpeg_bytes(image_bytes)]
     errors = []
-    if OPENROUTER_API_KEY:
+    # Gemini direct kwanza (bure na haitegemei ufunguo wa OpenRouter ambao
+    # unaweza kuwa umefutwa). OpenRouter ni fallback tu.
+    if GOOGLE_API_KEY:
+        for model in _gemini_models():
+            try:
+                return _extract_json_object(_call_gemini_multi(images, PROMPT, model=model))
+            except Exception as exc:
+                errors.append(f"gemini {model}: {exc}")
+                logger.warning("[ScoreCapture] Gemini %s failed: %s", model, exc)
+                if not _gemini_model_retryable(exc):
+                    break
+    if _openrouter_usable():
         try:
             return _extract_json_object(_call_openrouter_multi(images, PROMPT))
         except Exception as exc:
             errors.append(f"openrouter: {exc}")
             logger.warning("[ScoreCapture] OpenRouter failed: %s", exc)
-    if GOOGLE_API_KEY:
-        try:
-            return _extract_json_object(_call_gemini_multi(images, PROMPT))
-        except Exception as exc:
-            errors.append(f"gemini: {exc}")
-            logger.warning("[ScoreCapture] Gemini failed: %s", exc)
+            if _is_openrouter_dead(exc):
+                _disable_openrouter(3600)
     raise AIGradeError("; ".join(errors) or "Hakuna AI provider imewekwa")
 
 

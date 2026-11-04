@@ -22,10 +22,37 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+def _read_key(name: str) -> str:
+    raw = os.getenv(name) or ""
+    return raw.strip().strip('"').strip("'").strip()
+
+
+OPENROUTER_API_KEY = _read_key("OPENROUTER_API_KEY")
+GOOGLE_API_KEY = _read_key("GOOGLE_API_KEY")
 
 MODEL = "google/gemini-2.5-flash"
+
+# Gemini direct (bure) — OpenRouter inaweza kuwa imefungwa/imefutwa. Tuna
+# jaribu modeli kadhaa kwa sababu Google huweka moja kwenye "high demand".
+GEMINI_MODEL = _read_key("GEMINI_MODEL") or "gemini-3.5-flash"
+GEMINI_FALLBACK_MODELS = [
+    "gemini-3.5-flash",
+    "gemini-3-flash-preview",
+    "gemini-3.1-flash-lite",
+    "gemini-3.6-flash",
+    "gemini-3.7-flash",
+    "gemini-3.8-flash",
+    "gemini-flash-lite-latest",
+]
+
+
+def _gemini_models() -> list:
+    seen = []
+    for name in [GEMINI_MODEL] + GEMINI_FALLBACK_MODELS:
+        name = (name or "").strip()
+        if name and name not in seen:
+            seen.append(name)
+    return seen
 
 PARSER_PROMPT = """\
 You are a school timetable parser. A person has written instructions in plain language
@@ -186,7 +213,33 @@ Return JSON:
 
 
 def _call_llm(prompt: str) -> str | None:
-    """Call OpenRouter (Gemini flash) and return the response text, or None."""
+    """Call Gemini direct (bure) kwanza, kisha OpenRouter fallback.
+
+    Inarudisha maandishi ya jibu, au None kama wote wameshindikana."""
+    if GOOGLE_API_KEY:
+        for model in _gemini_models():
+            try:
+                resp = requests.post(
+                    "https://generativelanguage.googleapis.com/v1beta/models/"
+                    f"{model}:generateContent",
+                    headers={"x-goog-api-key": GOOGLE_API_KEY},
+                    json={
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1000},
+                    },
+                    timeout=30,
+                )
+                if resp.status_code == 200:
+                    candidates = resp.json().get("candidates", [])
+                    text = (candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                            if candidates else "")
+                    if text:
+                        return text.strip()
+                logger.warning("AI timetable: Gemini %s HTTP %d: %s",
+                               model, resp.status_code, resp.text[:200])
+            except Exception as exc:
+                logger.warning("AI timetable: Gemini %s failed: %s", model, exc)
+
     if not OPENROUTER_API_KEY:
         return None
 
@@ -211,5 +264,5 @@ def _call_llm(prompt: str) -> str | None:
         data = resp.json()
         return data["choices"][0]["message"]["content"].strip()
     except Exception as exc:
-        logger.warning("AI timetable: LLM call failed: %s", exc)
+        logger.warning("AI timetable: OpenRouter call failed: %s", exc)
         return None

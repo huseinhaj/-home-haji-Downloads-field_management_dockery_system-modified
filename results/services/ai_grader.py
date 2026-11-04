@@ -5,8 +5,8 @@ Tofauti na OMR (bubbles tu), hii inasoma karatasi za kweli zenye:
   - jina + namba ya mwanafunzi yaliyoandikwa kwa mkono
   - maswali ya aina zote: matching, select, list, fupi, essay, calculations
 
-Chain ile ile ya scoresheet_ocr_service: OpenRouter (google/gemini-2.5-flash,
-vision) → Gemini direct (FREE fallback). Inapeleka:
+Chain ile ile ya scoresheet_ocr_service: Gemini direct (FREE) → OpenRouter
+(google/gemini-2.5-flash, vision) fallback. Inapeleka:
   picha za MARKING SCHEME (mwalimu alizopakia) + picha ya KARATASI
   → JSON yenye alama kwa kila swali + jina/reg ya mwanafunzi.
 
@@ -31,6 +31,7 @@ import json
 import logging
 import os
 import re
+import time
 
 import requests
 from dotenv import load_dotenv
@@ -39,11 +40,87 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+def _read_key(name: str) -> str:
+    """Soma ufunguo wa API na kuusafisha. Dashboard za Railway na copy-paste
+    hupeleka nafasi au alama za semi pamoja na ufunguo, na hiyo hufanya
+    Google/OpenRouter ikatae kama ufunguo si sahihi."""
+    raw = os.getenv(name) or ""
+    return raw.strip().strip('"').strip("'").strip()
+
+
+OPENROUTER_API_KEY = _read_key("OPENROUTER_API_KEY")
+GOOGLE_API_KEY = _read_key("GOOGLE_API_KEY")
+
+# OpenRouter 401 "User not found" = ufunguo/akaunti imefutwa au imezimwa.
+# Hali hii haibadiliki kwa karatasi inayofuata, kwa hiyo tunaikwepa kwa
+# muda mfupi badala ya kuipigia kila picha (na kupoteza sekunde kila mara).
+_OR_DISABLED_UNTIL = 0.0
+_OR_COOLDOWN_S = 900  # dakika 15
+
+
+def _openrouter_usable() -> bool:
+    return bool(OPENROUTER_API_KEY) and time.monotonic() > _OR_DISABLED_UNTIL
+
+
+def _disable_openrouter(seconds: int = _OR_COOLDOWN_S) -> None:
+    global _OR_DISABLED_UNTIL
+    _OR_DISABLED_UNTIL = time.monotonic() + seconds
+
+
+def _is_openrouter_dead(exc) -> bool:
+    msg = str(exc).lower()
+    return any(t in msg for t in (
+        " 401", "user not found", " 403", "account deactivated",
+        "no auth credentials",
+    ))
+
 
 VISION_MODEL_OPENROUTER = "google/gemini-2.5-flash"
-GEMINI_MODEL = "gemini-3.6-flash"
+
+# Google hufunga modeli za zamani na huweka modeli moja kwenye "high demand"
+# (503) wakati nyingine zinajibu. Kwa hiyo tunajaribu mnyororo huu hadi moja
+# ifanye kazi; GEMINI_MODEL env inabadilisha ya kwanza.
+GEMINI_MODEL = (os.getenv("GEMINI_MODEL") or "").strip().strip('"').strip("'").strip() or "gemini-3.5-flash"
+GEMINI_FALLBACK_MODELS = [
+    "gemini-3.5-flash",
+    "gemini-3-flash-preview",
+    "gemini-3.1-flash-lite",
+    "gemini-3.6-flash",
+    "gemini-3.7-flash",
+    "gemini-3.8-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-flash-lite-latest",
+]
+
+
+def _gemini_models() -> list:
+    seen = []
+    for name in [GEMINI_MODEL] + GEMINI_FALLBACK_MODELS:
+        name = (name or "").strip()
+        if name and name not in seen:
+            seen.append(name)
+    return seen
+
+
+def _gemini_model_retryable(exc) -> bool:
+    """503/429/404 = modeli imejaa/haipo, jaribu inayofuata. 400/401/403 =
+    ufunguo au ombi linakataliwa, kubadilisha modeli hakutasaidia."""
+    msg = str(exc).lower()
+    # Mtandao/DNS/timeout: kubadilisha modeli hakutatui na kungerudia
+    # modeli 8 × sekunde 60 kunavuka kikomo cha gunicorn. Achana mara moja.
+    if any(t in msg for t in (
+        "timed out", "timeout", "connection", "connect", "dns",
+        "resolve", "name resolution", "eof", "reset", "refused",
+        "unreachable",
+    )):
+        return False
+    if any(t in msg for t in (
+        " 400", " 401", " 403", "unauthenticated", "permission_denied",
+        "api key not valid", "api_key_invalid",
+    )):
+        return False
+    return True
 
 VISION_TIMEOUT_S = 90
 MAX_TOKENS = 4000
@@ -141,9 +218,10 @@ def _call_openrouter_multi(image_jpegs: list[bytes], prompt: str) -> str:
     return content
 
 
-def _call_gemini_multi(image_jpegs: list[bytes], prompt: str) -> str:
+def _call_gemini_multi(image_jpegs: list[bytes], prompt: str, model: str = "") -> str:
     if not GOOGLE_API_KEY:
         raise RuntimeError("Gemini: no key")
+    model = (model or GEMINI_MODEL).strip()
     parts = [{"text": prompt}]
     for b in image_jpegs:
         parts.append({
@@ -154,7 +232,7 @@ def _call_gemini_multi(image_jpegs: list[bytes], prompt: str) -> str:
         })
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{GEMINI_MODEL}:generateContent?key={GOOGLE_API_KEY}"
+        f"{model}:generateContent?key={GOOGLE_API_KEY}"
     )
     payload = {
         "contents": [{"parts": parts}],
@@ -199,18 +277,33 @@ def grade_sheet(sheet_image_bytes: bytes, scheme_image_bytes_list: list[bytes]) 
     images = scheme_jpegs + [sheet_jpeg]
 
     errors = []
-    if OPENROUTER_API_KEY:
+    # Gemini direct kwanza (bure). OpenRouter sasa ni fallback tu — ufunguo
+    # wake unaweza kuwa umefutwa, na kuitanguliza kunapoteza sekunde kwa
+    # kila karatasi bila sababu.
+    if GOOGLE_API_KEY:
+        for model in _gemini_models():
+            try:
+                text = _call_gemini_multi(images, PROMPT, model=model)
+            except Exception as exc:
+                errors.append(f"gemini {model}: {exc}")
+                logger.warning("[AIGrader] Gemini %s failed: %s", model, exc)
+                if not _gemini_model_retryable(exc):
+                    break
+                continue
+            try:
+                return _extract_json_object(text)
+            except Exception as exc:
+                errors.append(f"gemini {model} (JSON): {exc}")
+                logger.warning("[AIGrader] Gemini %s returned invalid JSON: %s", model, exc)
+                continue
+    if _openrouter_usable():
         try:
             return _extract_json_object(_call_openrouter_multi(images, PROMPT))
         except Exception as exc:
             errors.append(f"openrouter: {exc}")
             logger.warning("[AIGrader] OpenRouter failed: %s", exc)
-    if GOOGLE_API_KEY:
-        try:
-            return _extract_json_object(_call_gemini_multi(images, PROMPT))
-        except Exception as exc:
-            errors.append(f"gemini: {exc}")
-            logger.warning("[AIGrader] Gemini failed: %s", exc)
+            if _is_openrouter_dead(exc):
+                _disable_openrouter(3600)
     raise AIGradeError("; ".join(errors) or "Hakuna AI provider imewekwa")
 
 

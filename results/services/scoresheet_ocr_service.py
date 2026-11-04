@@ -95,16 +95,75 @@ def _gemini_key_problem() -> str:
             )
     except Exception as exc:
         # Mfuko wa mtandao si uthibitisho wa kwamba ufunguo ni mbaya —
-        # tunasema hivyo, na tunakubali Gemini jaribuwe iwezekanavyo
-        # (mtu wa backup si lazima aonekane kama amekosewa kwa sababu
-        # ya mtandao wa mpangizio).
-        problem = "Gemini haijafikika kwa ukaguzi (%s)" % (str(exc)[:60] or "timeout",)
+        # na zaidi: hatukumbuki kosa la mtandao kwa dakika 10. DNS/network
+        # blip moja ikikumbukwa ingezima Gemini yote kwa muda mrefu, ndiyo
+        # hasa ilivyofanya "AI inashindwa kusoma" bila sababu ya kweli.
+        # Tunarudisha tatizo kwa wito huu tu, na tutajaribu tena kesho.
+        return "Gemini haijafikika kwa ukaguzi (%s)" % (str(exc)[:60] or "timeout",)
     _gemini_probe["at"] = now
     _gemini_probe["problem"] = problem
     return problem
 
 VISION_MODEL_OPENROUTER = "google/gemini-2.5-flash"
-GEMINI_MODEL = "gemini-3.6-flash"
+
+# Gemini direct model. Google huweka modeli MOJA kwenye "high demand" (503)
+# wakati ndugu zake wanajibu kawaida — na modeli za zamani hufungwa kabisa
+# ("no longer available to new users"). Kwa hiyo hatutegemei jina moja:
+# _gemini_models() hupitia mnyororo huu hadi moja ijibu. GEMINI_MODEL env
+# inaweza kubadilisha model ya kwanza.
+GEMINI_MODEL = _read_key("GEMINI_MODEL") or "gemini-3.5-flash"
+GEMINI_FALLBACK_MODELS = [
+    "gemini-3.5-flash",
+    "gemini-3-flash-preview",
+    "gemini-3.1-flash-lite",
+    "gemini-3.6-flash",
+    "gemini-3.7-flash",
+    "gemini-3.8-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-flash-lite-latest",
+]
+
+
+def _gemini_models() -> list:
+    """Modeli za Gemini kujaribu kwa mpangilio, bila kurudia."""
+    seen = []
+    for name in [GEMINI_MODEL] + GEMINI_FALLBACK_MODELS:
+        name = (name or "").strip()
+        if name and name not in seen:
+            seen.append(name)
+    return seen
+
+
+def _gemini_model_retryable(exc) -> bool:
+    """503/429/404 = modeli hii imejaa au haipo — modeli inayofuata inaweza
+    kujibu. 400/401/403 = ufunguo au ombi lenyewe linakataliwa, hivyo
+    kubadilisha jina la modeli hakutasaidia."""
+    msg = str(exc).lower()
+    # Mtandao/DNS/timeout: kubadilisha modeli hakutatui na kungerudia
+    # modeli 8 × sekunde 60 kunavuka kikomo cha gunicorn. Achana mara moja.
+    if any(t in msg for t in (
+        "timed out", "timeout", "connection", "connect", "dns",
+        "resolve", "name resolution", "eof", "reset", "refused",
+        "unreachable",
+    )):
+        return False
+    if any(t in msg for t in (
+        " 400", " 401", " 403", "unauthenticated", "permission_denied",
+        "api key not valid", "api_key_invalid",
+    )):
+        return False
+    return True
+
+
+def _is_openrouter_dead(exc) -> bool:
+    """401 'User not found' = ufunguo/akaunti ya OpenRouter imefutwa au
+    imezimwa. Hii haibadiliki kwa kurasa zifuatazo, hivyo tunaacha
+    kuiita kwa kila ukurasa hadi cooldown iishe."""
+    msg = str(exc).lower()
+    return any(t in msg for t in (
+        " 401", "user not found", " 403", "account deactivated",
+        "no auth credentials",
+    ))
 
 MAX_DIMENSION = 1800
 JPEG_QUALITY = 90
@@ -842,9 +901,10 @@ def _call_openrouter_vision(image_bytes: bytes, mime_type: str, api_key: str, ma
     return content
 
 
-def _call_gemini_vision(image_bytes: bytes, mime_type: str, api_key: str, prompt: str = PROMPT) -> str:
+def _call_gemini_vision(image_bytes: bytes, mime_type: str, api_key: str, prompt: str = PROMPT, model: str = "") -> str:
     b64 = base64.b64encode(image_bytes).decode("ascii")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={api_key}"
+    model = (model or GEMINI_MODEL).strip()
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
     payload = {
         "contents": [
             {
@@ -890,18 +950,29 @@ def _read_page_with_ai(img, prompt: str = PROMPT) -> str:
             if gemini_problem:
                 logger.info("[ScoreSheetOCR] Gemini kurukiwa: %s", gemini_problem)
                 continue
-            try:
-                logger.info("[ScoreSheetOCR] Trying Gemini (%s)", GEMINI_MODEL)
-                text = _call_gemini_vision(image_bytes, mime_type, GOOGLE_API_KEY, prompt=prompt)
-                logger.info("[ScoreSheetOCR] Gemini success")
-                return text
-            except Exception as exc:
-                # Alama ya ufunguo (si siri yenyewe) kwenye log: mpangilio
-                # anaona kwa neno kama thamani iliyo kwenye Railway ni ile
-                # ile ya .env bila kuingiza siri kwenye ukurasa wa mwalimu.
-                logger.warning("[ScoreSheetOCR] Gemini failed: %s | ufunguo: %s", exc, _key_fingerprint("GOOGLE_API_KEY"))
-                errors.append(("Gemini", exc))
-                continue
+            last_exc = None
+            for model in _gemini_models():
+                try:
+                    logger.info("[ScoreSheetOCR] Trying Gemini (%s)", model)
+                    text = _call_gemini_vision(
+                        image_bytes, mime_type, GOOGLE_API_KEY, prompt=prompt, model=model,
+                    )
+                    logger.info("[ScoreSheetOCR] Gemini success (%s)", model)
+                    return text
+                except Exception as exc:
+                    last_exc = exc
+                    # Alama ya ufunguo (si siri yenyewe) kwenye log: mpangilio
+                    # anaona kwa neno kama thamani iliyo kwenye Railway ni ile
+                    # ile ya .env bila kuingiza siri kwenye ukurasa wa mwalimu.
+                    logger.warning(
+                        "[ScoreSheetOCR] Gemini %s failed: %s | ufunguo: %s",
+                        model, exc, _key_fingerprint("GOOGLE_API_KEY"),
+                    )
+                    if not _gemini_model_retryable(exc):
+                        break
+            if last_exc is not None:
+                errors.append(("Gemini", last_exc))
+            continue
 
         # OpenRouter — a paid hop, so it only runs while it is actually usable.
         if not _openrouter_usable():
@@ -933,7 +1004,13 @@ def _read_page_with_ai(img, prompt: str = PROMPT) -> str:
                 except Exception as retry_exc:
                     exc = retry_exc
                     logger.warning("[ScoreSheetOCR] OpenRouter bigger-ceiling retry failed: %s", retry_exc)
-            if _is_out_of_credits(exc):
+            if _is_openrouter_dead(exc):
+                # Ufunguo/akaunti imefutwa ("401 User not found") — hii
+                # haitabadilika kwa ukurasa unaofuata, hivyo usiipigie
+                # kila picha; rudi kwenye Gemini (inayolipwa bure).
+                logger.warning("[ScoreSheetOCR] OpenRouter imefutwa/imezimwa — inarukwa kwa saa moja")
+                _disable_openrouter(3600)
+            elif _is_out_of_credits(exc):
                 # Salio haliishukawi ndani ya muda wa mfumo — sitaki kulipa
                 # safari ya bure kwa kila ukurasa wa kila pakia.
                 _disable_openrouter()
@@ -963,7 +1040,7 @@ def _read_page_with_ai(img, prompt: str = PROMPT) -> str:
     # Watumiaji waliona JSON ghafi ya Gemini tu ("401 … OAuth 2 access
     # token …") wakati chanzo halisi kilikuwa pia salio la OpenRouter
     # kuisha. Eleza kila mtoa huduma kwa lugha rahisi + nini cha kufanya.
-    reasons = ["%s: %s" % (name, _explain_ai_error(exc)) for name, exc in errors]
+    reasons = ["%s: %s" % (name, _explain_ai_error(exc, name)) for name, exc in errors]
     raise RuntimeError(" | ".join(reasons)) from errors[-1][1]
 
 
@@ -980,22 +1057,31 @@ def _google_status(msg: str) -> str:
     return ""
 
 
-def _explain_ai_error(exc) -> str:
+def _explain_ai_error(exc, provider: str = "") -> str:
     """Kosa la mtoa huduma wa AI → sentensi fupi ya Kiswahili yenye suluhisho,
     ikiwa na namba halisi ya mtoa huduma ili mpangilio usiwe anaonyesha
     dalili zake za kudhani. 'OR_TRUNCATED' inabaki kwenye maandishi ili
-    retry iendelee kuitambua."""
+    retry iendelee kuitambua. `provider` huzuia kosa la OpenRouter
+    kuelezwa kama kosa la ufunguo wa Gemini."""
     msg = str(exc)
     low = msg.lower()
+    is_openrouter = (provider or "").strip().lower() == "openrouter"
 
     if msg == "OR_TRUNCATED":
         return "jibu lilikatika katikati (OR_TRUNCATED)"
     if " 402" in msg or "insufficient credits" in low or "can only afford" in low:
         return "salio limeisha (402) — ongeza credits: openrouter.ai/settings/credits"
     if " 401" in msg or "unauthenticated" in low or "api key not valid" in low or "api_key_invalid" in low:
+        if is_openrouter:
+            return ("ufunguo wa OpenRouter haukubaliwa (%s) — akaunti/ufunguo umefutwa "
+                    "au umezimwa; tumia Gemini au weka ufunguo mpya wa OpenRouter"
+                    % (_google_status(msg) or "401"))
         return ("ufunguo wa Gemini si sahihi (%s) — thamani ya GOOGLE_API_KEY kwenye "
                 "Railway → Variables inapaswa kuwa ile kwenye .env yako" % (_google_status(msg) or "401"))
     if " 403" in msg or "permission_denied" in low:
+        if is_openrouter:
+            return ("OpenRouter imekataa ufunguo (%s) — angalia https://openrouter.ai/settings/keys"
+                    % (_google_status(msg) or "403"))
         return ("Google imekataa ufunguo (%s) — API haijaWashwa au ufunguo umefunguliwa "
                 "kwa programu ya Android/iOS pekee: Google Cloud Console → APIs & Services → "
                 "Generative Language API → ENABLE, kisha ondoa vikwazo vya ufunguo" % (_google_status(msg) or "403"))
@@ -1010,7 +1096,8 @@ def _explain_ai_error(exc) -> str:
     five_xx = re.search(r"error (5\d\d)", low)
     if five_xx:
         return ("seva ya %s imeshindwa (%s) — si kosa la mpangilio, jaribu tena "
-                "baada ya dakika chache" % ("Gemini", _google_status(msg) or five_xx.group(1)))
+                "baada ya dakika chache" % ("OpenRouter" if is_openrouter else "Gemini",
+                                            _google_status(msg) or five_xx.group(1)))
     # Kosa lisichojulikana: onyesha sehemu ya jibu halisi (bila JSON nzito)
     # ili mpangilio anaweza kuona namba halisi badala ya maneno yetu tu.
     return "hitilafu isiyotambulika: " + re.sub(r"\s+", " ", msg)[:180]
@@ -1028,6 +1115,8 @@ def check_ocr_health() -> dict:
         'gemini': bool(GOOGLE_API_KEY),
         'gemini_key': _key_fingerprint("GOOGLE_API_KEY"),
         'openrouter_key': _key_fingerprint("OPENROUTER_API_KEY"),
+        'gemini_model': GEMINI_MODEL,
+        'gemini_models': _gemini_models(),
     }
     # Sababu ya hasa ya kukosa Gemini. Nyumbani, GOOGLE_API_KEY iliyokuwa
     # ikishweka OAuth token ilikuwa ikifanya kila ukurasa 401 na
@@ -1041,26 +1130,17 @@ def check_ocr_health() -> dict:
     # umesahaulisha salio lililokuwa limeisha na hujiruhusu OpenRouter
     # kwa dakika 15 — alionekana kama ameendelea kulipwa bila kutendeka.
     status['openrouter_cooldown_s'] = round(max(0.0, _OR_DISABLED_UNTIL - time.monotonic()))
-    # Quick OpenRouter ping
+    # Quick OpenRouter ping. /models ni ya umma — inarudisha 200 hata
+    # ufunguo ukiwa umefutwa, kwa hiyo haithibitishi kitu. /credits ndiyo
+    # inayohitaji ufunguo halali; ndiyo tunayotumia kuamua 'ok'.
     if OPENROUTER_API_KEY:
-        try:
-            resp = requests.get(
-                'https://openrouter.ai/api/v1/models',
-                headers={'Authorization': f'Bearer {OPENROUTER_API_KEY}'},
-                timeout=10,
-            )
-            status['openrouter_ok'] = resp.status_code == 200
-            if resp.status_code != 200:
-                status['openrouter_error'] = f'HTTP {resp.status_code}'
-        except Exception as e:
-            status['openrouter_ok'] = False
-            status['openrouter_error'] = str(e)
         try:
             creds = requests.get(
                 'https://openrouter.ai/api/v1/credits',
                 headers={'Authorization': f'Bearer {OPENROUTER_API_KEY}'},
                 timeout=10,
             )
+            status['openrouter_ok'] = creds.status_code == 200
             if creds.status_code == 200:
                 data = creds.json().get('data', {})
                 total, used = data.get('total_credits'), data.get('total_usage')
@@ -1068,8 +1148,12 @@ def check_ocr_health() -> dict:
                     balance = round(float(total) - float(used), 4)
                     status['openrouter_balance'] = balance
                     status['openrouter_has_credits'] = balance > 0
-        except Exception:
-            pass  # balance is a nicety — never fail the health check over it
+            else:
+                hint = ' (ufunguo/akaunti imefutwa — User not found)' if creds.status_code == 401 else ''
+                status['openrouter_error'] = f'HTTP {creds.status_code}{hint}'
+        except Exception as e:
+            status['openrouter_ok'] = False
+            status['openrouter_error'] = str(e)
     return status
 
 
