@@ -2288,8 +2288,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
             f"<b>MWAKA:</b> {exam.year}",
             st['subtitle'],
         ),
-        _p(f"{_location_str(exam)}", st['subtitle']),
-        Spacer(1, 10),
+        Spacer(1, 8),
     ]
 
     # ── Subjects table (NAFASI = rank within that subject, MAONI = a
@@ -2315,7 +2314,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     ])
     subj_table.setStyle(TableStyle(_std_table_style(len(subj_rows), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta, prestige=is_framed, line_color=_grid)))
     story.append(subj_table)
-    story.append(Spacer(1, 14))
+    story.append(Spacer(1, 8))
 
     # ── Summary box ──
     story.append(_p("<b>MUHTASARI</b>", st['section']))
@@ -2349,7 +2348,7 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
         necta=is_necta, prestige=is_framed, line_color=_grid,
     )))
     story.append(summary_table)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 6))
 
     # ── TABIA NA MWENENDO (conduct) ──
     # Each category is its own grade, set by the exam's class_teacher —
@@ -2372,18 +2371,24 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
     )
     conduct_table.setStyle(TableStyle(_std_table_style(2, header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta, prestige=is_framed, line_color=_grid)))
     story.append(conduct_table)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 5))
 
-    # ── MCHANGANUO (grading key) ──
-    story.append(_p("<b>MCHANGANUO</b>", st['section']))
+    # ── MCHANGANUO (NECTA key) — mstari mmoja tu ──
+    # Samples za report card za Tanzania zina key hii chini; jedwali kubwa
+    # la madaraja lilikuwa likisukuma slip kwenye ukurasa wa pili, hivyo
+    # hapa tunaweka grades, alama na points kwa mstari mmoja.
     _, grade_bands = _grading_thresholds(exam.form, primary=is_primary)
-    mchanganuo_rows = [[_p(f"<b>{h}</b>", st['th_sm']) for h in ["ALAMA", "DARAJA", "MAANA"]]]
+    key_parts = []
     for g, rng in grade_bands:
-        mchanganuo_rows.append([_p(rng, st['td']), _p(g, st['td_bold']), _p(GRADE_MEANING_SW.get(g, '-'), st['td'])])
-    mchanganuo_table = Table(mchanganuo_rows, colWidths=[content_w * 0.3, content_w * 0.2, content_w * 0.5])
-    mchanganuo_table.setStyle(TableStyle(_std_table_style(len(mchanganuo_rows), header_bg=_HB, header_fg=_HF, band_bg=_BB, necta=is_necta, prestige=is_framed, line_color=_grid)))
-    story.append(mchanganuo_table)
-    story.append(Spacer(1, 10))
+        part = f"<b>{g}</b> {rng}"
+        if not is_primary:
+            part += f" ({_grade_point(g, exam.form)})"
+        key_parts.append(part)
+    story.append(_p(
+        "<b>MCHANGANUO:</b> " + " &nbsp;·&nbsp; ".join(key_parts),
+        ParagraphStyle('key', parent=st['td_sm'], fontSize=6.5),
+    ))
+    story.append(Spacer(1, 4))
 
     # ── Term dates + comments + parent sign-off ──
     # class_teacher_comment/headmaster_comment are free text set once for
@@ -2399,19 +2404,19 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
         f"&nbsp;&nbsp;&nbsp;&nbsp;<b>SHULE ITAFUNGULIWA TAREHE:</b> {_fmt_term_date(exam.term_opening_date)}",
         st['td_name'],
     ))
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 5))
     story.append(_p(
         f"<b>MAONI YA MWALIMU WA DARASA:</b> "
         f"{_xml_escape(exam.class_teacher_comment) if exam.class_teacher_comment else '.......................................................'}",
         st['td_name'],
     ))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
     story.append(_p(
         f"<b>MAONI YA MKUU WA SHULE:</b> "
         f"{_xml_escape(exam.headmaster_comment) if exam.headmaster_comment else '.......................................................'}",
         st['td_name'],
     ))
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 5))
     # Block ya MAONI YA MZAZI/MLEZI (dots + JINA LA MZAZI/SIMU/SAHIHI)
     # imeondolewa KABISA kwa ombi la shule — ilichukua nafasi kubwa kwenye
     # slip bila maana; sahihi ya shule inachorwa na _footer kwenye ukurasa
@@ -2437,24 +2442,21 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
                 [[_p(
                     "<b>THIBITISHA MATOKEO</b><br/>Scan QR — angalia matokeo halisi online",
                     ParagraphStyle('qr', parent=st['sig'], fontSize=7, alignment=1),
-                ), Image(io.BytesIO(qr_img), width=1.7 * cm, height=1.7 * cm)]],
-                colWidths=[content_w - 2.2 * cm, 2.2 * cm],
+                ), Image(io.BytesIO(qr_img), width=1.2 * cm, height=1.2 * cm)]],
+                colWidths=[content_w - 1.6 * cm, 1.6 * cm],
             )
             qr_table.setStyle(TableStyle([
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                 ('ALIGN', (1, 0), (1, 0), 'CENTER'),
                 ('BOX', (0, 0), (-1, -1), 0.8, theme['header_bg']),
                 ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-                ('TOPPADDING', (0, 0), (-1, -1), 4),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
             ]))
-            story.append(Spacer(1, 6))
+            story.append(Spacer(1, 3))
             story.append(qr_table)
     except Exception:
         logger.warning("QR verification block failed for result %s", getattr(result, 'id', '?'), exc_info=True)
-
-    story.append(Spacer(1, 6))
-    story.append(_p("Haya ni matokeo rasmi yaliyotolewa na mfumo wa shule.", st['sig']))
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(

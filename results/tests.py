@@ -892,6 +892,28 @@ class StudentResultPdfTests(TestCase):
 		self.assertIn('AMINA JUMA', text.upper())
 		self.assertIn('78', text)
 
+	def test_report_card_fits_one_page_with_full_subject_load(self):
+		"""Report card yenye masomo 9 (kama O-level) iwe ukurasa MMOJA.
+
+		MCHANGANUO unabaki kama mstari mmoja mfupi (si jedwali kubwa), na
+		QR ya uthibitisho inabaki ndani ya ukurasa huo huo."""
+		for name in ('Kiswahili', 'English', 'Biology', 'Chemistry',
+		             'Physics', 'Geography', 'History', 'Civics'):
+			subject = Subject.objects.create(name=name)
+			ExamResult.objects.create(
+				exam=self.exam, student=self.student, subject=subject, score=70)
+		response = self.client.get(reverse('student_result_pdf', args=[self.result.share_token]))
+		self.assertEqual(response.status_code, 200)
+
+		import io
+		import pdfplumber
+		with pdfplumber.open(io.BytesIO(response.content)) as pdf:
+			self.assertEqual(len(pdf.pages), 1)
+			text = (pdf.pages[0].extract_text() or '').upper()
+		self.assertIn('CIVICS', text)
+		self.assertIn('MCHANGANUO', text)
+		self.assertIn('THIBITISHA MATOKEO', text)
+
 	def test_unknown_token_returns_404(self):
 		import uuid
 		response = self.client.get(reverse('student_result_pdf', args=[uuid.uuid4()]))
