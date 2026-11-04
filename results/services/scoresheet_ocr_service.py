@@ -41,7 +41,7 @@ def _read_key(name: str) -> str:
 
 
 OPENROUTER_API_KEY = _read_key("OPENROUTER_API_KEY")
-GOOGLE_API_KEY = _read_key("GOOGLE_API_KEY")
+GOOGLE_API_KEY = _read_key("GOOGLE_API_KEY") or _read_key("GEMINI_API_KEY")
 
 # Ufunguo wa Gemini direct API (generativelanguage.googleapis.com)
 # hauhusuwi na mtindo wake. Msimu wa awali ulikuwa unakataa chochote
@@ -938,6 +938,7 @@ def _read_page_with_ai(img, prompt: str = PROMPT) -> str:
     mime_type = "image/jpeg"
 
     errors = []
+    skip_reasons = []
 
     for provider in _provider_order():
         if provider == 'gemini':
@@ -947,9 +948,16 @@ def _read_page_with_ai(img, prompt: str = PROMPT) -> str:
             # bila kupoteza sekunda na bila kuchanganya mpangilio kwa
             # mwanagenzi.
             gemini_problem = _gemini_key_problem()
-            if gemini_problem:
+            # Ukaguzi ulishindwa kwa mtandao (si uthibitisho kwamba ufunguo
+            # ni mbaya) — jaribu Gemini halisi badala ya kuikataa. DNS/
+            # timeout moja isisababishe "hakuna AI iliyosanidiwa" wakati
+            # ufunguo uko po.
+            if gemini_problem and not gemini_problem.startswith("Gemini haijafikika"):
+                skip_reasons.append(("Gemini", gemini_problem))
                 logger.info("[ScoreSheetOCR] Gemini kurukiwa: %s", gemini_problem)
                 continue
+            if gemini_problem:
+                logger.info("[ScoreSheetOCR] Ukaguzi wa Gemini: %s — tunajaribu", gemini_problem)
             last_exc = None
             for model in _gemini_models():
                 try:
@@ -977,7 +985,10 @@ def _read_page_with_ai(img, prompt: str = PROMPT) -> str:
         # OpenRouter — a paid hop, so it only runs while it is actually usable.
         if not _openrouter_usable():
             if OPENROUTER_API_KEY:
+                skip_reasons.append(("OpenRouter", "imezimwa kwa muda (cooldown)"))
                 logger.info("[ScoreSheetOCR] OpenRouter imebaki iko — kurukia")
+            else:
+                skip_reasons.append(("OpenRouter", "ufunguo haujasetwa"))
             continue
         try:
             logger.info("[ScoreSheetOCR] Trying OpenRouter (%s)", VISION_MODEL_OPENROUTER)
@@ -1036,7 +1047,12 @@ def _read_page_with_ai(img, prompt: str = PROMPT) -> str:
             errors.append(("OpenRouter", exc))
 
     if not errors:
-        raise RuntimeError("No AI provider configured")
+        detail = "; ".join("%s: %s" % (name, reason) for name, reason in skip_reasons)
+        raise RuntimeError(
+            "Hakuna AI provider iliyosanidiwa (%s). Weka GOOGLE_API_KEY kwenye "
+            "Variables za seva (Railway), kisha redeploy — Gemini ni bure."
+            % (detail or "hakuna ufunguo")
+        )
     # Watumiaji waliona JSON ghafi ya Gemini tu ("401 … OAuth 2 access
     # token …") wakati chanzo halisi kilikuwa pia salio la OpenRouter
     # kuisha. Eleza kila mtoa huduma kwa lugha rahisi + nini cha kufanya.
@@ -1173,7 +1189,9 @@ def extract_scores_from_document(uploaded_file, on_progress=None) -> list[dict]:
     existing tests) on the previous behaviour — no callback, no overhead."""
     if not (OPENROUTER_API_KEY or GOOGLE_API_KEY):
         raise ScoreSheetOCRError(
-            "Hakuna AI provider iliyosanidiwa. Weka OPENROUTER_API_KEY au GOOGLE_API_KEY kwenye .env"
+            "Hakuna AI provider iliyosanidiwa kwenye seva. Weka GOOGLE_API_KEY "
+            "kwenye Variables za Railway (au .env ukiendesha kwenye kompyuta "
+            "yako), kisha redeploy — Gemini ni bure."
         )
 
     pages = _load_page_images(uploaded_file)

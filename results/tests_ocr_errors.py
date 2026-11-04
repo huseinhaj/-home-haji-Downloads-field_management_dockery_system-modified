@@ -499,3 +499,36 @@ class TimetableAiFallbackTests(SimpleTestCase):
         first_url = post.call_args_list[0].args[0]
         self.assertIn('generativelanguage.googleapis.com', first_url)
         self.assertEqual(post.call_count, 1)
+
+
+class MissingAiConfigMessageTests(SimpleTestCase):
+    """Wakati hakuna ufunguo kwenye seva, kosa lieleze hasa cha kufanya —
+    si 'No AI provider configured' tupu."""
+
+    def setUp(self):
+        ocr._reset_provider_health()
+        self.addCleanup(ocr._reset_provider_health)
+        self.img = Image.new('RGB', (40, 20), 'white')
+
+    def test_missing_keys_error_names_railway_and_google_key(self):
+        with mock.patch.object(ocr, 'OPENROUTER_API_KEY', ''), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', ''), \
+                mock.patch.object(ocr, '_gemini_key_problem',
+                                  return_value='GOOGLE_API_KEY haijasetwa'):
+            with self.assertRaises(RuntimeError) as ctx:
+                ocr._read_page_with_ai(self.img)
+        msg = str(ctx.exception)
+        self.assertIn('GOOGLE_API_KEY', msg)
+        self.assertIn('Railway', msg)
+        self.assertIn('OpenRouter', msg)
+
+    def test_network_probe_problem_still_tries_gemini(self):
+        with mock.patch.object(ocr, 'OPENROUTER_API_KEY', 'k'), \
+                mock.patch.object(ocr, 'GOOGLE_API_KEY', 'AIza-test-key'), \
+                mock.patch.object(ocr, '_gemini_key_problem',
+                                  return_value='Gemini haijafikika kwa ukaguzi (timeout)'), \
+                mock.patch.object(ocr, '_call_gemini_vision', return_value='[]') as gem, \
+                mock.patch.object(ocr, '_call_openrouter_vision') as orr:
+            self.assertEqual(ocr._read_page_with_ai(self.img), '[]')
+        self.assertEqual(gem.call_count, 1)
+        self.assertEqual(orr.call_count, 0)

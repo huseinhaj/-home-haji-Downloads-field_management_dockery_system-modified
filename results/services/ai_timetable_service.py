@@ -28,7 +28,7 @@ def _read_key(name: str) -> str:
 
 
 OPENROUTER_API_KEY = _read_key("OPENROUTER_API_KEY")
-GOOGLE_API_KEY = _read_key("GOOGLE_API_KEY")
+GOOGLE_API_KEY = _read_key("GOOGLE_API_KEY") or _read_key("GEMINI_API_KEY")
 
 MODEL = "google/gemini-2.5-flash"
 
