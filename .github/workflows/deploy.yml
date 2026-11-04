@@ -24,8 +24,7 @@ jobs:
         continue-on-error: true
         run: railway whoami
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN || secrets.RAILWAY_TOKEN }}
 
       # `--project` inaipa CLI project hata kama folda haijalink. Bila hiyo,
       # `railway up` hufeli kwa "project not linked" kwenye CI. Tunaongeza
@@ -47,8 +46,7 @@ jobs:
             exit "$CODE"
           fi
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN || secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
           RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE || 'hikari' }}
           RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT || 'production' }}
