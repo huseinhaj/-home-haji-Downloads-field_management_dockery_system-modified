@@ -16,22 +16,28 @@ jobs:
         run: npm install -g @railway/cli
 
       # ── Diagnostiki ──────────────────────────────────────────────────────
-      # Run ya 743 za mwisho zilishindwa kwa sababu ya "project not linked":
-      # `railway up` haijui ni project gani au ni service gani. Hapa tunasema
-      # wazi kabisa kama mazingira yako yamefika, ili hitilafu isionekane
-      # kabla ya kujaribu kupeleka.
-      - name: Check Railway link
-        run: railway status
+      # `railway status` inahitaji project iliyolink kwenye folda, na hapo
+      # ndipo runs zote zilikuwa zinafeli kabla `railway up` kuanza. Tunatumia
+      # `railway whoami` (hukagua token pekee, haihitaji link) na
+      # `continue-on-error` ili ukaguzi usizuie deploy.
+      - name: Check Railway token
+        continue-on-error: true
+        run: railway whoami
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-          RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE || 'hikari' }}
-          RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT || 'production' }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
 
+      # `--project` inaipa CLI project hata kama folda haijalink. Bila hiyo,
+      # `railway up` hufeli kwa "project not linked" kwenye CI.
       - name: Deploy to Railway
-        run: railway up --detach --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT"
+        run: |
+          railway up --detach \
+            --project "$RAILWAY_PROJECT_ID" \
+            --service "$RAILWAY_SERVICE" \
+            --environment "$RAILWAY_ENVIRONMENT"
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
           RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE || 'hikari' }}
           RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT || 'production' }}
