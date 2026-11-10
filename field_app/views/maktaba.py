@@ -92,12 +92,31 @@ def maktaba(request):
 @login_required
 def maktaba_download(request, material_id):
     mat = ScrapedMaterial.objects.filter(id=material_id, published=True).first()
-    if not mat or not mat.file:
-        if mat and mat.original_url:
-            return HttpResponse(
-                f'Faili haipo local. Fungua chanzo cha asili: {mat.original_url}',
-                status=302)
+    if not mat:
         return HttpResponse('Faili haipatikani.', status=404)
+
+    # Faili ipo? Itoke moja kwa moja kutoka storage yetu.
+    if not mat.file or not mat.file.storage.exists(mat.file.name):
+        if not mat.original_url:
+            return HttpResponse('Faili haipatikani kwenye server.', status=404)
+        # AUTO-CHOTA: badala ya kumpeleka mtumiaji kwenye site ya nje,
+        # pakua faili kwenye mfumo wetu mara hii hii kisha itumike.
+        from ..materials_importer import download_file
+        from django.core.files.base import ContentFile
+        import re as _re
+        data, err = download_file(mat.original_url)
+        if data is None:
+            return HttpResponse(
+                f'Faili ya chanzo haitoshi tena ({err}). '
+                f'Itachotwa upya na scheduler.', status=502)
+        fname = _re.sub(r'[^A-Za-z0-9._ -]', '', mat.title)[:80] or 'material'
+        if not fname.lower().endswith('.pdf'):
+            fname += '.pdf'
+        mat.file.save(fname, ContentFile(data), save=False)
+        if not mat.file_size:
+            mat.file_size = len(data)
+        mat.save()
+
     mat.downloads += 1
     mat.save(update_fields=['downloads'])
     try:

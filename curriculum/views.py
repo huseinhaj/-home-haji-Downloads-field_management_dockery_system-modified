@@ -5549,8 +5549,15 @@ def ajax_generate_lesson_note_from_lp(request):
             else:
                 lang_instruction = "Write ALL content in ENGLISH."
         
-        prompt = f"""You are an expert Tanzanian teacher writing DETAILED LESSON NOTES in NOTEBOOK format.
-Your notes must be EXCEPTIONALLY THOROUGH — like a teacher's personal notebook that another teacher could use to teach the same lesson.
+        prompt = f"""You are Mwalimu — a Tanzanian teacher with 15+ years in the classroom. Right now you are in the staffroom after teaching this lesson, writing your OWN notes in your exercise book, BY HAND, the way you always do — full reflections, what you taught, how it went, and the actual content you put on the board.
+
+HOW A REAL TEACHER'S HANDWRITTEN NOTES LOOK:
+- Flowing paragraphs as if thinking aloud on paper — NOT corporate bullet spam.
+- FULL SUBSTANCE ("nyamanyama"): real definitions, real numbers in calculations, real Tanzanian examples (Kariakoo, maziwa ya Tanga, NMB/CRDB, Kilimanjaro, SGR, Tanesco bill), dates, names. NEVER vague filler — every sentence must TEACH something.
+- Classroom truth: what students actually said, where they got it wrong ('wanafunzi wengi walidhani X — niliwatambulisha makosa'), what you'll repeat tomorrow.
+- NECTA/FTNA exam reality: which questions come from this topic, how they're asked.
+- Underlined key terms (write them in CAPITALS to show they'd be underlined by hand), arrows ->, notes-to-self ('Nikumbuke: kesho nilete chupa ya maji kwa demonstration').
+- Natural Kiswahili/English mixing exactly as Tanzanian teachers write — follow the language instruction below for the base language.
 
 IMPORTANT LESSON PLAN DETAILS:
 Subject: {subject_name}
@@ -5565,76 +5572,48 @@ Specific Competence: {lp.specific_competence or 'N/A'}
 
 {lang_instruction}
 
-Based on the above lesson plan, create EXTREMELY DETAILED lesson notes in NOTEBOOK FORMAT.
-These notes should be so complete that another teacher could pick them up and teach the lesson confidently.
+Based on the above lesson plan, write your notes in NOTEBOOK FORMAT — so complete that another teacher could pick up your book and teach the lesson confidently.
 
 Write in the following STRUCTURE - every section is required:
 
 ---
 
-📖 [TOPIC NAME] — LESSON NOTES
-═══════════════════════════════════════
+TOPIC NAME — LESSON NOTES (my book, {lp.date})
 
 1. MUHTASARI / SUMMARY (3-5 long paragraphs)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Write a VERY DETAILED summary covering:
-- Ufafanuzi kamili wa dhana kuu (comprehensive definition of main concepts)
-- Misingi ya kinadharia (theoretical foundations)
-- Maelezo ya kina kwa kila hatua (detailed step-by-step explanations)
-- Mifano halisi kutoka kwenye mada (real examples from the topic)
-- Viungo na mada nyingine (connections to other topics)
-- Matumizi ya kivitendo (practical applications)
-- Maneno muhimu na istilahi (key vocabulary and terminology)
+Write what you actually taught, in your voice:
+- Ufafanuzi kamili wa dhana kuu — with real examples and numbers on the board
+- Misingi ya kinadharia — step by step as you explained it to the class
+- Mifano halisi kutoka maisha ya Tanzania
+- Viungo na mada nyingine ulizotaja darasani
+- Maneno muhimu na istilahi — underlined (CAPITALS)
+- What students struggled with and how you fixed it
 
-Each paragraph should be 5-8 SENTENCES long. Be thorough and educational.
+Each paragraph 5-8 SENTENCES of substance.
 
-2. NUKTA MUHIMU / KEY POINTS (at least 10 bullet points)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-List the MOST important concepts the student must remember, ordered from basic to advanced.
-Each point should include a SHORT EXPLANATION, not just a heading.
+2. NUKTA MUHIMU / KEY POINTS (at least 10)
+The points you'd want students to copy into their books — each with a SHORT explanation, ordered basic to advanced.
 
-3. MBINU ZA UFUNDISHAJI / TEACHING METHODS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Describe the methods that worked BEST for this topic
-- Nyimbo / Songs that can help students remember
-- Michezo / Games for concept reinforcement
-- Maswali ya haraka / Quick oral questions to ask during class
-- Kazi za vikundi / Group work ideas
-- Kazi za nyumbani / Homework assignments
+3. MBINU ZA UFUNDISHAJI / TEACHING METHODS (what I used & what worked)
+- Methods that worked BEST for THIS class
+- Nyimbo / songs / michezo that helped
+- Maswali ya haraka you asked in class
+- Kazi za vikundi / homework given
 
-4. TATHMINI / ASSESSMENT (5 MAJIBU SWALI / Q&A)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Generate 5 CHALLENGING questions with COMPLETE answers.
-Questions should test: understanding, application, analysis and evaluation (not just recall).
-Each answer should be 2-4 sentences explaining the concept clearly.
+4. TATHMINI / ASSESSMENT (5 Q&A)
+5 CHALLENGING questions with COMPLETE worked answers (test understanding, application, analysis — not recall). Real numbers where applicable.
 
-Question 1: [Question]
-Jibu / Answer: [Detailed answer]
-
-Question 2: [Question]
-Jibu / Answer: [Detailed answer]
-
-Question 3: [Question]
-Jibu / Answer: [Detailed answer]
-
-Question 4: [Question]
-Jibu / Answer: [Detailed answer]
-
-Question 5: [Question]
-Jibu / Answer: [Detailed answer]
-
-5. MWONGOZO / CONCLUSION
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Things that went well during the lesson
+5. MWONGOZO / CONCLUSION (reflection)
+- What went well, what failed
 - Challenges faced
-- Recommendations for next lesson
+- What to do next lesson
 
 OUTPUT as JSON with this exact structure:
 {{
     "title": "Topic name - Lesson Notes",
     "summary_paragraphs": ["Long paragraph 1...", "Long paragraph 2...", "Long paragraph 3...", "Long paragraph 4...", "Long paragraph 5..."],
     "key_points": ["1. Concept - Explanation", "2. Concept - Explanation", ...],
-    "teaching_methods": "Detailed description of teaching methods, songs, games, activities...",
+    "teaching_methods": "Detailed description of the methods used, songs, games, what worked, what didn't...",
     "quiz": [
         {{"question": "Question 1?", "answer": "Detailed answer 1..."}},
         {{"question": "Question 2?", "answer": "Detailed answer 2..."}},
@@ -5642,15 +5621,17 @@ OUTPUT as JSON with this exact structure:
         {{"question": "Question 4?", "answer": "Detailed answer 4..."}},
         {{"question": "Question 5?", "answer": "Detailed answer 5..."}}
     ],
-    "conclusion": "What went well, challenges, recommendations..."
+    "conclusion": "What went well, challenges, recommendations for next lesson..."
 }}
 
 LENGTH REQUIREMENTS:
-- summary_paragraphs: 5 paragraphs, each 5-8 sentences long (VERY DETAILED)
+- summary_paragraphs: 5 paragraphs, each 5-8 sentences long (VERY DETAILED, real content)
 - key_points: at least 10 items
 - quiz: exactly 5 questions with detailed answers (2-4 sentences each)
 - teaching_methods: at least 3-4 sentences
 - conclusion: 3-5 sentences
+
+FORBIDDEN (AI-speak, not teacher): 'it is important to note', 'in conclusion', 'furthermore', vague sentences without examples, emojis.
 
 Return ONLY valid JSON. No other text."""
 
@@ -5703,59 +5684,55 @@ Return ONLY valid JSON. No other text."""
             
             # Format the note content - NOTEBOOK STYLE with proper formatting
             content_parts = []
-            
-            # Title
+
+            # Title — kama mwalimu anavyoandika kichwa cha ukurasa wa daftari
             title = note_data.get('title', f"Lesson Notes - {lp.topic}")
-            content_parts.append(f"📖 {title}")
+            content_parts.append(title)
+            content_parts.append("-" * len(title))
+            content_parts.append(f"({lp.class_name} — {subject_name}, tarehe {lp.date})")
             content_parts.append("")
-            
+
+            def _hd(txt):
+                content_parts.append(txt)
+                content_parts.append("-" * len(txt))
+
             # Summary paragraphs
-            content_parts.append("=" * 60)
-            content_parts.append("1. MUHTASARI / SUMMARY")
-            content_parts.append("=" * 60)
+            _hd("1. MUHTASARI")
             paragraphs = note_data.get('summary_paragraphs', [])
             if not paragraphs and note_data.get('summary'):
                 paragraphs = [note_data['summary']]
             for para in paragraphs:
                 content_parts.append(para)
                 content_parts.append("")
-            
+
             # Key points
             key_points = note_data.get('key_points', [])
             if key_points:
-                content_parts.append("=" * 60)
-                content_parts.append("2. NUKTA MUHIMU / KEY POINTS")
-                content_parts.append("=" * 60)
+                _hd("2. NUKTA MUHIMU")
                 for kp in key_points:
-                    content_parts.append(f"  • {kp}")
+                    content_parts.append(f"  - {kp}")
                 content_parts.append("")
-            
+
             # Teaching methods
             tm = note_data.get('teaching_methods', '')
             if tm:
-                content_parts.append("=" * 60)
-                content_parts.append("3. MBINU ZA UFUNDISHAJI / TEACHING METHODS")
-                content_parts.append("=" * 60)
+                _hd("3. MBINU ZA UFUNDISHAJI")
                 content_parts.append(tm)
                 content_parts.append("")
-            
+
             # Quiz
             quiz = note_data.get('quiz', [])
             if quiz:
-                content_parts.append("=" * 60)
-                content_parts.append("4. TATHMINI / ASSESSMENT — MASWALI NA MAJIBU")
-                content_parts.append("=" * 60)
+                _hd("4. TATHMINI — MASWALI NA MAJIBU")
                 for i, q in enumerate(quiz, 1):
                     content_parts.append(f"\nSwali {i}: {q.get('question', '')}")
-                    content_parts.append(f"\nJibu: {q.get('answer', '')}")
+                    content_parts.append(f"Jibu: {q.get('answer', '')}")
                 content_parts.append("")
-            
+
             # Conclusion
             conclusion = note_data.get('conclusion', '')
             if conclusion:
-                content_parts.append("=" * 60)
-                content_parts.append("5. MWONGOZO / CONCLUSION & RECOMMENDATIONS")
-                content_parts.append("=" * 60)
+                _hd("5. MWONGOZO")
                 content_parts.append(conclusion)
                 content_parts.append("")
             
@@ -7926,7 +7903,16 @@ def ajax_generate_full_notes(request):
     lang_instr = ("Write ALL content in KISWAHILI (Swahili) except technical terms."
                   if sw else "Write ALL content in ENGLISH.")
 
-    prompt = f"""You are an expert curriculum writer producing COMPLETE, textbook-quality lesson notes for a Tanzanian classroom. The notes must follow an INTERNATIONAL organization (like Cambridge IGCSE / Save My Exams): topic broken into clear sections, bold key terms with definitions, exam tips, and practice questions.
+    prompt = f"""You are Mwalimu — a Tanzanian secondary school teacher with 15+ years of classroom experience at a government school. Tonight, after classes, you are writing notes for this topic in your own exercise book, BY HAND, the way you always do — for your students and for any colleague who might borrow the book to teach your class.
+
+HOW A REAL TEACHER'S HANDWRITTEN NOTES LOOK:
+- Flowing paragraphs, written like you're THINKING ALOUD on paper — not corporate bullet spam.
+- FULL SUBSTANCE ("nyamanyama"): actual definitions, real numbers, worked calculations, dates, names, places. NEVER vague filler like "it is important to note that..." — every sentence must TEACH something.
+- Concrete Tanzanian examples from daily life (Kariakoo market, maziwa ya Tanga, samaki wa Mwanza, NMB/CRDB accounts, mlima Kilimanjaro, SGR Dar–Morogoro, VMTT/MITV, Tanesco bills, NECTA past questions).
+- You write what you tell students in class: "hapa wanafunzi wengi hupotosha...", "kwenye mtihani wa NECTA hii swali huja mara kwa mara...", "kesho nitawaonyesha jaribio la..."
+- Natural language mixing like real Tanzanian teachers use (Kiswahili + English terms as spoken in staffroom) — follow the language instruction below for the base language.
+- Underlined key terms (write them in CAPITALS to show they'd be underlined by hand), arrows like ->, and simple hand-drawn style explanations ("chora mchoro: ...").
+- Personal teaching notes to yourself at the end of sections ("Nikumbuke: ...").
 
 LEVEL: {level_label}
 CLASS: {class_name}
@@ -7936,50 +7922,50 @@ SUBTOPIC: {subtopic or 'N/A'}
 
 {lang_instr}
 
-Write EXTREMELY DETAILED and COMPLETE notes. A colleague must be able to teach this topic from your notes alone.
+Write the COMPLETE notes you would actually prepare for this class — so full that a colleague could teach from your book without asking you anything. Cover the WHOLE topic per the current Tanzanian syllabus/curriculum with real teaching depth.
 
 Return ONLY valid JSON with EXACTLY this structure:
 {{
-  "title": "Topic \u2014 Subject, Class (Lesson Notes)",
-  "overview": "2-3 long paragraphs (5-7 sentences each) introducing the topic, why it matters, and what students will learn.",
+  "title": "Topic — Subject, Class (Lesson Notes)",
+  "overview": "2-3 paragraphs (5-7 sentences each) written in your teacher voice: what this topic is, why it matters for real life and exams, what your students already know, where they struggle. Concrete, not generic.",
   "key_terms": [
-    {{"term": "Term 1", "definition": "Clear definition (1-2 sentences)"}},
-    {{"term": "Term 2", "definition": "Clear definition (1-2 sentences)"}}
+    {{"term": "TERM", "definition": "Definition exactly as you'd write it under the term — 1-3 sentences WITH a quick example or context, not a dictionary line."}}
   ],
   "sections": [
-    {{"heading": "1.0 Subtopic/Heading 1", "content": "2-4 detailed paragraphs with explanations, examples and step-by-step detail. Plain text, no markdown."}},
-    {{"heading": "2.0 Subtopic/Heading 2", "content": "2-4 detailed paragraphs"}},
-    {{"heading": "3.0 Subtopic/Heading 3", "content": "2-4 detailed paragraphs"}}
+    {{"heading": "1.0 Subtopic/Heading 1", "content": "3-5 paragraphs of handwritten-style teaching prose: explain step by step, use real numbers in calculations, give Tanzanian examples, note student mistakes ('wanafunzi wengi husema X — HIYO NI MAKOSA, sahihi ni Y'), mention what NECTA asks from this part. Plain text, no markdown."}}
   ],
   "worked_examples": [
-    {{"example": "A fully-worked example relevant to the topic", "solution": "Complete step-by-step solution"}}
+    {{"example": "A real exam-style example WITH actual numbers from Tanzanian context", "solution": "Complete step-by-step solution, every step shown like writing on the board, final answer stated clearly (sometimes with units)"}}
   ],
   "key_points": [
-    "1. Concept \u2014 short explanation",
-    "2. Concept \u2014 short explanation"
+    "1. Concept — the exact explanation you'd want students to copy in their books, short but with substance"
   ],
   "exam_tips": [
-    "Tip 1 \u2014 common mistake or exam advice",
-    "Tip 2 \u2014 common mistake or exam advice"
+    "Tip written as teacher-to-student advice: 'Kwenye NECTA hii swali huja kama...' / common wrong answers and why they're wrong"
   ],
   "practice_questions": [
-    {{"question": "Question 1 (exam-style)", "answer": "Complete model answer (2-4 sentences)"}},
-    {{"question": "Question 2 (exam-style)", "answer": "Complete model answer (2-4 sentences)"}}
+    {{"question": "Question with real numbers/context (NECTA/FTNA/mock style)", "answer": "Model answer worked out fully, 2-5 sentences or full working"}}
   ],
-  "summary": "One final paragraph tying everything together."
+  "summary": "Final paragraph in your voice: what you covered, what to revise before next lesson, homework given."
 }}
 
-LENGTH REQUIREMENTS (MUST be met):
+LENGTH REQUIREMENTS (MUST be met — notes must have NYAMANYAMA):
 - overview: 2-3 paragraphs
 - key_terms: at least 6 terms
-- sections: at least 3 sections, each with 2-4 paragraphs
-- worked_examples: 1-2
+- sections: at least 4 sections, each with 3-5 paragraphs of substance
+- worked_examples: at least 2 with real numbers
 - key_points: at least 8 items
 - exam_tips: at least 4 tips
-- practice_questions: at least 5 questions with full answers
+- practice_questions: at least 5 questions with fully worked answers
 - summary: 1 paragraph
 
-Do NOT truncate. Do NOT use placeholders like "...". Every field must be complete.
+FORBIDDEN (these make notes sound like AI, not a teacher):
+- Empty phrases: 'it is important to note', 'in conclusion', 'furthermore', 'moreover', 'delve'
+- Vague statements without examples or numbers
+- Perfectly parallel bullet lists with no prose between them
+- Emojis
+
+Do NOT truncate. Do NOT use placeholders like '...'. Every field must be complete.
 Return ONLY valid JSON. No other text."""
 
     note_data = None
@@ -8019,61 +8005,74 @@ Return ONLY valid JSON. No other text."""
         return JsonResponse({'success': False, 'error': 'AI ilishindwa kuzalisha notes kamili. Jaribu tena.'}, status=422)
 
     # Build notebook-style text for the saved LessonNote
+    # (mtindo wa daftari la mwalimu — vichwa navyo mstari mmoja chini, hakuna
+    #  emojis wala '=====' zinazoonekana kama AI)
     parts = []
-    parts.append(f"📖 {note_data.get('title', f'{topic} \u2014 {subject_name}')}")
-    parts.append(f"\nLevel: {level_label} | Class: {class_name} | Subject: {subject_name} | Topic: {topic}")
+    parts.append(note_data.get('title', f'{topic} \u2014 {subject_name}'))
+    parts.append(f"Level: {level_label} | Class: {class_name} | Subject: {subject_name} | Topic: {topic}")
     if subtopic:
         parts.append(f"Subtopic: {subtopic}")
     parts.append('')
 
-    parts += ['=' * 60, '1. OVERVIEW / UTANGULIZI', '=' * 60, str(note_data.get('overview', '')), '']
+    def _hd(txt):
+        parts.append(txt)
+        parts.append('-' * len(txt))
+
+    _hd('1. UTANGULIZI')
+    parts.append(str(note_data.get('overview', '')))
+    parts.append('')
 
     kt = note_data.get('key_terms', []) or []
     if kt:
-        parts += ['=' * 60, '2. KEY TERMS / MANENO MUHIMU', '=' * 60]
+        _hd('2. MANENO MUHIMU')
         for k in kt:
-            parts.append(f"• {k.get('term', '')}: {k.get('definition', '')}")
+            parts.append(f"- {k.get('term', '')}: {k.get('definition', '')}")
         parts.append('')
 
     sections = note_data.get('sections', []) or []
     if sections:
-        parts += ['=' * 60, '3. MAIN CONTENT / MAELEZO KAMILI', '=' * 60]
+        _hd('3. MAELEZO KAMILI')
         for s in sections:
-            parts.append(f"\n### {s.get('heading', '')}")
+            parts.append('')
+            parts.append(str(s.get('heading', '')))
             parts.append(str(s.get('content', '')))
         parts.append('')
 
     we = note_data.get('worked_examples', []) or []
     if we:
-        parts += ['=' * 60, '4. WORKED EXAMPLES / MIFANO', '=' * 60]
+        _hd('4. MIFANO ILIYOFANYIWA KAZI')
         for ex in we:
-            parts.append(f"\nExample: {ex.get('example', '')}")
-            parts.append(f"Solution: {ex.get('solution', '')}")
+            parts.append('')
+            parts.append(f"Mfano: {ex.get('example', '')}")
+            parts.append(f"Suluhisho: {ex.get('solution', '')}")
         parts.append('')
 
     kps = note_data.get('key_points', []) or []
     if kps:
-        parts += ['=' * 60, '5. KEY POINTS / NUKTA MUHIMU', '=' * 60]
+        _hd('5. NUKTA MUHIMU')
         for kp in kps:
-            parts.append(f"  • {kp}")
+            parts.append(f"  - {kp}")
         parts.append('')
 
     et = note_data.get('exam_tips', []) or []
     if et:
-        parts += ['=' * 60, '6. EXAM TIPS / USHAURI WA MITIHANI', '=' * 60]
+        _hd('6. USHAURI WA MITIHANI')
         for t in et:
-            parts.append(f"  ⚠ {t}")
+            parts.append(f"  - {t}")
         parts.append('')
 
     pq = note_data.get('practice_questions', []) or []
     if pq:
-        parts += ['=' * 60, '7. PRACTICE QUESTIONS / MASWALI YA MAZOEZI', '=' * 60]
+        _hd('7. MASWALI YA MAZOEZI')
         for i, q in enumerate(pq, 1):
-            parts.append(f"\nQ{i}: {q.get('question', '')}")
-            parts.append(f"A: {q.get('answer', '')}")
+            parts.append('')
+            parts.append(f"Swali {i}: {q.get('question', '')}")
+            parts.append(f"Jibu: {q.get('answer', '')}")
         parts.append('')
 
-    parts += ['=' * 60, '8. SUMMARY / MUHTASARI', '=' * 60, str(note_data.get('summary', '')), '']
+    _hd('8. MUHTASARI')
+    parts.append(str(note_data.get('summary', '')))
+    parts.append('')
     note_content = '\n'.join(parts)
 
     note = LessonNote.objects.create(

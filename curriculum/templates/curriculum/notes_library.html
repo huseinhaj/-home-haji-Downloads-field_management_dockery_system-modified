@@ -1098,45 +1098,45 @@ function renderNotebook(nd, fallbackHtml) {
   const nb = document.getElementById('notebookContent');
   if (!nd) { nb.innerHTML = fallbackHtml || ''; document.getElementById('notesNotebook').style.display = 'block'; return; }
   let h = '';
-  h += `<h2>📖 ${esc(nd.title || 'Lesson Notes')}</h2>`;
-  h += '<h3>1. Overview / Utangulizi</h3>';
+  h += `<h2>${esc(nd.title || 'Lesson Notes')}</h2>`;
+  h += '<h3>1. Utangulizi</h3>';
   (nd.overview || '').split('\n').filter(Boolean).forEach(p => { h += `<p>${esc(p.trim())}</p>`; });
   if (nd.key_terms && nd.key_terms.length) {
-    h += '<h3>2. Key Terms / Maneno Muhimu</h3><div class="kt-grid">';
+    h += '<h3>2. Maneno Muhimu</h3><div class="kt-grid">';
     nd.key_terms.forEach(k => { h += `<div class="kt-card"><b>${esc(k.term || '')}</b><br>${esc(k.definition || '')}</div>`; });
     h += '</div>';
   }
   if (nd.sections && nd.sections.length) {
-    h += '<h3>3. Main Content / Maelezo Kamili</h3>';
+    h += '<h3>3. Maelezo Kamili</h3>';
     nd.sections.forEach(s => {
       h += `<p><strong style="color:var(--green-600);">${esc(s.heading || '')}</strong></p>`;
       (s.content || '').split('\n').filter(Boolean).forEach(p => { h += `<p>${esc(p.trim())}</p>`; });
     });
   }
   if (nd.worked_examples && nd.worked_examples.length) {
-    h += '<h3>4. Worked Examples / Mifano</h3>';
+    h += '<h3>4. Mifano Iliyofanyiwa Kazi</h3>';
     nd.worked_examples.forEach(ex => {
-      h += `<div class="pq-item"><div class="q">Example: ${esc(ex.example || '')}</div><div class="a"><strong>Solution:</strong> ${esc(ex.solution || '')}</div></div>`;
+      h += `<div class="pq-item"><div class="q">Mfano: ${esc(ex.example || '')}</div><div class="a"><strong>Suluhisho:</strong> ${esc(ex.solution || '')}</div></div>`;
     });
   }
   if (nd.key_points && nd.key_points.length) {
-    h += '<h3>5. Key Points / Nukta Muhimu</h3><ul>';
+    h += '<h3>5. Nukta Muhimu</h3><ul>';
     nd.key_points.forEach(kp => { if (kp && kp.trim()) h += `<li style="font-size:0.92rem;margin-bottom:4px;">${esc(kp.trim())}</li>`; });
     h += '</ul>';
   }
   if (nd.exam_tips && nd.exam_tips.length) {
-    h += '<h3>6. Exam Tips / Ushauri wa Mitihani</h3>';
-    nd.exam_tips.forEach(t => { if (t && t.trim()) h += `<div class="exam-tip">⚠️ ${esc(t.trim())}</div>`; });
+    h += '<h3>6. Ushauri wa Mitihani</h3>';
+    nd.exam_tips.forEach(t => { if (t && t.trim()) h += `<div class="exam-tip">${esc(t.trim())}</div>`; });
   }
   if (nd.practice_questions && nd.practice_questions.length) {
-    h += '<h3>7. Practice Questions / Maswali ya Mazoezi</h3>';
+    h += '<h3>7. Maswali ya Mazoezi</h3>';
     nd.practice_questions.forEach((q, i) => {
       if (q && (q.question || q.answer)) {
-        h += `<div class="pq-item"><div class="q">Q${i + 1}: ${esc(q.question || '')}</div><div class="a"><strong>Jibu:</strong> ${esc(q.answer || '')}</div></div>`;
+        h += `<div class="pq-item"><div class="q">Swali ${i + 1}: ${esc(q.question || '')}</div><div class="a"><strong>Jibu:</strong> ${esc(q.answer || '')}</div></div>`;
       }
     });
   }
-  if (nd.summary) h += '<h3>8. Summary / Muhtasari</h3>' + `<p>${esc(nd.summary)}</p>`;
+  if (nd.summary) h += '<h3>8. Muhtasari</h3>' + `<p>${esc(nd.summary)}</p>`;
   nb.innerHTML = h;
   document.getElementById('notesNotebook').style.display = 'block';
 }
