@@ -1,0 +1,310 @@
+{% extends 'field_app/base.html' %}
+
+{% block title %}{% if LANG == 'sw' %}Hariri Somo{% else %}Edit Lesson{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .edit-card { border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(10,43,94,0.08); overflow: hidden; }
+    .edit-card .card-header {
+        background: linear-gradient(135deg, var(--bold) 0%, #0C3570 100%);
+        border-bottom: 3px solid var(--medium); padding: 1.25rem 1.5rem;
+    }
+    .form-section { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; margin-bottom: 1.25rem; }
+    .form-section-title { font-size: 0.9rem; font-weight: 700; color: var(--bold); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--medium); display: inline-block; }
+    .form-label { font-size: 0.8rem; font-weight: 600; color: var(--text-dark); margin-bottom: 0.4rem; }
+    .form-control, .form-select { border: 1.5px solid var(--border); border-radius: 8px; padding: 0.55rem 0.85rem; font-size: 0.85rem; background: #FAFBFD; }
+    .form-control:focus { border-color: var(--bold); box-shadow: 0 0 0 3px rgba(10,43,94,0.1); background: var(--white); }
+    .btn-save { background: linear-gradient(135deg, var(--bold) 0%, #0C3570 100%); border: none; border-radius: 8px; padding: 9px 22px; font-weight: 700; color: var(--white) !important; }
+    .btn-gold { background: var(--medium); border: none; border-radius: 8px; padding: 9px 22px; font-weight: 700; color: var(--white) !important; }
+    .btn-ai { background: #6B21A8; border: none; border-radius: 8px; padding: 9px 22px; font-weight: 700; color: var(--white) !important; }
+    .btn-ghost { background: var(--white); border: 1.5px solid var(--border); border-radius: 8px; padding: 9px 18px; font-weight: 600; color: var(--bold) !important; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .ld-row { border: 1px solid var(--border); border-radius: 10px; padding: 0.85rem; margin-bottom: 0.75rem; background: #FAFBFD; }
+    .ld-row .stage-badge { background: var(--bold); color: var(--white); font-size: 0.7rem; font-weight: 700; border-radius: 6px; padding: 2px 8px; }
+    .ld-row input, .ld-row textarea { font-size: 0.8rem; border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.6rem; width: 100%; }
+    .ld-row textarea { resize: vertical; min-height: 52px; }
+    .stage-select { border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 0.8rem; font-weight: 700; color: var(--bold); background: var(--white); }
+    .chip { font-size: 0.7rem; font-weight: 700; border-radius: 20px; padding: 3px 10px; }
+    .chip-auto { background: #E3ECFB; color: var(--bold); }
+    .chip-edited { background: #DDF3E4; color: #14713D; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 1000px;">
+
+    <div class="card edit-card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h4 class="mb-0 text-white"><i class="fas fa-edit" style="color: var(--medium);"></i>
+                    {% if LANG == 'sw' %}Hariri Somo{% else %}Edit Lesson{% endif %}</h4>
+                <small class="text-white">{{ lesson.subject.name }} · {{ lesson.class_name }} · {{ lesson.date|date:"l, d M Y" }}</small>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="chip {% if lesson.status == 'edited' %}chip-edited{% else %}chip-auto{% endif %}">
+                    {% if lesson.status == 'edited' %}{% if LANG == 'sw' %}Imehaririwa{% else %}Edited{% endif %}{% else %}{% if LANG == 'sw' %}Otomatiki{% else %}Auto{% endif %}{% endif %}
+                </span>
+                <a href="{% url 'lesson_pdf_db' lesson.id %}" class="btn btn-sm" style="background: var(--white); color: var(--bold); border-radius: 6px; font-weight: 700;">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </a>
+            </div>
+        </div>
+        <div class="card-body" style="background: var(--white);">
+
+            <form method="post" id="lessonForm">
+                {% csrf_token %}
+                <input type="hidden" name="lesson_development_json" id="ldJson" value="">
+
+                <div class="form-section">
+                    <span class="form-section-title"><i class="fas fa-info-circle"></i> {% if LANG == 'sw' %}Taarifa za Msingi{% else %}Basic Info{% endif %}</span>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">{% if LANG == 'sw' %}Tarehe ya Kufundisha{% else %}Teaching Date{% endif %} *</label>
+                            <input type="date" name="date" class="form-control" value="{{ lesson.date|date:'Y-m-d' }}" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">{% if LANG == 'sw' %}Muda (dakika){% else %}Duration (min){% endif %}</label>
+                            <input type="number" name="duration" class="form-control" value="{{ lesson.duration }}" min="10" max="180">
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label">{% if LANG == 'sw' %}Mada (Topic){% else %}Topic{% endif %}</label>
+                            <input type="text" name="topic" class="form-control" value="{{ lesson.topic }}" maxlength="200">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">{% if LANG == 'sw' %}Mada Ndogo (Subtopic){% else %}Subtopic{% endif %}</label>
+                            <input type="text" name="subtopic" class="form-control" value="{{ lesson.subtopic|default:'' }}" maxlength="200">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section" style="border-left: 4px solid var(--medium);">
+                    <span class="form-section-title"><i class="fas fa-users"></i> {% if LANG == 'sw' %}Idadi ya Wanafunzi (jaza baada ya kufundisha){% else %}Student Attendance (fill after teaching){% endif %}</span>
+                    <div class="row g-3">
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">{% if LANG == 'sw' %}Jumla{% else %}Total{% endif %}</label>
+                            <input type="number" name="total_students" class="form-control" min="0" value="{{ lesson.total_students|default_if_none:'' }}">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">{% if LANG == 'sw' %}Waliopo{% else %}Present{% endif %}</label>
+                            <input type="number" name="present_students" class="form-control" min="0" value="{{ lesson.present_students|default_if_none:'' }}">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">{% if LANG == 'sw' %}Jumla wavulana{% else %}Total boys{% endif %}</label>
+                            <input type="number" name="total_boys" class="form-control" min="0" value="{{ lesson.total_boys|default_if_none:'' }}">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">{% if LANG == 'sw' %}Jumla wasichana{% else %}Total girls{% endif %}</label>
+                            <input type="number" name="total_girls" class="form-control" min="0" value="{{ lesson.total_girls|default_if_none:'' }}">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">{% if LANG == 'sw' %}Wavulana waliopo{% else %}Boys present{% endif %}</label>
+                            <input type="number" name="present_boys" class="form-control" min="0" value="{{ lesson.present_boys|default_if_none:'' }}">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">{% if LANG == 'sw' %}Wasichana waliopo{% else %}Girls present{% endif %}</label>
+                            <input type="number" name="present_girls" class="form-control" min="0" value="{{ lesson.present_girls|default_if_none:'' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <span class="form-section-title"><i class="fas fa-bullseye"></i> {% if LANG == 'sw' %}Competences & Maarifa{% else %}Competences & Knowledge{% endif %}</span>
+                    <div class="mb-3">
+                        <label class="form-label">{% if LANG == 'sw' %}Main Competence{% else %}Main Competence{% endif %}</label>
+                        <textarea name="main_competence" class="form-control" rows="2">{{ lesson.main_competence }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Specific Competence</label>
+                        <textarea name="specific_competence" class="form-control" rows="2">{{ lesson.specific_competence }}</textarea>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">{% if LANG == 'sw' %}Maarifa ya Awali{% else %}Previous Knowledge{% endif %}</label>
+                        <textarea name="previous_knowledge" class="form-control" rows="2">{{ lesson.previous_knowledge }}</textarea>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <span class="form-section-title"><i class="fas fa-list-ul"></i> {% if LANG == 'sw' %}Malengo, Mbinu & Vifaa (mstari mmoja kwa kila mmoja){% else %}Objectives, Methods & Resources (one per line){% endif %}</span>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">{% if LANG == 'sw' %}Malengo ya Kujifunza{% else %}Learning Objectives{% endif %}</label>
+                            <textarea name="learning_objectives" id="fObjectives" class="form-control" rows="5">{% for o in lesson.learning_objectives %}{{ o }}
+{% endfor %}</textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">{% if LANG == 'sw' %}Mbinu za Kufundisha{% else %}Teaching Methods{% endif %}</label>
+                            <textarea name="teaching_methods" id="fMethods" class="form-control" rows="5">{% for m in lesson.teaching_methods %}{{ m }}
+{% endfor %}</textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">{% if LANG == 'sw' %}Vifaa vya Kufundishia{% else %}Teaching Resources{% endif %}</label>
+                            <textarea name="teaching_resources" id="fResources" class="form-control" rows="5">{% for r in lesson.teaching_resources %}{{ r }}
+{% endfor %}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <span class="form-section-title"><i class="fas fa-stream"></i> {% if LANG == 'sw' %}Maendeleo ya Somo — IDDR{% else %}Lesson Development — IDDR{% endif %}</span>
+                    <div id="ldContainer"></div>
+                    <button type="button" class="btn btn-sm mt-2" style="background: var(--white); border: 1.5px solid var(--bold); color: var(--bold); border-radius: 6px; font-weight: 700;" id="addStageBtn">
+                        <i class="fas fa-plus"></i> {% if LANG == 'sw' %}Ongeza Hatua{% else %}Add Stage{% endif %}
+                    </button>
+                </div>
+
+                <div class="form-section">
+                    <span class="form-section-title"><i class="fas fa-comment-dots"></i> {% if LANG == 'sw' %}Remarks (baada ya kufundisha: Strength / Weakness / Way forward){% else %}Remarks (after teaching: Strength / Weakness / Way forward){% endif %}</span>
+                    <textarea name="remarks" id="fRemarks" class="form-control" rows="4" placeholder="1. Strength: ...&#10;2. Weakness: ...&#10;3. Way forward: ...">{{ lesson.remarks }}</textarea>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 pb-3">
+                    <button type="submit" name="action" value="save" class="btn btn-save">
+                        <i class="fas fa-save"></i> {% if LANG == 'sw' %}Hifadhi{% else %}Save{% endif %}
+                    </button>
+                    <button type="submit" name="action" value="save_download" class="btn btn-gold">
+                        <i class="fas fa-file-pdf"></i> {% if LANG == 'sw' %}Hifadhi & Pakua PDF{% else %}Save & Download PDF{% endif %}
+                    </button>
+                    <button type="button" class="btn btn-ai" id="aiBtn">
+                        <i class="fas fa-robot"></i> {% if LANG == 'sw' %}Boresha kwa AI{% else %}Improve with AI{% endif %}
+                    </button>
+                </div>
+            </form>
+
+            <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center pb-3 border-top pt-3">
+                <div class="d-flex flex-wrap gap-2">
+                    <form method="post" action="{% url 'lesson_duplicate' lesson.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-ghost"><i class="fas fa-copy"></i> {% if LANG == 'sw' %}Nakala kwa siku nyingine{% else %}Duplicate to another day{% endif %}</button>
+                    </form>
+                    <form method="post" action="{% url 'lesson_delete' lesson.id %}" class="d-inline" id="delForm">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-ghost" style="color: #B42318 !important; border-color: #F4B0A8;"><i class="fas fa-trash"></i> {% if LANG == 'sw' %}Futa{% else %}Delete{% endif %}</button>
+                    </form>
+                </div>
+                <a href="{% url 'my_lessons' %}" class="btn btn-ghost"><i class="fas fa-arrow-left"></i> {% if LANG == 'sw' %}Masomo Yangu{% else %}My Lessons{% endif %}</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ lesson.lesson_development|json_script:"ld-init" }}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const STAGES = [
+        'Introduction (I)',
+        'Competence Development (D)',
+        'Design (D)',
+        'Realisation (R)'
+    ];
+    let data = [];
+    try { data = JSON.parse(document.getElementById('ld-init').textContent || '[]'); } catch (e) { data = []; }
+    if (!Array.isArray(data) || !data.length) {
+        data = [{ time: '6 min', stage: 'Introduction (I)', methods: '', teacher_activities: '', student_activities: '', assessment_criteria: '' },
+                { time: '16 min', stage: 'Competence Development (D)', methods: '', teacher_activities: '', student_activities: '', assessment_criteria: '' },
+                { time: '12 min', stage: 'Design (D)', methods: '', teacher_activities: '', student_activities: '', assessment_criteria: '' },
+                { time: '6 min', stage: 'Realisation (R)', methods: '', teacher_activities: '', student_activities: '', assessment_criteria: '' }];
+    }
+
+    const container = document.getElementById('ldContainer');
+    const hidden = document.getElementById('ldJson');
+
+    function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+    function collect() {
+        const rows = container.querySelectorAll('.ld-row');
+        const out = [];
+        rows.forEach(function (row) {
+            out.push({
+                time: row.querySelector('.ld-time').value,
+                stage: row.querySelector('.ld-stage').value,
+                methods: row.querySelector('.ld-methods').value,
+                teacher_activities: row.querySelector('.ld-teacher').value,
+                student_activities: row.querySelector('.ld-student').value,
+                assessment_criteria: row.querySelector('.ld-assess').value
+            });
+        });
+        hidden.value = JSON.stringify(out);
+        return out;
+    }
+
+    function render() {
+        container.innerHTML = '';
+        data.forEach(function (st, idx) {
+            const div = document.createElement('div');
+            div.className = 'ld-row';
+            const stageOpts = STAGES.map(function (s) {
+                const sel = (st.stage === s) ? ' selected' : '';
+                return `<option value="${esc(s)}"${sel}>${esc(s)}</option>`;
+            }).join('');
+            div.innerHTML = `
+                <div class="d-flex gap-2 align-items-center flex-wrap mb-2">
+                    <span class="stage-badge">Hatua ${idx + 1}</span>
+                    <input class="ld-time" style="max-width:90px" value="${esc(st.time || '')}" placeholder="6 min">
+                    <select class="ld-stage stage-select">${stageOpts}</select>
+                    <input class="ld-methods" style="flex:1; min-width:140px" value="${esc(st.methods || '')}" placeholder="Methods">
+                    <button type="button" class="btn btn-sm btn-outline-danger ld-del" style="padding:2px 8px; font-size:.75rem;">✕</button>
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-4"><textarea class="ld-teacher" rows="2" placeholder="Teacher activities">${esc(st.teacher_activities || '')}</textarea></div>
+                    <div class="col-md-4"><textarea class="ld-student" rows="2" placeholder="Student activities">${esc(st.student_activities || '')}</textarea></div>
+                    <div class="col-md-4"><textarea class="ld-assess" rows="2" placeholder="Assessment criteria">${esc(st.assessment_criteria || '')}</textarea></div>
+                </div>`;
+            div.querySelector('.ld-del').addEventListener('click', function () {
+                data = collect(); data.splice(idx, 1); render();
+            });
+            container.appendChild(div);
+        });
+        collect();
+    }
+
+    container.addEventListener('input', collect);
+    container.addEventListener('change', collect);
+    document.getElementById('addStageBtn').addEventListener('click', function () {
+        data = collect();
+        data.push({ time: '', stage: STAGES[1], methods: '', teacher_activities: '', student_activities: '', assessment_criteria: '' });
+        render();
+    });
+    render();
+
+    // ---- AI refine ----
+    const aiBtn = document.getElementById('aiBtn');
+    aiBtn.addEventListener('click', async function () {
+        if (!confirm('{% if LANG == "sw" %}AI itaboresha maudhui ya somo hili. Mabadiliko hayatahifadhi mpaka ubonyeze "Hifadhi". Endelea?{% else %}AI will improve this lesson content. Nothing is saved until you press "Save". Continue?{% endif %}')) return;
+        const old = aiBtn.innerHTML;
+        aiBtn.disabled = true;
+        aiBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Inaboresha...';
+        try {
+            const resp = await fetch("{% url 'lesson_refine_ai' lesson.id %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value, 'Content-Type': 'application/json' },
+                body: '{}'
+            });
+            const res = await resp.json();
+            if (!res.success) { alert(res.error || 'Imeshindikana.'); return; }
+            const d = res.data;
+            if (d.topic) document.querySelector('[name=topic]').value = d.topic;
+            if (d.subtopic !== undefined) document.querySelector('[name=subtopic]').value = d.subtopic || '';
+            if (d.main_competence) document.querySelector('[name=main_competence]').value = d.main_competence;
+            if (d.specific_competence) document.querySelector('[name=specific_competence]').value = d.specific_competence;
+            if (d.previous_knowledge) document.querySelector('[name=previous_knowledge]').value = d.previous_knowledge;
+            if (Array.isArray(d.learning_objectives)) document.getElementById('fObjectives').value = d.learning_objectives.join('\n');
+            if (Array.isArray(d.teaching_methods)) document.getElementById('fMethods').value = d.teaching_methods.join('\n');
+            if (Array.isArray(d.teaching_resources)) document.getElementById('fResources').value = d.teaching_resources.join('\n');
+            if (Array.isArray(d.lesson_development)) { data = d.lesson_development; render(); }
+            alert('{% if LANG == "sw" %}Imeboreshwa! Kagua mabadiliko kisha bonyeza "Hifadhi".{% else %}Improved! Review changes then press "Save".{% endif %}');
+        } catch (e) {
+            alert('Hitilafu ya mtandao.');
+        } finally {
+            aiBtn.disabled = false;
+            aiBtn.innerHTML = old;
+        }
+    });
+
+    document.getElementById('delForm').addEventListener('submit', function (e) {
+        if (!confirm('{% if LANG == "sw" %}Futa somo hili? Haliwezi kurudishwa.{% else %}Delete this lesson? Cannot be undone.{% endif %}')) e.preventDefault();
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,220 @@
+{% extends 'field_app/base.html' %}
+
+{% block title %}Maktaba — Notes & Mitihani{% endblock %}
+
+{% block extra_css %}
+<style>
+    .maktaba-hero {
+        background: linear-gradient(135deg, var(--bold) 0%, #0C3570 60%, #123C7D 100%);
+        border-radius: 12px; padding: 1.5rem 1.75rem; color: var(--white);
+        border-bottom: 3px solid var(--medium);
+    }
+    .maktaba-hero h3 { color: var(--white) !important; margin: 0; font-weight: 800; }
+    .maktaba-hero p { margin: 0.35rem 0 0; opacity: 0.85; font-size: 0.85rem; }
+    .mat-card {
+        border: 1px solid var(--border); border-radius: 10px; background: var(--white);
+        overflow: hidden; height: 100%; display: flex; flex-direction: column;
+        transition: all 0.2s ease;
+    }
+    .mat-card:hover { border-color: var(--medium); box-shadow: 0 4px 16px rgba(200,144,10,0.15); transform: translateY(-2px); }
+    .mat-type {
+        font-size: 0.68rem; font-weight: 800; border-radius: 6px; padding: 3px 9px;
+        display: inline-block; letter-spacing: 0.3px; text-transform: uppercase;
+    }
+    .type-notes { background: #E3ECFB; color: var(--bold); }
+    .type-exam { background: #FDEBD2; color: #92400E; }
+    .type-book { background: #DDF3E4; color: #14713D; }
+    .type-syllabus { background: #F0E4FA; color: #6B21A8; }
+    .type-other { background: #EEF1F6; color: #475467; }
+    .mat-title { font-weight: 700; color: var(--bold); font-size: 0.9rem; line-height: 1.35; }
+    .mat-summary { font-size: 0.78rem; color: var(--text-gray, #6B7280); line-height: 1.45; }
+    .mat-meta { font-size: 0.72rem; color: #98A2B3; }
+    .filter-pill {
+        border: 1.5px solid var(--border); border-radius: 20px; background: var(--white);
+        color: var(--text-dark); text-decoration: none; padding: 4px 14px;
+        font-size: 0.78rem; font-weight: 600; display: inline-block; margin: 0 6px 6px 0;
+    }
+    .filter-pill:hover { border-color: var(--bold); color: var(--bold); }
+    .filter-pill.active { background: var(--bold); border-color: var(--bold); color: var(--white) !important; }
+    .search-box .form-control { border-radius: 20px; border: 1.5px solid var(--border); padding: 8px 18px; }
+    .search-box .form-control:focus { border-color: var(--bold); box-shadow: 0 0 0 3px rgba(10,43,94,0.1); }
+    .btn-maktaba-dl {
+        background: linear-gradient(135deg, var(--bold) 0%, #0C3570 100%); color: var(--white) !important;
+        border-radius: 6px; font-weight: 700; font-size: 0.8rem; padding: 6px 14px; text-decoration: none;
+        display: inline-flex; align-items: center; gap: 5px;
+    }
+    .btn-maktaba-dl:hover { box-shadow: 0 4px 12px rgba(10,43,94,0.3); }
+    .src-badge { font-size: 0.7rem; color: var(--medium); font-weight: 700; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="maktaba-hero mb-4">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <h3><i class="fas fa-book-open" style="color: var(--medium);"></i> Maktaba</h3>
+                <p>{% if LANG == 'sw' %}Notes, mitihani na vitabu — vinachotwa automatic kutoka vyanzo bora vya Tanzania{% else %}Notes, exams and books — collected automatically from Tanzania's best sources{% endif %}</p>
+            </div>
+            <div class="text-end">
+                <div style="font-size: 0.8rem; opacity: 0.9;">{{ total }} materials</div>
+                {% if last_run %}
+                <div style="font-size: 0.72rem; opacity: 0.75;">
+                    {% if LANG == 'sw' %}Ilisasishwa mwisho:{% else %}Last update:{% endif %} {{ last_run.ran_at|date:"d M Y H:i" }}
+                    {% if request.user.is_staff %}
+                    · <a href="#" id="runImporter" style="color: var(--medium); font-weight: 700;">⟳ Chota sasa</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Search + filters -->
+    <div class="card mb-3" style="border: 1px solid var(--border); border-radius: 10px;">
+        <div class="card-body py-3" style="background: var(--white);">
+            <form method="get" class="search-box mb-2">
+                <div class="d-flex gap-2">
+                    <input type="text" name="q" class="form-control" value="{{ filters.q }}"
+                           placeholder="{% if LANG == 'sw' %}Tafuta notes, mtihani, somo...{% else %}Search notes, exams, subject...{% endif %}">
+                    <input type="hidden" name="type" value="{{ filters.type }}">
+                    <input type="hidden" name="level" value="{{ filters.level }}">
+                    <input type="hidden" name="class" value="{{ filters.class }}">
+                    <input type="hidden" name="subject" value="{{ filters.subject }}">
+                    <button class="btn" style="background: var(--bold); color: var(--white); border-radius: 20px; padding: 6px 20px; font-weight: 700;">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </form>
+
+            <div class="mb-1">
+                <a href="{% url 'maktaba' %}?q={{ filters.q|urlencode }}" class="filter-pill {% if not filters.type %}active{% endif %}">{% if LANG == 'sw' %}Vyote{% else %}All{% endif %}</a>
+                {% for key, label in type_labels.items %}
+                <a href="{% url 'maktaba' %}?type={{ key }}&q={{ filters.q|urlencode }}" class="filter-pill {% if filters.type == key %}active{% endif %}">{{ label }}</a>
+                {% endfor %}
+            </div>
+            <div class="mb-1">
+                <span class="mat-meta me-1">{% if LANG == 'sw' %}Ngazi:{% else %}Level:{% endif %}</span>
+                {% for key, label in level_labels.items %}
+                <a href="{% url 'maktaba' %}?type={{ filters.type }}&level={{ key }}&q={{ filters.q|urlencode }}" class="filter-pill {% if filters.level == key %}active{% endif %}">{{ label }}</a>
+                {% endfor %}
+            </div>
+            {% if classes %}
+            <div class="mb-1">
+                <span class="mat-meta me-1">{% if LANG == 'sw' %}Darasa:{% else %}Class:{% endif %}</span>
+                <a href="{% url 'maktaba' %}?type={{ filters.type }}&level={{ filters.level }}&q={{ filters.q|urlencode }}" class="filter-pill {% if not filters.class %}active{% endif %}">—</a>
+                {% for c in classes %}
+                <a href="{% url 'maktaba' %}?type={{ filters.type }}&level={{ filters.level }}&class={{ c|urlencode }}&q={{ filters.q|urlencode }}" class="filter-pill {% if filters.class == c %}active{% endif %}">{{ c }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if subjects %}
+            <div>
+                <span class="mat-meta me-1">{% if LANG == 'sw' %}Somo:{% else %}Subject:{% endif %}</span>
+                <a href="{% url 'maktaba' %}?type={{ filters.type }}&level={{ filters.level }}&class={{ filters.class|urlencode }}&q={{ filters.q|urlencode }}" class="filter-pill {% if not filters.subject %}active{% endif %}">—</a>
+                {% for s in subjects %}
+                <a href="{% url 'maktaba' %}?type={{ filters.type }}&level={{ filters.level }}&class={{ filters.class|urlencode }}&subject={{ s|urlencode }}&q={{ filters.q|urlencode }}" class="filter-pill {% if filters.subject == s %}active{% endif %}">{{ s }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Grid -->
+    {% if materials %}
+    <div class="row g-3">
+        {% for m in materials %}
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="mat-card">
+                <div class="p-3 d-flex flex-column" style="flex: 1;">
+                    <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
+                        <span class="mat-type type-{{ m.material_type }}">{{ m.get_material_type_display }}</span>
+                        {% if m.class_name %}<span class="mat-meta">{{ m.class_name }}</span>{% endif %}
+                    </div>
+                    <div class="mat-title mb-1">{{ m.title|truncatechars:95 }}</div>
+                    {% if m.subject_name %}<div class="src-badge mb-1"><i class="fas fa-book"></i> {{ m.subject_name }}</div>{% endif %}
+                    {% if m.ai_summary %}<div class="mat-summary mb-2">{{ m.ai_summary|truncatechars:160 }}</div>{% endif %}
+                    <div class="mt-auto d-flex justify-content-between align-items-center pt-2" style="border-top: 1px dashed var(--border);">
+                        <span class="mat-meta">
+                            {% if m.source %}<span class="src-badge">{{ m.source.name }}</span> · {% endif %}
+                            {{ m.pages }} {% if LANG == 'sw' %}kur.{% else %}pg{% endif %} · {{ m.file_size_mb }}MB · ⬇ {{ m.downloads }}
+                        </span>
+                        <a href="{% url 'maktaba_download' m.id %}" class="btn-maktaba-dl"><i class="fas fa-download"></i> PDF</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&type={{ filters.type }}&level={{ filters.level }}&class={{ filters.class|urlencode }}&subject={{ filters.subject|urlencode }}&q={{ filters.q|urlencode }}">{% if LANG == 'sw' %}Iliyotangulia{% else %}Prev{% endif %}</a></li>
+            {% endif %}
+            <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+            {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&type={{ filters.type }}&level={{ filters.level }}&class={{ filters.class|urlencode }}&subject={{ filters.subject|urlencode }}&q={{ filters.q|urlencode }}">{% if LANG == 'sw' %}Inayofuata{% else %}Next{% endif %}</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5" style="border: 2px dashed var(--border); border-radius: 12px;">
+        <i class="fas fa-book" style="font-size: 2.5rem; color: var(--medium);"></i>
+        <h5 class="mt-3" style="color: var(--bold);">{% if LANG == 'sw' %}Hakuna materials za sasa{% else %}No materials yet{% endif %}</h5>
+        <p class="mat-meta">{% if LANG == 'sw' %}Importer inaendeshwa kila siku 03:15 EAT — au admin anaweza kuibonyeza "Chota sasa".{% else %}The importer runs daily at 03:15 EAT — or admin can hit "Fetch now".{% endif %}</p>
+        {% if request.user.is_staff %}
+        <button id="runImporter2" class="btn" style="background: var(--medium); color: var(--white); border-radius: 8px; font-weight: 700;">
+            <i class="fas fa-cloud-download-alt"></i> {% if LANG == 'sw' %}Chota sasa{% else %}Fetch now{% endif %}
+        </button>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="mt-4 mat-meta text-center">
+        {% if LANG == 'sw' %}Vyanzo:{% else %}Sources:{% endif %}
+        {% for s in sources %}{{ s.name }}{% if not forloop.last %} · {% endif %}{% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const CSRF = '{{ csrf_token }}';
+    function bind(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('click', async function (e) {
+            e.preventDefault();
+            const old = el.innerHTML;
+            el.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Inachota...';
+            try {
+                const resp = await fetch("{% url 'ajax_run_maktaba_importer' %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': CSRF,
+                        'Content-Type': 'application/json'
+                    },
+                    body: '{}'
+                });
+                const res = await resp.json();
+                alert(res.message || res.error || 'Imekamilika');
+                if (res.success) window.location.reload();
+            } catch (err) {
+                alert('Hitilafu ya mtandao.');
+            } finally {
+                el.innerHTML = old;
+            }
+        });
+    }
+    bind('runImporter');
+    bind('runImporter2');
+});
+</script>
+{% endblock %}

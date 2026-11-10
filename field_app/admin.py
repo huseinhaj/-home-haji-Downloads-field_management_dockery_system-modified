@@ -27,7 +27,8 @@ from .models import (
     CustomUser, StudentTeacher, Region, District, School, Subject,
     SchoolSubjectCapacity, LogbookEntry, ApprovalLetter,
     SchoolUpdateFile, SchoolRequirement, StudentApplication,
-    AcademicYear, RegionPin, SchoolPin, BoardMember
+    AcademicYear, RegionPin, SchoolPin, BoardMember,
+    MaterialSource, ScrapedMaterial, MaterialImportRun,
 )
 
 # OpenAI configuration
@@ -632,3 +633,45 @@ admin.site.register(SchoolUpdateFile, SchoolUpdateFileAdmin)
 admin.site.register(Assessor, AssessorAdmin)
 admin.site.register(SchoolAssessment, SchoolAssessmentAdmin)
 admin.site.register(StudentAssessment, StudentAssessmentAdmin)
+
+
+# =========================
+# MAKTABA — sources & materials za nje
+# =========================
+
+class MaterialSourceAdmin(admin.ModelAdmin):
+    list_display = ('name', 'enabled', 'default_type', 'url_filter',
+                    'max_articles_per_run', 'last_scraped_at', 'materials_count')
+    list_filter = ('enabled', 'default_type')
+    search_fields = ('name', 'site_url')
+    filter_horizontal = ()
+
+    def materials_count(self, obj):
+        return obj.materials.count()
+    materials_count.short_description = "Materials"
+
+
+class ScrapedMaterialAdmin(admin.ModelAdmin):
+    list_display = ('title', 'material_type', 'education_level', 'class_name',
+                    'subject_name', 'source', 'classified_by', 'downloads', 'created_at')
+    list_filter = ('material_type', 'education_level', 'source', 'published', 'classified_by')
+    search_fields = ('title', 'subject_name', 'ai_summary', 'original_url')
+    readonly_fields = ('content_hash', 'file_size', 'pages', 'downloads',
+                       'created_at', 'updated_at', 'classified_by')
+    list_editable = ('material_type', 'class_name', 'subject_name')
+    list_per_page = 40
+
+
+class MaterialImportRunAdmin(admin.ModelAdmin):
+    list_display = ('ran_on', 'status', 'materials_found', 'materials_downloaded', 'ran_at')
+    list_filter = ('status',)
+    readonly_fields = ('ran_on', 'ran_at', 'status', 'materials_found',
+                       'materials_downloaded', 'detail')
+
+
+admin.site.register(MaterialSource, MaterialSourceAdmin)
+admin.site.register(ScrapedMaterial, ScrapedMaterialAdmin)
+admin.site.register(MaterialImportRun, MaterialImportRunAdmin)
+custom_admin_site.register(MaterialSource, MaterialSourceAdmin)
+custom_admin_site.register(ScrapedMaterial, ScrapedMaterialAdmin)
+custom_admin_site.register(MaterialImportRun, MaterialImportRunAdmin)

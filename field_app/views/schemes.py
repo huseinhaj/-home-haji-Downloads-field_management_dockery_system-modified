@@ -211,6 +211,19 @@ Example row:
                             }
                         )
                         saved_id = scheme_obj.id
+
+                        # AUTO-LESSONS: mara moja baada ya scheme kutengenezwa,
+                        # zalisha masomo ya wiki hii + ijayo kutoka humo.
+                        try:
+                            from field_app.auto_lessons import (
+                                generate_lessons_for_student as _gen_auto,
+                            )
+                            auto_summary = _gen_auto(student, weeks_ahead=2)
+                            print(f"[AUTO-LESSONS] {student.full_name}: "
+                                  f"{auto_summary['lessons_created']} masomo mapya "
+                                  f"kutoka scheme #{saved_id}")
+                        except Exception as auto_err:  # noqa: BLE001
+                            print(f"[AUTO-LESSONS] schema {saved_id} imeshindikana: {auto_err}")
             except Exception as save_err:
                 print(f"Scheme save error (non-fatal): {save_err}")
 

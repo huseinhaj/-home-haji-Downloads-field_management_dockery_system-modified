@@ -183,6 +183,49 @@ if [ "$SERVICE_ROLE_NORM" = "web" ]; then
     esac
 fi
 
+# ── Kiendesha masomo ya automatic: auto_lessons_scheduler ──────────────────────
+# Huzalisha lesson plans za wiki hii + ijayo kutoka schemes kila siku 05:00 EAT
+# kwa wanafunzi wote wasio-rejected. Huzimwa kwa EMBED_AUTO_LESSONS=0.
+EMBED_AUTO_LESSONS="$(printf '%s' "${EMBED_AUTO_LESSONS:-}" | tr '[:upper:]' '[:lower:]' | tr -d ' ')"
+if [ -z "$EMBED_AUTO_LESSONS" ]; then
+    if [ -n "$RAILWAY_PROJECT_ID" ] || [ -n "$RAILWAY_SERVICE_ID" ] || [ -n "$RAILWAY_ENVIRONMENT_NAME" ]; then
+        EMBED_AUTO_LESSONS=1
+    fi
+fi
+if [ "$SERVICE_ROLE_NORM" = "web" ]; then
+    case "$EMBED_AUTO_LESSONS" in
+        1|true|yes|on)
+            echo "📚 Auto-lessons scheduler ON — kuzalisha lesson plans kila siku 05:00 EAT"
+            (python manage.py auto_lessons_scheduler --catch-up >> /tmp/auto_lessons_scheduler.log 2>&1) &
+            ;;
+        *)
+            echo "⏸️  Auto-lessons scheduler OFF (EMBED_AUTO_LESSONS='$EMBED_AUTO_LESSONS')."
+            ;;
+    esac
+fi
+
+# ── Kiendesha Maktaba: materials_importer_scheduler ───────────────────────────
+# Huchota notes & mitihani mpya kutoka Wazaelimu, Lusa Elimu, Mitihani.co.tz,
+# Elimu Zone n.k. kila siku 03:15 EAT: hu-pakua PDF kwenye server yetu na
+# kuiainisha (AI). Huzimwa kwa EMBED_MAKTABA=0.
+EMBED_MAKTABA="$(printf '%s' "${EMBED_MAKTABA:-}" | tr '[:upper:]' '[:lower:]' | tr -d ' ')"
+if [ -z "$EMBED_MAKTABA" ]; then
+    if [ -n "$RAILWAY_PROJECT_ID" ] || [ -n "$RAILWAY_SERVICE_ID" ] || [ -n "$RAILWAY_ENVIRONMENT_NAME" ]; then
+        EMBED_MAKTABA=1
+    fi
+fi
+if [ "$SERVICE_ROLE_NORM" = "web" ]; then
+    case "$EMBED_MAKTABA" in
+        1|true|yes|on)
+            echo "📚 Maktaba importer ON — kuchota materials mpya kila siku 03:15 EAT"
+            (python manage.py materials_importer_scheduler --catch-up >> /tmp/maktaba_scheduler.log 2>&1) &
+            ;;
+        *)
+            echo "⏸️  Maktaba importer OFF (EMBED_MAKTABA='$EMBED_MAKTABA')."
+            ;;
+    esac
+fi
+
 # ── Start services ────────────────────────────────────────────────────────────
 if [ "$TTC_READY" = "1" ]; then
     # TTC portal gunicorn on internal port 8001

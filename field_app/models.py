@@ -920,17 +920,38 @@ class LessonPlan(models.Model):
     # AI generation info
     generated_by_ai = models.BooleanField(default=True)
     ai_model_used = models.CharField(max_length=50, default='gemini-1.5-flash', blank=True)
-    
+
+    # ========== AUTO-GENERATION (kutoka Scheme of Work) ==========
+    # Wiki ipi ya scheme somo hili limetokana nayo (1-based)
+    scheme_week = models.PositiveSmallIntegerField(null=True, blank=True)
+    # Jumatatu ya wiki ya kufundisha (teaching week) — inatusaidia kugroup
+    week_start_date = models.DateField(null=True, blank=True)
+    # Kipindi cha siku ngani ndani ya wiki (1=Jumatatu, 2=Jumanne, ...)
+    period_index = models.PositiveSmallIntegerField(null=True, blank=True)
+    STATUS_CHOICES = [
+        ('auto', 'Imetengenezwa na mfumo'),
+        ('edited', 'Imehaririwa na mwalimu'),
+    ]
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='auto')
+    SOURCE_CHOICES = [
+        ('scheme_template', 'Kutoka scheme (template)'),
+        ('ai', 'AI imeboresha'),
+        ('manual', 'Mwalimu mwenyewe'),
+    ]
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='scheme_template')
+    # Ufunguo wa kutoku-generate mara mbili: "scheme_id:wiki:kipindi"
+    auto_key = models.CharField(max_length=60, unique=True, null=True, blank=True)
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         ordering = ['-date', '-created_at']
-    
+
     def __str__(self):
         return f"{self.subject.name} - {self.topic} ({self.date})"
-    
+
     def save(self, *args, **kwargs):
         # Auto-set teacher name from student if not provided
         if not self.teacher_name and self.student:
@@ -941,6 +962,138 @@ class LessonPlan(models.Model):
             self.school = self.student.selected_school
         
         super().save(*args, **kwargs)
+
+
+class AutoLessonRun(models.Model):
+    """Log ya kiendesha masomo ya automatic — run moja kwa siku."""
+    STATUS_CHOICES = [
+        ('ok', 'Imefanikiwa'),
+        ('partial', 'Imefanikiwa kwa makosa'),
+        ('failed', 'Imeshindikana'),
+    ]
+    ran_on = models.DateField(help_text="Siku run ilipoendeshwa (EAT).")
+    ran_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ok')
+    students_processed = models.PositiveIntegerField(default=0)
+    lessons_created = models.PositiveIntegerField(default=0)
+    detail = models.TextField(blank=True, default='')
+
+    class Meta:
+        ordering = ['-ran_at']
+        get_latest_by = 'ran_at'
+
+    def __str__(self):
+        return f"AutoLesson {self.ran_on} — {self.status} ({self.lessons_created} masomo)"
+
+
+# =========================
+# MAKTABA — Materials za nje (notes/mitihani) zinazochotwa automatic
+# =========================
+
+class MaterialSource(models.Model):
+    """Site ya nje inayochotwa notes/mitihani (mf. Wazaelimu, Lusa Elimu)."""
+    TYPE_DEFAULTS = [
+        ('notes', 'Notes'),
+        ('exam', 'Mitihani'),
+        ('book', 'Vitabu (TIE)'),
+        ('mixed', 'Mchanganyiko'),
+    ]
+    name = models.CharField(max_length=100, verbose_name="Jina la chanzo")
+    site_url = models.URLField(verbose_name="URL ya site")
+    listing_urls = models.JSONField(
+        default=list, blank=True,
+        help_text="Kurasa za listing/category za kuanzia kuchota (orodha ya URLs).")
+    enabled = models.BooleanField(default=True, verbose_name="Imewashwa")
+    default_type = models.CharField(max_length=10, choices=TYPE_DEFAULTS, default='mixed')
+    max_articles_per_run = models.PositiveSmallIntegerField(
+        default=15, help_text="Kikomo cha kurasa za articles kuchakuliwa kila run.")
+    url_filter = models.CharField(
+        max_length=200, blank=True, default='',
+        verbose_name="URL filter (regex)",
+        help_text="Ikijazwa: articles/files zitafuatwa tu kama URL inalingana na regex "
+                  "hii (mf. 'notes-tanzania' kwa Teacher.ac ili kuepuka Kenya/Uganda).")
+    last_scraped_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Chanzo cha Maktaba"
+        verbose_name_plural = "Vyanzo vya Maktaba"
+
+    def __str__(self):
+        return f"{self.name} ({'ON' if self.enabled else 'OFF'})"
+
+
+class ScrapedMaterial(models.Model):
+    """Note/mtihani uliochotwa kutoka chanzo cha nje — PDF imehifadhiwa local."""
+    MATERIAL_TYPES = [
+        ('notes', 'Notes'),
+        ('exam', 'Mtihani'),
+        ('book', 'Kitabu (TIE)'),
+        ('syllabus', 'Syllabus'),
+        ('other', 'Nyingine'),
+    ]
+    LEVEL_CHOICES = [
+        ('primary', 'Primary School'),
+        ('ordinary', 'Ordinary Level'),
+        ('advanced', 'Advanced Level'),
+        ('technical', 'Technical / VETA'),
+    ]
+    source = models.ForeignKey(MaterialSource, on_delete=models.SET_NULL, null=True, blank=True, related_name='materials')
+    title = models.CharField(max_length=300)
+    original_url = models.URLField(unique=True, verbose_name="Link ya asili")
+    file = models.FileField(upload_to='maktaba/', blank=True, null=True)
+    file_size = models.PositiveBigIntegerField(default=0)
+    content_hash = models.CharField(max_length=64, blank=True, default='', db_index=True)
+    pages = models.PositiveSmallIntegerField(default=0)
+    material_type = models.CharField(max_length=10, choices=MATERIAL_TYPES, default='notes')
+    education_level = models.CharField(max_length=20, choices=LEVEL_CHOICES, blank=True, default='')
+    class_name = models.CharField(max_length=50, blank=True, default='')
+    subject = models.ForeignKey(Subject, on_delete=models.SET_NULL, null=True, blank=True, related_name='scraped_materials')
+    subject_name = models.CharField(max_length=200, blank=True, default='')
+    ai_summary = models.TextField(blank=True, default='', verbose_name="Muhtasari wa AI")
+    classified_by = models.CharField(max_length=10, blank=True, default='', help_text="rules / ai")
+    published = models.BooleanField(default=True)
+    downloads = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Material ya Maktaba"
+        verbose_name_plural = "Maktaba — Materials"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['material_type', 'education_level', 'class_name']),
+            models.Index(fields=['-downloads']),
+        ]
+
+    def __str__(self):
+        return f"{self.title[:60]} [{self.material_type}]"
+
+    @property
+    def file_size_mb(self):
+        return round(self.file_size / (1024 * 1024), 1) if self.file_size else 0
+
+
+class MaterialImportRun(models.Model):
+    """Log ya kiendesha Maktaba — run moja kwa siku."""
+    STATUS_CHOICES = [
+        ('ok', 'Imefanikiwa'),
+        ('partial', 'Imefanikiwa kwa makosa'),
+        ('failed', 'Imeshindikana'),
+    ]
+    ran_on = models.DateField(help_text="Siku run ilipoendeshwa (EAT).")
+    ran_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ok')
+    materials_found = models.PositiveIntegerField(default=0)
+    materials_downloaded = models.PositiveIntegerField(default=0)
+    detail = models.TextField(blank=True, default='')
+
+    class Meta:
+        ordering = ['-ran_at']
+        get_latest_by = 'ran_at'
+
+    def __str__(self):
+        return f"Maktaba {self.ran_on} — {self.status} ({self.materials_downloaded} mpya)"
 
 
 # =========================

@@ -152,6 +152,24 @@ from .schemes import (
     ajax_load_saved_lessonplan,
 )
 
+from .auto_lessons import (
+    my_lessons,
+    ajax_generate_auto_lessons,
+    lesson_edit,
+    lesson_delete,
+    lesson_duplicate,
+    ajax_refine_lesson_ai,
+    download_lesson_pdf_db,
+    download_lesson_word_db,
+    download_lessons_zip,
+)
+
+from .maktaba import (
+    maktaba,
+    maktaba_download,
+    ajax_run_maktaba_importer,
+)
+
 from .public import (
     public_school_head_form,
     school_head_submit,

@@ -1,0 +1,183 @@
+{% extends 'field_app/base.html' %}
+
+{% block title %}{% if LANG == 'sw' %}Masomo Yangu{% else %}My Lessons{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .week-card {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 1.25rem;
+        background: var(--white);
+        box-shadow: 0 2px 10px rgba(10,43,94,0.06);
+    }
+    .week-card.current-week { border: 2px solid var(--medium); }
+    .week-card.past-week { opacity: 0.75; }
+    .week-head {
+        background: linear-gradient(135deg, var(--bold) 0%, #0C3570 100%);
+        color: var(--white) !important;
+        padding: 0.9rem 1.25rem;
+        display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .week-head h5 { margin: 0; font-weight: 700; }
+    .badge-current { background: var(--medium); color: var(--white); border-radius: 20px; padding: 4px 12px; font-size: 0.72rem; font-weight: 700; }
+    .badge-past { background: rgba(255,255,255,.18); color: var(--white); border-radius: 20px; padding: 4px 12px; font-size: 0.72rem; }
+    .lesson-row { border-bottom: 1px solid var(--border); }
+    .lesson-row:last-child { border-bottom: none; }
+    .lesson-row:hover { background: var(--light, #F4F7FF); }
+    .status-chip { font-size: 0.7rem; font-weight: 700; border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
+    .chip-auto { background: #E3ECFB; color: var(--bold); }
+    .chip-edited { background: #DDF3E4; color: #14713D; }
+    .chip-source-ai { background: #F0E4FA; color: #6B21A8; }
+    .chip-need { background: #FDEBD2; color: #92400E; }
+    .btn-mini {
+        border: 1px solid var(--border); background: var(--white); color: var(--bold);
+        border-radius: 6px; padding: 3px 10px; font-size: 0.75rem; font-weight: 600; text-decoration: none;
+        display: inline-flex; align-items: center; gap: 4px;
+    }
+    .btn-mini:hover { background: var(--bold); color: var(--white) !important; }
+    .btn-mini.gold { background: var(--medium); border-color: var(--medium); color: var(--white) !important; }
+    .btn-mini.danger { color: #B42318; border-color: #F4B0A8; }
+    .btn-mini.danger:hover { background: #B42318; color: var(--white) !important; }
+    .topic-text { color: var(--text-dark); font-size: 0.85rem; }
+    .day-pill { background: var(--light, #EEF1F6); color: var(--bold); font-weight: 700; font-size: 0.72rem; border-radius: 6px; padding: 2px 8px; white-space: nowrap; }
+    .empty-box { border: 2px dashed var(--border); border-radius: 12px; padding: 2.5rem; text-align: center; color: var(--text-gray, #6B7280); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="card mb-4" style="border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(10,43,94,0.08);">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2"
+             style="background: linear-gradient(135deg, var(--bold) 0%, #0C3570 100%); border-bottom: 3px solid var(--medium); border-radius: 12px 12px 0 0; padding: 1.1rem 1.5rem;">
+            <h4 class="mb-0 text-white">
+                <i class="fas fa-magic" style="color: var(--medium);"></i>
+                {% if LANG == 'sw' %}Masomo Yangu{% else %}My Lessons{% endif %}
+            </h4>
+            <div class="d-flex flex-wrap gap-2">
+                <button id="generateBtn" class="btn" style="background: var(--medium); color: var(--white); border: none; border-radius: 8px; padding: 7px 16px; font-weight: 700; font-size: 0.85rem;">
+                    <i class="fas fa-bolt"></i> {% if LANG == 'sw' %}Zalisha masomo ya wiki hii + ijayo{% else %}Generate this + next week{% endif %}
+                </button>
+                <a href="{% url 'lessons_zip' %}?scope=upcoming" class="btn" style="background: var(--white); color: var(--bold); border: none; border-radius: 8px; padding: 7px 16px; font-weight: 700; font-size: 0.85rem;">
+                    <i class="fas fa-file-archive"></i> {% if LANG == 'sw' %}ZIP ya PDF zijazo{% else %}Upcoming PDFs (zip){% endif %}
+                </a>
+                <a href="{% url 'lessons_zip' %}?scope=all" class="btn" style="background: transparent; color: var(--white); border: 1px solid rgba(255,255,255,.4); border-radius: 8px; padding: 7px 16px; font-weight: 600; font-size: 0.85rem;">
+                    <i class="fas fa-download"></i> {% if LANG == 'sw' %}ZIP yote{% else %}All{% endif %}
+                </a>
+            </div>
+        </div>
+        <div class="card-body" style="background: var(--white);">
+            {% if needs_attention_count %}
+            <div class="alert mb-0" style="background: #FDEBD2; border-left: 4px solid var(--medium); color: #92400E; border-radius: 8px;">
+                <i class="fas fa-exclamation-circle"></i>
+                <strong>{{ needs_attention_count }}</strong>
+                {% if LANG == 'sw' %}somo la siku zilizopita/ziko hivi sasa limebaki bila kujaza idadi ya wanafunzi. Bonyeza "Hariri" na ujaze.{% else %}lesson(s) from today or earlier still need attendance. Click "Edit" to fill in.{% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not week_cards %}
+    <div class="empty-box">
+        <i class="fas fa-cloud-download-alt" style="font-size: 2.5rem; color: var(--medium);"></i>
+        <h5 style="margin-top: 1rem; color: var(--bold);">{% if LANG == 'sw' %}Hakuna masomo bado{% else %}No lessons yet{% endif %}</h5>
+        <p>{% if LANG == 'sw' %}Anza kwa kutengeneza Scheme ya Kazi — masomo yatengenezwa kutoka humo.{% else %}Start by creating a Scheme of Work — lessons are generated from it.{% endif %}</p>
+        <a href="{% url 'generate_scheme' %}" class="btn" style="background: var(--bold); color: var(--white); border-radius: 8px; padding: 8px 20px; font-weight: 700;">
+            <i class="fas fa-calendar-alt"></i> {% if LANG == 'sw' %}Tengeneza Scheme{% else %}Create Scheme{% endif %}
+        </a>
+    </div>
+    {% endif %}
+
+    {% for wc in week_cards %}
+    <div class="week-card {% if wc.is_current %}current-week{% elif wc.is_past %}past-week{% endif %}">
+        <div class="week-head">
+            <h5><i class="fas fa-calendar-week" style="color: var(--medium);"></i> {{ wc.label }}</h5>
+            <span class="{% if wc.is_current %}badge-current{% else %}badge-past{% endif %}">
+                {% if wc.is_current %}{% if LANG == 'sw' %}WIKI HII{% else %}THIS WEEK{% endif %}{% elif wc.is_past %}{% if LANG == 'sw' %}imepita{% else %}past{% endif %}{% else %}{% if LANG == 'sw' %}ijayo{% else %}upcoming{% endif %}{% endif %}
+            </span>
+        </div>
+        <div>
+            {% for lp in wc.lessons %}
+            <div class="lesson-row d-flex align-items-center flex-wrap gap-2" style="padding: 0.65rem 1.25rem;">
+                <span class="day-pill">{{ lp.date|date:"D d M" }}</span>
+                <div style="min-width: 160px; flex: 1;">
+                    <div style="font-weight: 700; color: var(--bold); font-size: 0.9rem;">
+                        {{ lp.subject.name }} <span style="font-weight: 400; color: var(--text-gray, #6B7280);">· {{ lp.class_name }}{% if lp.scheme_week %} · W{{ lp.scheme_week }}{% if lp.period_index %}P{{ lp.period_index }}{% endif %}{% endif %}</span>
+                    </div>
+                    <div class="topic-text">{{ lp.topic|truncatechars:110 }}</div>
+                </div>
+                <span class="status-chip {% if lp.status == 'edited' %}chip-edited{% else %}chip-auto{% endif %}">
+                    {% if lp.status == 'edited' %}{% if LANG == 'sw' %}Imehaririwa{% else %}Edited{% endif %}{% else %}{% if LANG == 'sw' %}Otomatiki{% else %}Auto{% endif %}{% endif %}
+                </span>
+                {% if lp.source == 'ai' %}<span class="status-chip chip-source-ai">AI</span>{% endif %}
+                {% if not lp.present_students and lp.date <= today %}
+                    <span class="status-chip chip-need"><i class="fas fa-user-clock"></i> {% if LANG == 'sw' %}Jaza attendance{% else %}Fill attendance{% endif %}</span>
+                {% endif %}
+                <div class="d-flex gap-1 ms-auto flex-wrap">
+                    <a href="{% url 'lesson_edit' lp.id %}" class="btn-mini gold"><i class="fas fa-edit"></i> {% if LANG == 'sw' %}Hariri{% else %}Edit{% endif %}</a>
+                    <a href="{% url 'lesson_pdf_db' lp.id %}" class="btn-mini"><i class="fas fa-file-pdf"></i> PDF</a>
+                    <a href="{% url 'lesson_word_db' lp.id %}" class="btn-mini"><i class="fas fa-file-word"></i> Word</a>
+                    <form method="post" action="{% url 'lesson_duplicate' lp.id %}" class="d-inline" style="margin: 0;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-mini" title="{% if LANG == 'sw' %}Nakala kwa siku nyingine{% else %}Duplicate to another day{% endif %}"><i class="fas fa-copy"></i></button>
+                    </form>
+                    <form method="post" action="{% url 'lesson_delete' lp.id %}" class="d-inline js-delete" style="margin: 0;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-mini danger" title="{% if LANG == 'sw' %}Futa{% else %}Delete{% endif %}"><i class="fas fa-trash"></i></button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const CSRF = '{{ csrf_token }}';
+    const btn = document.getElementById('generateBtn');
+    if (btn) {
+        btn.addEventListener('click', async function () {
+            const old = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Inazalisha...';
+            try {
+                const resp = await fetch("{% url 'ajax_generate_auto_lessons' %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': CSRF,
+                        'Content-Type': 'application/json'
+                    },
+                    body: '{}'
+                });
+                const res = await resp.json();
+                if (res.success) {
+                    alert(res.message || 'Imekamilika.');
+                    window.location.reload();
+                } else {
+                    alert(res.error || 'Imeshindikana.');
+                }
+            } catch (e) {
+                alert('Hitilafu ya mtandao. Jaribu tena.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = old;
+            }
+        });
+    }
+
+    document.querySelectorAll('.js-delete').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            if (!confirm('{% if LANG == "sw" %}Futa somo hili? Haliwezi kurudishwa.{% else %}Delete this lesson? Cannot be undone.{% endif %}')) {
+                e.preventDefault();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
