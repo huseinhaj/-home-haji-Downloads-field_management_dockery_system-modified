@@ -10,6 +10,7 @@ urlpatterns = [
     path('recover/', views.ess_recover, name='ess_recover'),
     path('logout/', views.ess_logout, name='ess_logout'),
     path('', views.ess_home, name='ess_home'),
+    path('implementation/', views.ess_implementation, name='ess_implementation'),
     path('profile/', views.ess_profile, name='ess_profile'),
     path('task/new/', views.ess_task_new, name='ess_task_new'),
     path('task/<int:task_id>/edit/', views.ess_task_edit, name='ess_task_edit'),

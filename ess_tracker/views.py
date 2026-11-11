@@ -816,12 +816,50 @@ def ess_read_pcts(request):
     from .tasks import run_ess_read
     run = launch_run(profile=profile, kind='read', task=run_ess_read,
                      thread_target=_run_read)
+    next_url = (request.POST.get('next') or '').strip()
+    if next_url.startswith('/') and not next_url.startswith('//'):
+        messages.success(
+            request,
+            'Kuvuta asilimia kutoka ESS kumeanza. Ukurasa utajisasisha '
+            'yenyewe baada ya kukamilika.')
+        return redirect(next_url)
     return redirect('ess_tracker:ess_fill_status', run_id=run.id)
 
 
 def _run_read(profile_id, run_id):
     from .essfill import run_read
     return run_read(profile_id, run_id)
+
+
+ESS_ADMIN_PHONE = '0625607088'
+
+
+@login_required(login_url=ESS_LOGIN_URL)
+def ess_implementation(request):
+    """Ukurasa wa utekelezaji wa ESS: vuta asilimia, kisha jaza (kwa msimamizi)."""
+    profile = _me(request)
+    if profile is None:
+        messages.info(
+            request,
+            'Weka kwanza taarifa za ESS (e-Tendaji) kwenye wasifu wako ili '
+            'kuona utekelezaji wako.')
+        return redirect('ess_tracker:ess_profile')
+
+    tasks = [
+        {'task': task, 'subtasks': subtask_snapshot(task)}
+        for task in profile.tasks.all()
+    ]
+    latest_read = profile.fill_runs.filter(kind='read').first()
+    phone_wa = ESS_ADMIN_PHONE.lstrip('0')
+    if not phone_wa.startswith('255'):
+        phone_wa = '255' + phone_wa
+    return render(request, 'ess_tracker/ess_implementation.html', {
+        'profile': profile,
+        'tasks': tasks,
+        'latest_read': latest_read,
+        'admin_phone': ESS_ADMIN_PHONE,
+        'admin_phone_wa': phone_wa,
+    })
 
 
 @login_required

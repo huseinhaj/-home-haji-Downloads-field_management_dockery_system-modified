@@ -1,0 +1,259 @@
+{% extends 'ess_tracker/ess_base.html' %}
+{% block title %}ESS Implementation — e-Tendaji{% endblock %}
+{% block content %}
+<style>
+  .impl-wrap{max-width:980px;margin:0 auto;}
+  .impl-hero{background:linear-gradient(135deg,#1F41BB,#16308c);color:#fff;
+    border-radius:14px;padding:22px 24px;margin-bottom:18px;}
+  .impl-hero h2{font-family:'Poppins',sans-serif;font-weight:700;font-size:22px;margin:0 0 4px;}
+  .impl-hero p{margin:0;opacity:.9;font-size:13px;}
+  .step-card{background:#fff;border:1px solid #E3EAF4;border-radius:12px;
+    overflow:hidden;box-shadow:0 2px 10px rgba(31,65,187,.06);margin-bottom:18px;}
+  .step-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid #EEF2F8;}
+  .step-num{width:34px;height:34px;border-radius:50%;background:#1F41BB;color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700;
+    font-family:'Poppins',sans-serif;flex-shrink:0;}
+  .step-head h3{font-family:'Poppins',sans-serif;font-size:16px;font-weight:700;
+    color:#16308c;margin:0;}
+  .step-head small{display:block;color:#5A6B7E;font-size:12px;font-weight:400;}
+  .step-body{padding:18px;}
+  .pull-btn{background:linear-gradient(135deg,#1F41BB,#2D5AFF);color:#fff;border:none;
+    border-radius:10px;padding:12px 26px;font-weight:700;font-family:'Poppins',sans-serif;
+    font-size:15px;box-shadow:0 4px 14px rgba(31,65,187,.28);}
+  .pull-btn:hover{filter:brightness(1.06);}
+  .pull-btn:disabled{opacity:.55;box-shadow:none;cursor:not-allowed;}
+  .tbl thead th{background:#F3F7FF;color:#16308c;font-size:11.5px;text-transform:uppercase;
+    letter-spacing:.3px;border-bottom:2px solid #DCE7FB;white-space:nowrap;padding:9px 10px;}
+  .tbl td{font-size:13px;vertical-align:middle;padding:9px 10px;}
+  .pct-badge{display:inline-block;min-width:52px;text-align:center;padding:3px 8px;
+    border-radius:20px;font-weight:700;font-size:12.5px;}
+  .pct-ess{background:#E7EEFF;color:#16308c;}
+  .pct-none{background:#F0F2F6;color:#8a98ac;font-weight:600;}
+  .status-pill{font-size:11.5px;padding:2px 9px;border-radius:20px;font-weight:600;
+    background:#EAF7EC;color:#2E7D32;white-space:nowrap;}
+  .status-pill.behind{background:#FFF3E0;color:#B45309;}
+  .status-pill.waiting{background:#EFF3FB;color:#51617a;}
+  .task-title{font-family:'Poppins',sans-serif;font-weight:700;color:#16308c;
+    font-size:14px;margin:0 0 2px;}
+  .task-sub{color:#5A6B7E;font-size:12px;margin:0 0 8px;}
+  .lock-card{background:linear-gradient(135deg,#FFF9EC,#FFF3D6);border:1px solid #F2D48A;
+    border-radius:12px;padding:18px;}
+  .lock-card h3{font-family:'Poppins',sans-serif;font-weight:700;color:#8a5a00;
+    font-size:16px;margin:0 0 6px;}
+  .lock-card p{color:#7a5a10;font-size:13px;margin:0 0 14px;}
+  .lock-btn{background:linear-gradient(135deg,#C8900A,#A8760A);color:#fff;border:none;
+    border-radius:10px;padding:12px 26px;font-weight:700;font-family:'Poppins',sans-serif;
+    font-size:15px;box-shadow:0 4px 14px rgba(200,144,10,.3);}
+  .lock-btn:hover{filter:brightness(1.06);}
+  .phone-big{font-size:28px;font-weight:800;color:#16308c;letter-spacing:1px;
+    font-family:'Poppins',sans-serif;}
+  .running-bar{background:#E7EEFF;border:1px solid #C9D9FB;color:#16308c;border-radius:10px;
+    padding:11px 14px;font-size:13px;display:flex;align-items:center;gap:10px;}
+  .empty{color:#5A6B7E;font-size:13px;padding:10px 2px;}
+</style>
+
+<div class="impl-wrap">
+  <div class="impl-hero">
+    <h2><i class="fas fa-cloud-arrow-down me-2"></i>ESS Implementation</h2>
+    <p>Vuta asilimia zako halisi kutoka ESS (e-Tendaji), kisha uone utekelezaji wako kwa kila sub-task.</p>
+  </div>
+
+  {% if not profile.ess_ready %}
+  <div class="alert alert-warning">
+    <i class="fas fa-triangle-exclamation me-2"></i>
+    Bado hujaweka <b>username</b> na <b>password</b> za ESS.
+    <a href="{% url 'ess_tracker:ess_profile' %}" class="alert-link">Weka kwenye wasifu</a>
+    ili uweze kuvuta asilimia.
+  </div>
+  {% endif %}
+
+  <!-- HATUA 1: Vuta asilimia -->
+  <div class="step-card">
+    <div class="step-head">
+      <div class="step-num">1</div>
+      <div>
+        <h3>Vuta Asilimia kutoka ESS</h3>
+        <small>Mfumo unaingia ESS na kusoma asilimia halisi za sub-task zako (hakuna kubadilisha).</small>
+      </div>
+    </div>
+    <div class="step-body">
+      <form method="post" action="{% url 'ess_tracker:ess_read_pcts' %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'ess_tracker:ess_implementation' %}">
+        <button type="submit" class="pull-btn"
+                {% if not profile.ess_ready or latest_read.status == 'running' %}disabled{% endif %}>
+          <i class="fas fa-rotate me-2"></i>Vuta Asilimia kutoka ESS
+        </button>
+      </form>
+
+      {% if latest_read.status == 'running' %}
+      <div class="running-bar mt-3" id="readRunning" data-run="{{ latest_read.id }}">
+        <span class="spinner-border spinner-border-sm"></span>
+        Inavuta asilimia kutoka ESS... ukurasa utajisasisha yenyewe.
+      </div>
+      {% elif latest_read.status == 'error' %}
+      <div class="alert alert-danger mt-3 mb-0 py-2 small">
+        <i class="fas fa-circle-exclamation me-1"></i>Kuvuta asilimia kimeshindikana.
+        {% if latest_read.error_step %}Hatua: <b>{{ latest_read.error_step }}</b>.{% endif %}
+        Jaribu tena au wasiliana na msimamizi.
+      </div>
+      {% elif latest_read %}
+      <div class="text-muted small mt-3">
+        <i class="fas fa-circle-check text-success me-1"></i>
+        Ilivutwa {{ latest_read.finished|default:latest_read.started|date:'d M Y H:i' }} —
+        sub-task {{ latest_read.saved }} zimesomwa.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Asilimia zilizovutwa -->
+  <div class="step-card">
+    <div class="step-head">
+      <div class="step-num"><i class="fas fa-table-list"></i></div>
+      <div>
+        <h3>Asilimia za Utekelezaji</h3>
+        <small>Asilimia ya mfumo dhidi ya asilimia halisi iliyovutwa kutoka ESS.</small>
+      </div>
+    </div>
+    <div class="step-body">
+      {% for item in tasks %}
+      <div class="mb-3">
+        <p class="task-title">
+          <span class="text-uppercase">{{ item.task.somo }}</span>
+          {% if item.task.kidato %}<span class="badge bg-secondary ms-1">{{ item.task.kidato }}</span>{% endif %}
+        </p>
+        <p class="task-sub">{{ item.task.start|date:'d M Y' }} — {{ item.task.end|date:'d M Y' }}</p>
+        <div class="table-responsive">
+          <table class="table table-sm tbl align-middle mb-0">
+            <thead>
+              <tr>
+                <th style="width:42px">#</th>
+                <th>Sub-task</th>
+                <th class="text-center" style="width:130px">Asilimia ya Mfumo</th>
+                <th class="text-center" style="width:130px">ESS (Official)</th>
+                <th class="text-center" style="width:120px">Hali</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in item.subtasks %}
+              <tr>
+                <td class="text-muted">{{ s.st.position }}</td>
+                <td>{{ s.st.description }}</td>
+                <td class="text-center">{% if s.pct_str %}{{ s.pct_str }}{% else %}—{% endif %}</td>
+                <td class="text-center">
+                  {% if s.ess_pct_str %}
+                  <span class="pct-badge pct-ess"
+                        title="Asilimia halisi kutoka ESS{% if s.ess_at %} — ilisomwa {{ s.ess_at|date:'d M Y H:i' }}{% endif %}">
+                    {{ s.ess_pct_str }}
+                  </span>
+                  {% else %}
+                  <span class="pct-badge pct-none">—</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  {% if s.waiting %}
+                  <span class="status-pill waiting">Inasubiri</span>
+                  {% elif s.status == 'behind' %}
+                  <span class="status-pill behind">Chini ya ratiba</span>
+                  {% else %}
+                  <span class="status-pill">Sawa</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% empty %}
+      <div class="empty">
+        Hakuna task/sub-task bado.
+        <a href="{% url 'ess_tracker:ess_task_new' %}">Ongeza task</a> au vuta kutoka ESS.
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- HATUA 2: Jaza Automatic (imefungwa) -->
+  <div class="step-card">
+    <div class="step-head">
+      <div class="step-num" style="background:#C8900A;">2</div>
+      <div>
+        <h3>Jaza Automatic (Auto-Fill)</h3>
+        <small>Kujaza maendeleo kiotomatiki kwenye ESS.</small>
+      </div>
+    </div>
+    <div class="step-body">
+      <div class="lock-card">
+        <h3><i class="fas fa-lock me-2"></i>Huduma ya Msimamizi</h3>
+        <p>
+          Kujaza kiotomatiki hakutolewi kwa kujitegemea. Ili kuwekewa na
+          kujazwa, wasiliana na msimamizi — yeye ndiye anayekusetia na
+          kukujazia kupitia Online Stationary.
+        </p>
+        <button type="button" class="lock-btn"
+                data-bs-toggle="modal" data-bs-target="#adminModal">
+          <i class="fas fa-cloud-upload-alt me-2"></i>Jaza Automatic
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal ya msimamizi -->
+<div class="modal fade" id="adminModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:14px;border:none;">
+      <div class="modal-body text-center p-4">
+        <div style="width:64px;height:64px;border-radius:50%;background:#FFF3D6;color:#C8900A;
+                    display:flex;align-items:center;justify-content:center;font-size:26px;
+                    margin:0 auto 12px;">
+          <i class="fas fa-headset"></i>
+        </div>
+        <h4 style="font-family:'Poppins',sans-serif;font-weight:700;color:#16308c;margin-bottom:6px;">
+          Ili kujaza kiotomatiki
+        </h4>
+        <p class="text-muted mb-2" style="font-size:13px;">
+          Wasiliana na msimamizi ili akusetie na kukujazia kwenye ESS.
+          Huduma hii haitolewi kwa kujitegemea.
+        </p>
+        <div class="phone-big">{{ admin_phone }}</div>
+        <p class="text-muted small mt-2 mb-3">
+          Online Stationary — kusetia na kujaza maendeleo yako.
+        </p>
+        <div class="d-flex justify-content-center gap-2">
+          <a class="btn btn-success" href="tel:{{ admin_phone }}">
+            <i class="fas fa-phone me-1"></i>Piga Simu
+          </a>
+          <a class="btn btn-outline-success" target="_blank" rel="noopener"
+             href="https://wa.me/{{ admin_phone_wa }}?text={{ 'Nahitaji huduma ya kujaza ESS'|urlencode }}">
+            <i class="fab fa-whatsapp me-1"></i>WhatsApp
+          </a>
+        </div>
+        <button type="button" class="btn btn-light mt-3 w-100" data-bs-dismiss="modal">Funga</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if latest_read.status == 'running' %}
+<script>
+(function () {
+  var url = "{% url 'ess_tracker:ess_fill_status_json' latest_read.id %}";
+  function poll() {
+    fetch(url, { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.done) { window.location.reload(); return; }
+        setTimeout(poll, 2500);
+      })
+      .catch(function () { setTimeout(poll, 4000); });
+  }
+  setTimeout(poll, 2000);
+})();
+</script>
+{% endif %}
+{% endblock %}
