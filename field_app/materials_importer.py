@@ -295,8 +295,12 @@ SUBJECT_MAP = {
 
 CLASS_PATTERNS = [
     (re.compile(r'\bform\s*(?:one|two|three|four|five|six|i{1,3}|iv|v|vi|1|2|3|4|5|6)\b', re.I), 'form'),
+    # F2 / F4 — mitindo ya TETEA (mf. Biology-F2-2021.pdf)
+    (re.compile(r'\bf\s*([1-6])\b', re.I), 'form'),
     (re.compile(r'\bkidato\s*cha\s*(kwanza|pili|tatu|nne|tano|sita|1|2|3|4|5|6)\b', re.I), 'kidato'),
     (re.compile(r'\b(?:std|standard|darasa(?:\s*la)?)\s*(1|2|3|4|5|6|7|moja|mbili|tatu|nne|tano|sita|saba)\b', re.I), 'std'),
+    # S1 / S5 — mitindo ya TETEA primary (mf. ArithmeticSkills-S1-2024.pdf)
+    (re.compile(r'\bs\s*([1-7])\b', re.I), 'std'),
 ]
 
 WORD_NUM = {
@@ -361,15 +365,20 @@ def classify_by_rules(title, text):
     """Rudisha dict {material_type, education_level, class_name, subject_name} kwa sheria."""
     hay = f'{title} {text[:600]}'.lower()
 
-    # aina
+    # aina — study aids/teacher guides (mf. Shika na Mikono) ni VITABU hata
+    # kama zinamtaja NECTA kwenye jina/maudhui
     if re.search(r'\b(syllabus|mtaala|curriculum)\b', hay):
         mtype = 'syllabus'
-    elif re.search(r'\b(exam|mtihani|examination|mock|pre.?necta|necta|terminal|midterm|test paper|paper\s*[1-3]|marking)\b', hay):
+    elif re.search(r'(shika\s*na\s*mikono|study\s*aid|teacher.?s?\s*guide|teachers?\s*guide)', hay):
+        mtype = 'book'
+    elif re.search(r'\b(exam|mtihani|examination|mock|pre.?necta|necta|terminal|midterm|test paper|paper\s*[1-3]|marking|solutions?|csee|ftna|acsee|psle|sfna|qt|gatce|dsee|dtee)\b', hay):
         mtype = 'exam'
-    elif re.search(r'\b(tie\s*book|kitabu\s*cha\s*tie|textbook)\b', hay):
+    elif re.search(r'\b(tie\s*book|kitabu|textbook|book(?![- ]?keeping)|shika\s*na\s*mikono|teacher.?s?\s*guide|teachers?\s*guide)\b', hay):
         mtype = 'book'
     else:
-        mtype = 'notes'
+        # hakuna ishara ya aina — acha tupu ili default ya CHANZO itumike
+        # (mf. TETEA ni past papers: default_type='exam')
+        mtype = ''
 
     # darasa + level
     class_name, level = _class_from_match(hay, 'form')
@@ -431,7 +440,7 @@ Rule-based guesses (may be wrong): {_json.dumps(hints)}
         if not isinstance(data, dict):
             return None
         return {
-            'material_type': data.get('material_type') or hints.get('material_type') or 'notes',
+            'material_type': data.get('material_type') or hints.get('material_type') or '',
             'education_level': data.get('education_level') or hints.get('education_level') or '',
             'class_name': data.get('class_name') or hints.get('class_name') or '',
             'subject_name': data.get('subject_name') or hints.get('subject_name') or '',
@@ -466,6 +475,27 @@ GENERIC_TITLES = {
     'pdf', 'view', 'open', 'read', 'link', 'download now',
 }
 
+# anchors zisizo na maana pekee ('(Solutions)', '2024', '(Answers)')
+WEAK_ANCHORS = {'solutions', 'answers', 'answer', 'marking scheme', 'results',
+                'result', 'paper', 'pdf', 'notes', 'notes pdf', 'download pdf'}
+
+
+def _is_weak_title(title):
+    """Anchor haile jina halisi (mwaka tu, mabano tu, neno la generic).
+
+    Mfano TETEA: anchor '2024' au '(Solutions)' kwenye faili
+    'ArithmeticSkills-S1-2024-Solutions.pdf' — jina la URL ni bora.
+    """
+    t = (title or '').strip()
+    if not t or t.lower() in GENERIC_TITLES:
+        return True
+    core = t.strip('()[]{}').strip()
+    if core.lower() in WEAK_ANCHORS or core.lower() in GENERIC_TITLES:
+        return True
+    # hakuna herufi 4 za pamoja (mf. '2024', 'F2', '(2020)') — ni mwaka/tufe
+    letters = re.sub(r'[^A-Za-z]', '', core)
+    return len(letters) < 4
+
 
 def _title_from_url(url):
     """Jina la faili kutoka URL (mf. Biology2-F6-2025.pdf → 'Biology2 F6 2025')."""
@@ -495,7 +525,7 @@ def import_one(source, url, fallback_title):
 
     text, pages = pdf_first_pages_text(data)
     title = (fallback_title or '').strip()
-    if not title or len(title) < 6 or title.lower() in GENERIC_TITLES:
+    if _is_weak_title(title):
         # anchor haile jina halisi — tumia jina la faili kutoka URL
         title = _title_from_url(url) or title
     if not title or len(title) < 6:
@@ -564,15 +594,11 @@ def import_source(source, max_new=20, today=None):
         articles = [a for a in articles if url_pat.search(a)]
         files = [(u, t) for (u, t) in files if url_pat.search(u)]
 
-    # article mpya kwanza (mpya zaidi zina mafaili mapya)
-    fresh = []
-    for art in articles:
-        if not ScrapedMaterial.objects.filter(
-                original_url__in=[art]).exists():
-            # article yenyewe haitahifadhiwa — tu mapitio yake
-            pass
-        fresh.append(art)
-    articles = fresh[:source.max_articles_per_run or 15]
+    # article mpya kwanza (mpya zaidi zina mafaili mapya).
+    # NOTE: articles hazihifadhiwi zenyewe — huchotwa files zake tu;
+    # hakuna haja ya ku-check DB kila article (TETEA ina 1000+ articles —
+    # ilikuwa inafanya queries 1117 zisizo na maana kila run).
+    articles = articles[:source.max_articles_per_run or 15]
 
     candidates = list(files)
     for art in articles:
@@ -598,6 +624,12 @@ def import_source(source, max_new=20, today=None):
     for u, t in uniq:
         if created >= max_new:
             break
+        # Downloads ndefu (PDF kubwa) zinaacha connection ya DB bila shughuli —
+        # Postgres ya production inaifunga (SSL EOF). Funga connections zamani
+        # kabla ya kila candidate ili DB iwe fresh. (Salama: hakuna transaction
+        # ya nje hapa — kila import_one ina autocommit yake.)
+        from django.db import close_old_connections
+        close_old_connections()
         try:
             res = import_one(source, u, t)
             if res == 'ok':
@@ -623,7 +655,7 @@ def import_source(source, max_new=20, today=None):
     }
 
 
-def import_all_sources(max_new_per_source=20):
+def import_all_sources(max_new_per_source=40):
     """Kwa scheduler: endesha vyanzo vyote vilivyo ON."""
     from .models import MaterialSource
     results, errors = [], []

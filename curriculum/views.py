@@ -66,8 +66,10 @@ def curriculum_login_required(view_func=None, redirect_field_name=REDIRECT_FIELD
     if view_func:
         return decorator(view_func)
     return decorator
+from django.db.models import Q
 from django.db.utils import IntegrityError
-from django.http import HttpResponse, JsonResponse
+from django.db import connection as _db_conn
+from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
@@ -5533,21 +5535,34 @@ def ajax_generate_lesson_note_from_lp(request):
         school_name = teacher.school.name if teacher.school else ''
         school_level = teacher.school.level if teacher.school else ''
         subject_name = lp.subject.name if lp.subject else lp.topic
-        
-        # Build appropriate language instruction
-        school_level_lower = (school_level or '').lower()
-        subject_lower = subject_name.lower()
-        
-        if 'primary' in school_level_lower:
-            if subject_lower in ('english', 'english language'):
-                lang_instruction = "Write ALL content in ENGLISH."
-            else:
-                lang_instruction = "Write ALL content in KISWAHILI (Swahili) except column headers."
-        else:
-            if subject_lower in ('kiswahili', 'swahili'):
-                lang_instruction = "Write ALL content in KISWAHILI (Swahili)."
-            else:
-                lang_instruction = "Write ALL content in ENGLISH."
+
+        # KANUNI YA LUGHA: Primary -> Kiswahili (isipokuwa English);
+        # O-Level / A-Level -> English (isipokuwa Kiswahili)
+        sw = _is_kiswahili_mode('auto', subject_name, school_level)
+        lang_instruction = ("Write ALL content in KISWAHILI (Swahili) except technical terms."
+                             if sw else "Write ALL content in ENGLISH.")
+
+        # lp.education_level huwa 'primary'/'ordinary'/'advanced' (choices),
+        # lakini tunaheshimu pia display labels ('Primary School', n.k.)
+        ed_level = ({
+            'primary': 'primary', 'primary school': 'primary',
+            'ordinary': 'ordinary', 'ordinary level': 'ordinary', 'o-level': 'ordinary',
+            'advanced': 'advanced', 'advanced level': 'advanced', 'a-level': 'advanced',
+        }).get((lp.education_level or '').strip().lower(), 'ordinary')
+
+        # KITABU KAMA CHANZO: tugue maandishi ya kitabu/notes halisi inayolingana
+        # na somo+darasa (Maktaba/uploads) ili AI itumie chanzo halisi, si akili tu
+        ref_title, ref_text = _gather_reference_text(
+            subject_name, lp.class_name, ed_level, lp.topic, lp.subtopic or '')
+        ref_block = ''
+        if ref_text:
+            ref_block = f"""SOURCE MATERIAL — EXCERPT FROM "{ref_title}" (kitabu/notes halisi za kisomo hiki):
+<excerpt>
+{ref_text}
+</excerpt>
+Use this source as your PRIMARY teaching reference: follow its syllabus coverage, definitions, notation and worked examples for this topic. Rewrite everything in your own teacher voice — do NOT copy passages word-for-word.
+
+"""
         
         prompt = f"""You are Mwalimu — a Tanzanian teacher with 15+ years in the classroom. Right now you are in the staffroom after teaching this lesson, writing your OWN notes in your exercise book, BY HAND, the way you always do — full reflections, what you taught, how it went, and the actual content you put on the board.
 
@@ -5570,7 +5585,7 @@ Duration: {lp.duration} minutes
 Main Competence: {lp.main_competence or 'N/A'}
 Specific Competence: {lp.specific_competence or 'N/A'}
 
-{lang_instruction}
+{ref_block}{lang_instruction}
 
 Based on the above lesson plan, write your notes in NOTEBOOK FORMAT — so complete that another teacher could pick up your book and teach the lesson confidently.
 
@@ -5679,8 +5694,7 @@ Return ONLY valid JSON. No other text."""
 
         if note_data:
             # Save the generated content as a LessonNote
-            ed_level = ({'primary school': 'primary', 'ordinary level': 'ordinary', 'advanced level': 'advanced'}).get(
-                (lp.education_level or '').lower(), 'ordinary')
+            # (ed_level ilikokwanza hapo juu — kabla ya prompt)
             
             # Format the note content - NOTEBOOK STYLE with proper formatting
             content_parts = []
@@ -5696,8 +5710,19 @@ Return ONLY valid JSON. No other text."""
                 content_parts.append(txt)
                 content_parts.append("-" * len(txt))
 
+            # Vichwa vya sehemu — Kiswahili kwa primary/Kiswahili-mode,
+            # English kwa O-Level/A-Level (isipokuwa somo la Kiswahili)
+            if sw:
+                _H = {1: '1. MUHTASARI', 2: '2. NUKTA MUHIMU', 3: '3. MBINU ZA UFUNDISHAJI',
+                      4: '4. TATHMINI — MASWALI NA MAJIBU', 5: '5. MWONGOZO'}
+                _q_lbl, _a_lbl = 'Swali', 'Jibu'
+            else:
+                _H = {1: '1. SUMMARY', 2: '2. KEY POINTS', 3: '3. TEACHING METHODS',
+                      4: '4. ASSESSMENT — QUESTIONS & ANSWERS', 5: '5. CONCLUSION'}
+                _q_lbl, _a_lbl = 'Question', 'Answer'
+
             # Summary paragraphs
-            _hd("1. MUHTASARI")
+            _hd(_H[1])
             paragraphs = note_data.get('summary_paragraphs', [])
             if not paragraphs and note_data.get('summary'):
                 paragraphs = [note_data['summary']]
@@ -5708,7 +5733,7 @@ Return ONLY valid JSON. No other text."""
             # Key points
             key_points = note_data.get('key_points', [])
             if key_points:
-                _hd("2. NUKTA MUHIMU")
+                _hd(_H[2])
                 for kp in key_points:
                     content_parts.append(f"  - {kp}")
                 content_parts.append("")
@@ -5716,23 +5741,23 @@ Return ONLY valid JSON. No other text."""
             # Teaching methods
             tm = note_data.get('teaching_methods', '')
             if tm:
-                _hd("3. MBINU ZA UFUNDISHAJI")
+                _hd(_H[3])
                 content_parts.append(tm)
                 content_parts.append("")
 
             # Quiz
             quiz = note_data.get('quiz', [])
             if quiz:
-                _hd("4. TATHMINI — MASWALI NA MAJIBU")
+                _hd(_H[4])
                 for i, q in enumerate(quiz, 1):
-                    content_parts.append(f"\nSwali {i}: {q.get('question', '')}")
-                    content_parts.append(f"Jibu: {q.get('answer', '')}")
+                    content_parts.append(f"\n{_q_lbl} {i}: {q.get('question', '')}")
+                    content_parts.append(f"{_a_lbl}: {q.get('answer', '')}")
                 content_parts.append("")
 
             # Conclusion
             conclusion = note_data.get('conclusion', '')
             if conclusion:
-                _hd("5. MWONGOZO")
+                _hd(_H[5])
                 content_parts.append(conclusion)
                 content_parts.append("")
             
@@ -5755,6 +5780,7 @@ Return ONLY valid JSON. No other text."""
                 'note_id': note.id,
                 'note_data': note_data,
                 'note_html': note_content,
+                'lang': 'sw' if sw else 'en',
                 'created': note.created_at.isoformat(),
             })
         else:
@@ -7621,45 +7647,6 @@ NECTA_LIBRARY_LINKS = {
     },
 }
 
-TIE_BOOK_LINKS = {
-    'primary': {
-        'label': 'Primary School (Shule ya Msingi — Std 1-7)',
-        'books': [
-            {'title': 'TIE Online Library — Vitabu vya Primary', 'url': 'https://ol.tie.go.tz/',
-             'note': 'Hisabati, Sayansi na Teknolojia, Kiswahili, English, Maarifa ya Jamii, Uraia na Maadili, Stadi za Kazi (Std 1-7)'},
-            {'title': 'Maktaba TETEA — Primary Resources', 'url': 'https://maktaba.tetea.org/resources/',
-             'note': 'Syllabi rasmi za TIE, teaching guides na study aids (Std 1-4 & 5-7)'},
-        ],
-    },
-    'ordinary': {
-        'label': 'Ordinary Level (Sekondari — Form 1-4)',
-        'books': [
-            {'title': 'TIE Online Library — Secondary (Form 1-4)', 'url': 'https://ol.tie.go.tz/',
-             'note': 'Civics, History, Geography, Kiswahili, English, Biology, Basic Mathematics, Physics, Chemistry, Book Keeping, Commerce, Computer/ICT, Home Economics n.k.'},
-            {'title': 'Maktaba TETEA — Forms 1-2 & 3-4', 'url': 'https://maktaba.tetea.org/resources/',
-             'note': 'Syllabi na study aids za FTNA/CSEE'},
-        ],
-    },
-    'advanced': {
-        'label': 'Advanced Level (Sekondari — Form 5-6)',
-        'books': [
-            {'title': 'TIE Online Library — Advanced (Form 5-6)', 'url': 'https://ol.tie.go.tz/',
-             'note': 'Advanced Mathematics, Physics, Chemistry, Biology, Economics, Geography, History, Accountancy, Computer Science, General Studies (PCM/PCB/HGL/EGM/ECA)'},
-            {'title': 'Maktaba TETEA — Forms 5-6', 'url': 'https://maktaba.tetea.org/resources/',
-             'note': 'Syllabi na study aids za ACSEE'},
-        ],
-    },
-    'technical': {
-        'label': 'Technical / VETA (Ufundi)',
-        'books': [
-            {'title': 'TIE Online Library — Technical & Vocational', 'url': 'https://ol.tie.go.tz/',
-             'note': 'Vitabu vya ufundi: Electrical Installation, Mechanical Engineering, Architectural Draughting, ICT n.k.'},
-            {'title': 'NACTE / VETA — Resources', 'url': 'https://nacte.go.tz/',
-             'note': 'NVA na NACTE assessments (NTA 4-6, Grade I-III)'},
-        ],
-    },
-}
-
 _LEVEL_LABELS = {
     'primary': 'Primary School (Shule ya Msingi)',
     'ordinary': 'Ordinary Level Secondary (Sekondari)',
@@ -7672,54 +7659,6 @@ _LEVEL_SCHOOL_LABELS = {
     'ordinary': 'Ordinary Level',
     'advanced': 'Advanced Level',
     'technical': 'Technical School / VETA College',
-}
-
-# ── New Syllabus (mtaala mpya) — links rasmi za mihtasari ya TIE kwa kila level ──
-TIE_SYLLABUS_LINKS = {
-    'primary': {
-        'label': 'Primary Education — Mtaala Mpya (Std 1-7)',
-        'links': [
-            {'title': 'Mihtasari ya Elimu ya Msingi (TIE Official)', 'url': 'https://www.tie.go.tz/publications/syllabus-for-primary-education',
-             'note': 'Syllabi rasmi za mtaala mpya: Hisabati, Sayansi na Teknolojia, Kiswahili, English, Maarifa ya Jamii, Stadi za Kazi, Uraia na Maadili n.k.'},
-            {'title': 'TIE Online Library — Vitabu vya Primary (Mtaala Mpya)', 'url': 'https://ol.tie.go.tz/',
-             'note': 'Vitabu vya mtaala mpya kwa Standard 1-7 vya kusoma online (TIE)'},
-            {'title': 'Maktaba TETEA — Primary Resources', 'url': 'https://maktaba.tetea.org/resources/',
-             'note': 'Syllabi na study aids za Standards 1-4 & 5-7'},
-        ],
-    },
-    'ordinary': {
-        'label': 'Secondary — Mtaala Mpya (Form 1-4)',
-        'links': [
-            {'title': 'Mihtasari ya Elimu ya Sekondari ya Chini (TIE Official)', 'url': 'https://www.tie.go.tz/publications/syllabus-for-lower-secondary-academics',
-             'note': 'Syllabi rasmi za mtaala mpya (FINAL): Mathematics, Physics, Chemistry, Biology, Kiswahili, English, History, Geography n.k.'},
-            {'title': 'TIE Online Library — Secondary Books (Form 1-4)', 'url': 'https://ol.tie.go.tz/',
-             'note': 'Vitabu vya mtaala mpya vya kusoma online (TIE)'},
-            {'title': 'Maktaba TETEA — Forms 1-4', 'url': 'https://maktaba.tetea.org/resources/',
-             'note': 'Syllabi na study aids za FTNA/CSEE'},
-        ],
-    },
-    'advanced': {
-        'label': 'Advanced Secondary — Mtaala (Form 5-6)',
-        'links': [
-            {'title': 'Machapisho ya TIE — Mihtasari (A-Level)', 'url': 'https://www.tie.go.tz/publications',
-             'note': 'Mihtasari rasmi ya Advanced Level: PCM, PCB, HGL, EGM, ECA, Accountancy, Computer Science n.k.'},
-            {'title': 'TIE Online Library — Advanced Books (Form 5-6)', 'url': 'https://ol.tie.go.tz/',
-             'note': 'Vitabu vya Advanced Level vya kusoma online (TIE)'},
-            {'title': 'Maktaba TETEA — Forms 5-6', 'url': 'https://maktaba.tetea.org/resources/',
-             'note': 'Syllabi na study aids za ACSEE'},
-        ],
-    },
-    'technical': {
-        'label': 'VETA / Technical — Mitaala ya Ufundi (NTA, Grade I-III)',
-        'links': [
-            {'title': 'NACTE — Mihtasari na Mitaala (NTA levels)', 'url': 'https://nacte.go.tz/',
-             'note': 'NACTE assessments na mihtasari ya NTA 4-6 (Basic, Certificate, Diploma)'},
-            {'title': 'VETA — Mafunzo ya Ufundi Stadi', 'url': 'https://www.veta.go.tz/',
-             'note': 'Mihtasari ya ufundi stadi: Electrical Installation, Plumbing, Masonry, Carpentry, Welding n.k.'},
-            {'title': 'TIE Online Library — Technical & Vocational', 'url': 'https://ol.tie.go.tz/',
-             'note': 'Vitabu vya ufundi: Electrical Installation, Mechanical Engineering, Architectural Draughting, ICT n.k.'},
-        ],
-    },
 }
 
 
@@ -7777,7 +7716,6 @@ def notes_library_view(request):
         'level_classes': level_classes,
         'subjects_by_level': subjects_by_level,
         'necta_links': NECTA_LIBRARY_LINKS,
-        'syllabus_links': TIE_SYLLABUS_LINKS,
         'notes': notes,
         'stats': stats,
         'today': today,
@@ -7852,6 +7790,99 @@ def ajax_notes_library_syllabus(request):
     return JsonResponse({'success': False, 'error': 'Hakuna topics za mtaala mpya kwa somo/darasa hili kwenye database'}, status=404)
 
 
+def _pdf_excerpt_for_topic(file_field, topic, subtopic='', max_chars=14000, max_pages=60):
+    """Tengua maandishi ya PDF karibu na topic (kwa kumpa AI chanzo halisi).
+
+    Inatafuta kurasa zenye maneno ya topic; kama hakuna — kurasa za mwanzo
+    (overview/contents). Rudisha '' kama PDF haisomeki.
+    """
+    try:
+        import pypdfium2 as pdfium
+    except ImportError:
+        return ''
+    try:
+        data = file_field.read()
+        pdf = pdfium.PdfDocument(BytesIO(data))
+        try:
+            words = [w.lower() for w in re.split(r'[^A-Za-z]+', (topic or '') + ' ' + (subtopic or ''))
+                     if len(w) >= 5]
+            hit_pages, head_text = [], []
+            for i in range(min(max_pages, len(pdf))):
+                try:
+                    page = pdf[i]
+                    txt = page.get_textpage().get_text_range() or ''
+                except Exception:  # noqa: BLE001
+                    continue
+                flat = re.sub(r'\s+', ' ', txt).strip()
+                if not flat:
+                    continue
+                if i < 6:
+                    head_text.append(flat)
+                if words and sum(w in flat.lower() for w in words) >= max(1, len(words) // 3):
+                    hit_pages.append(flat)
+                if len(' '.join(hit_pages)) >= max_chars:
+                    break
+            text = ' '.join(hit_pages) if hit_pages else ' '.join(head_text)
+            return text[:max_chars]
+        finally:
+            pdf.close()
+    except Exception:  # noqa: BLE001
+        return ''
+
+
+def _gather_reference_text(subject_name, class_name, level, topic, subtopic=''):
+    """Tafuta kitabu/notes halisi (mfumoni) inayolingana na somo+darasa+topic.
+
+    Chanzo: ScrapedMaterial (Maktaba — vitabu/notes zilizochotwa) kwanza,
+    kisha Textbook (uploads/TIE zilizo na PDF mfumoni).
+    Rudisha (title, excerpt) au ('', '') kama hakuna kilichopatikana.
+    """
+    from field_app.models import ScrapedMaterial
+
+    subj = Subject.objects.filter(name__iexact=subject_name).first() if subject_name else None
+
+    def _sm_query(mtype):
+        qs = (ScrapedMaterial.objects
+              .filter(published=True, material_type=mtype)
+              .exclude(file=''))
+        if class_name:
+            qs = qs.filter(class_name__iexact=class_name)
+        if level:
+            qs = qs.filter(Q(education_level=level) | Q(education_level=''))
+        if subj:
+            qs = qs.filter(Q(subject_id=subj.id) | Q(subject_name__iexact=subj.name))
+        return list(qs.order_by('-pages')[:8])
+
+    # Vitabu kwanza (kitabu ni chanzo bora kuliko notes), kisha notes
+    first_notes_hit = None
+    for m in _sm_query('book') + _sm_query('notes'):
+        excerpt = _pdf_excerpt_for_topic(m.file, topic, subtopic)
+        if excerpt and len(excerpt) > 600:
+            if m.material_type == 'book':
+                return m.title, excerpt
+            if first_notes_hit is None:
+                first_notes_hit = (m.title, excerpt)
+    if first_notes_hit:
+        return first_notes_hit
+
+    # Textbook zilizopakiwa (file mfumoni) — uploads za walimu / TIE
+    try:
+        tb = Textbook.objects.filter(is_active=True).exclude(file='')
+        if level:
+            tb = tb.filter(education_level=level)
+        if class_name:
+            tb = tb.filter(class_level__name__iexact=class_name)
+        if subj:
+            tb = tb.filter(Q(subject_id=subj.id) | Q(subject__isnull=True))
+        for b in tb.order_by('-id')[:6]:
+            excerpt = _pdf_excerpt_for_topic(b.file, topic, subtopic)
+            if excerpt and len(excerpt) > 600:
+                return b.title, excerpt
+    except Exception:  # noqa: BLE001
+        pass
+    return '', ''
+
+
 def ajax_generate_full_notes(request):
     """Generate COMPLETE textbook-style notes (international structure) for ANY
     level/class/subject/topic — no lesson plan needed.
@@ -7903,6 +7934,20 @@ def ajax_generate_full_notes(request):
     lang_instr = ("Write ALL content in KISWAHILI (Swahili) except technical terms."
                   if sw else "Write ALL content in ENGLISH.")
 
+    # KITABU KAMA CHANZO: tugue maandishi ya kitabu/notes halisi inayolingana
+    # na somo+darasa (Maktaba/uploads) ili AI itumie chanzo halisi, si akili tu
+    ref_title, ref_text = _gather_reference_text(
+        subject_name, class_name, level, topic, subtopic)
+    ref_block = ''
+    if ref_text:
+        ref_block = f"""SOURCE MATERIAL — EXCERPT FROM "{ref_title}" (kitabu/notes halisi za kisomo hiki):
+<excerpt>
+{ref_text}
+</excerpt>
+Use this source as your PRIMARY teaching reference: follow its syllabus coverage, definitions, notation and worked examples for this topic. Rewrite everything in your own teacher voice — do NOT copy passages word-for-word.
+
+"""
+
     prompt = f"""You are Mwalimu — a Tanzanian secondary school teacher with 15+ years of classroom experience at a government school. Tonight, after classes, you are writing notes for this topic in your own exercise book, BY HAND, the way you always do — for your students and for any colleague who might borrow the book to teach your class.
 
 HOW A REAL TEACHER'S HANDWRITTEN NOTES LOOK:
@@ -7920,7 +7965,7 @@ SUBJECT: {subject_name}
 TOPIC: {topic}
 SUBTOPIC: {subtopic or 'N/A'}
 
-{lang_instr}
+{ref_block}{lang_instr}
 
 Write the COMPLETE notes you would actually prepare for this class — so full that a colleague could teach from your book without asking you anything. Cover the WHOLE topic per the current Tanzanian syllabus/curriculum with real teaching depth.
 
@@ -8018,20 +8063,33 @@ Return ONLY valid JSON. No other text."""
         parts.append(txt)
         parts.append('-' * len(txt))
 
-    _hd('1. UTANGULIZI')
+    # Vichwa vya sehemu — Kiswahili kwa primary/Kiswahili-mode,
+    # English kwa O-Level/A-Level (isipokuwa somo la Kiswahili)
+    if sw:
+        _H = {1: '1. UTANGULIZI', 2: '2. MANENO MUHIMU', 3: '3. MAELEZO KAMILI',
+              4: '4. MIFANO ILIYOFANYIWA KAZI', 5: '5. NUKTA MUHIMU',
+              6: '6. USHAURI WA MITIHANI', 7: '7. MASWALI YA MAZOEZI', 8: '8. MUHTASARI'}
+        _ex_lbl, _sol_lbl, _q_lbl, _a_lbl = 'Mfano', 'Suluhisho', 'Swali', 'Jibu'
+    else:
+        _H = {1: '1. INTRODUCTION', 2: '2. KEY TERMS', 3: '3. MAIN CONTENT',
+              4: '4. WORKED EXAMPLES', 5: '5. KEY POINTS',
+              6: '6. EXAM TIPS', 7: '7. PRACTICE QUESTIONS', 8: '8. SUMMARY'}
+        _ex_lbl, _sol_lbl, _q_lbl, _a_lbl = 'Example', 'Solution', 'Question', 'Answer'
+
+    _hd(_H[1])
     parts.append(str(note_data.get('overview', '')))
     parts.append('')
 
     kt = note_data.get('key_terms', []) or []
     if kt:
-        _hd('2. MANENO MUHIMU')
+        _hd(_H[2])
         for k in kt:
             parts.append(f"- {k.get('term', '')}: {k.get('definition', '')}")
         parts.append('')
 
     sections = note_data.get('sections', []) or []
     if sections:
-        _hd('3. MAELEZO KAMILI')
+        _hd(_H[3])
         for s in sections:
             parts.append('')
             parts.append(str(s.get('heading', '')))
@@ -8040,37 +8098,37 @@ Return ONLY valid JSON. No other text."""
 
     we = note_data.get('worked_examples', []) or []
     if we:
-        _hd('4. MIFANO ILIYOFANYIWA KAZI')
+        _hd(_H[4])
         for ex in we:
             parts.append('')
-            parts.append(f"Mfano: {ex.get('example', '')}")
-            parts.append(f"Suluhisho: {ex.get('solution', '')}")
+            parts.append(f"{_ex_lbl}: {ex.get('example', '')}")
+            parts.append(f"{_sol_lbl}: {ex.get('solution', '')}")
         parts.append('')
 
     kps = note_data.get('key_points', []) or []
     if kps:
-        _hd('5. NUKTA MUHIMU')
+        _hd(_H[5])
         for kp in kps:
             parts.append(f"  - {kp}")
         parts.append('')
 
     et = note_data.get('exam_tips', []) or []
     if et:
-        _hd('6. USHAURI WA MITIHANI')
+        _hd(_H[6])
         for t in et:
             parts.append(f"  - {t}")
         parts.append('')
 
     pq = note_data.get('practice_questions', []) or []
     if pq:
-        _hd('7. MASWALI YA MAZOEZI')
+        _hd(_H[7])
         for i, q in enumerate(pq, 1):
             parts.append('')
-            parts.append(f"Swali {i}: {q.get('question', '')}")
-            parts.append(f"Jibu: {q.get('answer', '')}")
+            parts.append(f"{_q_lbl} {i}: {q.get('question', '')}")
+            parts.append(f"{_a_lbl}: {q.get('answer', '')}")
         parts.append('')
 
-    _hd('8. MUHTASARI')
+    _hd(_H[8])
     parts.append(str(note_data.get('summary', '')))
     parts.append('')
     note_content = '\n'.join(parts)
@@ -8092,6 +8150,7 @@ Return ONLY valid JSON. No other text."""
         'note_id': note.id,
         'note_data': note_data,
         'note_html': note_content,
+        'lang': 'sw' if sw else 'en',
         'created': note.created_at.isoformat(),
     })
 
@@ -8130,8 +8189,18 @@ def download_note_pdf(request):
     story.append(Paragraph(_esc(f"{note.class_name or ''} | {note.get_education_level_display()}"), _meta_s))
     story.append(HRFlowable(width='100%', thickness=1.5, color=colors.HexColor('#C8900A'), spaceAfter=8))
 
-    _labels = ('1. OVERVIEW', '2. KEY TERMS', '3. MAIN CONTENT', '4. WORKED EXAMPLES',
-               '5. KEY POINTS', '6. EXAM TIPS', '7. PRACTICE', '8. SUMMARY')
+    # Headers za notes zote (Kiswahili + English, full-notes + from-lesson-plan)
+    _labels = (
+        '1. UTANGULIZI', '1. INTRODUCTION', '1. OVERVIEW', '1. MUHTASARI', '1. SUMMARY',
+        '2. MANENO MUHIMU', '2. KEY TERMS', '2. NUKTA MUHIMU', '2. KEY POINTS',
+        '3. MAELEZO KAMILI', '3. MAIN CONTENT', '3. MBINU ZA UFUNDISHAJI', '3. TEACHING METHODS',
+        '4. MIFANO ILIYOFANYIWA KAZI', '4. WORKED EXAMPLES',
+        '4. TATHMINI — MASWALI NA MAJIBU', '4. ASSESSMENT — QUESTIONS & ANSWERS',
+        '5. NUKTA MUHIMU', '5. KEY POINTS', '5. MWONGOZO', '5. CONCLUSION',
+        '6. USHAURI WA MITIHANI', '6. EXAM TIPS',
+        '7. MASWALI YA MAZOEZI', '7. PRACTICE QUESTIONS', '7. PRACTICE',
+        '8. MUHTASARI', '8. SUMMARY',
+    )
     for raw_line in (note.content or '').split('\n'):
         line = raw_line.strip()
         if not line:
@@ -8187,6 +8256,7 @@ def ajax_past_papers(request):
         qs = [p for p in qs if (p.subject_name or '').lower() == subject.lower()]
 
     papers = []
+    mat_base = reverse('curriculum:notes_library_material_file')
     for p in sorted(qs, key=lambda x: (x.subject_name or '', x.year or 0), reverse=True):
         existing = p.marking_schemes.order_by('-created_at').first()
         papers.append({
@@ -8201,6 +8271,8 @@ def ajax_past_papers(request):
             'marking_scheme_url': p.marking_scheme_url,
             'has_scheme': bool(existing),
             'scheme_id': existing.id if existing else None,
+            # PDF inapakuliwa MFINAMO (mfumo wetu) — hakuna redirect ya nje
+            'material_url': f"{mat_base}?pp={p.id}",
         })
 
     info = NECTA_LIBRARY_LINKS.get(level, NECTA_LIBRARY_LINKS['ordinary'])
@@ -8209,17 +8281,17 @@ def ajax_past_papers(request):
         'level': level,
         'label': info['label'],
         'papers': papers,
-        'official': {
-            'label': info['label'],
-            'tetea_url': info['url'],
-            'necta_url': 'https://www.necta.go.tz/',
-        },
     })
 
 
 def ajax_notes_library_books(request):
     """Vitabu halisi (uploaded/system) kwa level + darasa (+ subject hiari).
-    TLM-session based (sawa na kurasa nyingine za Maktaba)."""
+    TLM-session based (sawa na kurasa nyingine za Maktaba).
+
+    Vitabu VYOTE vina "download_url" ya mfumo ndani — hakuna kufunguliwa
+    kwenye site za nje (TIE/TETEA). Pia: vitabu vilivyochotwa automatic
+    (Maktaba) vinaongezwa hapa chini.
+    """
     teacher = get_tlm_teacher(request)
     if not teacher:
         return JsonResponse({'success': False, 'error': 'Jisajili kwanza'}, status=401)
@@ -8231,6 +8303,8 @@ def ajax_notes_library_books(request):
         qs = qs.filter(class_level__name__iexact=class_name)
     if subject_id:
         qs = qs.filter(subject_id=subject_id)
+    # Links za ol.tie.go.tz zimekufa (SPA) — zisizo na PDF mfumoni hazionekani
+    qs = qs.exclude(Q(file='') & Q(url__icontains='ol.tie.go.tz'))
     books = []
     for b in qs.order_by('-id'):
         books.append({
@@ -8243,6 +8317,8 @@ def ajax_notes_library_books(request):
             'description': b.description,
             'file_url': b.file.url if b.file else '',
             'url': b.url,
+            'download_url': (reverse('curriculum:notes_library_textbook_file', args=[b.id])
+                             if (b.file or b.url) else ''),
             'uploaded_by_me': request.user.is_authenticated and b.uploaded_by_id == request.user.id,
         })
     # Maktaba rasmi za darasa (subject=NULL) — ziweze kuonekana kwa kila somo,
@@ -8251,6 +8327,7 @@ def ajax_notes_library_books(request):
         lib_qs = Textbook.objects.filter(education_level=level, is_active=True, subject__isnull=True)
         if class_name:
             lib_qs = lib_qs.filter(class_level__name__iexact=class_name)
+        lib_qs = lib_qs.exclude(Q(file='') & Q(url__icontains='ol.tie.go.tz'))
         for b in lib_qs.order_by('-id'):
             books.append({
                 'id': b.id,
@@ -8262,14 +8339,41 @@ def ajax_notes_library_books(request):
                 'description': b.description,
                 'file_url': b.file.url if b.file else '',
                 'url': b.url,
+                'download_url': (reverse('curriculum:notes_library_textbook_file', args=[b.id])
+                                 if (b.file or b.url) else ''),
                 'uploaded_by_me': request.user.is_authenticated and b.uploaded_by_id == request.user.id,
             })
     books.sort(key=lambda b: (b['uploaded_by_me'] is not True, -b['id']))
-    return JsonResponse({
-        'success': True,
-        'books': books,
-        'tie_links': TIE_BOOK_LINKS.get(level, TIE_BOOK_LINKS['ordinary']),
-    })
+
+    # ── VITABU VILIVYPOCHOTWA AUTOMATIC (Maktaba) — PDF ziko mfumoni ──
+    from field_app.models import ScrapedMaterial
+    sm = ScrapedMaterial.objects.filter(published=True, material_type='book').exclude(file='')
+    if class_name:
+        sm = sm.filter(Q(class_name__iexact=class_name) | Q(class_name=''))
+    if level:
+        sm = sm.filter(Q(education_level=level) | Q(education_level=''))
+    if subject_id and str(subject_id).isdigit():
+        subj = Subject.objects.filter(id=subject_id).first()
+        if subj:
+            sm = sm.filter(Q(subject_id=subj.id) | Q(subject_name__iexact=subj.name))
+    for m in sm.order_by('-pages')[:40]:
+        books.append({
+            'id': f"sm{m.id}",
+            'title': m.title,
+            'subject': m.subject_name,
+            'class_name': m.class_name,
+            'publisher': m.source.name if m.source else 'Maktaba',
+            'year': None,
+            'description': m.ai_summary or '',
+            'file_url': '',
+            'url': '',
+            'scraped': True,
+            'pages': m.pages,
+            'size_mb': round((m.file_size or 0) / 1048576, 1),
+            'download_url': f"{reverse('curriculum:notes_library_material_file')}?m={m.id}",
+            'uploaded_by_me': False,
+        })
+    return JsonResponse({'success': True, 'books': books})
 
 
 def ajax_upload_textbook(request):
@@ -8297,7 +8401,7 @@ def ajax_upload_textbook(request):
     if url and not (url.startswith('http://') or url.startswith('https://')):
         return JsonResponse({'success': False, 'error': 'Link lazima ianze na http:// au https://'}, status=400)
     class_level = ClassLevel.objects.filter(name__iexact=class_name).first() if class_name else None
-    tb = Textbook.objects.create(
+    tb = Textbook(
         title=title,
         education_level=level,
         subject_id=subject_id or None,
@@ -8308,6 +8412,21 @@ def ajax_upload_textbook(request):
         publisher='Uploaded',
         uploaded_by=request.user if request.user.is_authenticated else None,
     )
+    # Link bila file: jaribu kupakua PDF ya link MARA MOJA — kitabu kiwe mfumoni,
+    # ili mtumiaji asipelekwe site ya nje kabla ya kupata PDF.
+    if url and not file:
+        try:
+            from django.core.files.base import ContentFile
+            from field_app.materials_importer import download_file
+            data, _err = download_file(url)
+            if data is not None:
+                fname = re.sub(r'[^A-Za-z0-9._ -]', '', title)[:80] or 'kitabu'
+                if not fname.lower().endswith('.pdf'):
+                    fname += '.pdf'
+                tb.file.save(fname, ContentFile(data), save=False)
+        except Exception:  # noqa: BLE001
+            pass
+    tb.save()
     return JsonResponse({
         'success': True,
         'book': {
@@ -8331,6 +8450,136 @@ def ajax_delete_textbook(request):
         return JsonResponse({'success': False, 'error': 'Huwezi kufuta kitabu cha mwalimu mwingine'}, status=403)
     tb.delete()
     return JsonResponse({'success': True})
+
+
+# =============================================================================
+# MAKTABA — KUPAKUA MFINAMO (in-system, hakuna redirect za nje)
+# =============================================================================
+
+def _tlm_or_staff(request):
+    """TLM teacher session AU Django login — kwa endpoints za Maktaba ya TLM."""
+    return get_tlm_teacher(request) is not None or request.user.is_authenticated
+
+
+def notes_library_material_file(request):
+    """Pakua PDF ya material ya Maktaba MFINAMO — ?m=<id> au ?pp=<past_paper_id>.
+
+    - ?m=: ScrapedMaterial (faili ikiwapo storage; kama haipo inachotwa mara hii).
+    - ?pp=: PastPaper — inatafuta ScrapedMaterial ya URL hiyo; kama haipo,
+      inaunda mpya na kupakua PDF ya paper papohapo (mfumo ndani).
+    Mtumiaji hapelekwi kamwe kwenye site za nje.
+    """
+    if not _tlm_or_staff(request):
+        return HttpResponse('Jisajili kwanza', status=401)
+    from field_app.models import ScrapedMaterial
+
+    mat = None
+    m_id = request.GET.get('m') or ''
+    pp_id = request.GET.get('pp') or ''
+
+    if str(pp_id).isdigit():
+        pp = PastPaper.objects.filter(id=pp_id, is_active=True).first()
+        if not pp:
+            return HttpResponse('Past paper haipatikani.', status=404)
+        mat = ScrapedMaterial.objects.filter(original_url=pp.url).first()
+        if mat is None:
+            # Unda material ya paper hii — download + rules classify (hakuna AI)
+            import hashlib
+            from django.core.files.base import ContentFile
+            from field_app.materials_importer import classify_by_rules, download_file, match_subject, pdf_first_pages_text
+            data, err = download_file(pp.url)
+            if data is None:
+                return HttpResponse(f'PDF ya paper hii haipatikani ({err}).', status=502)
+            # download ndefu inaweza kufunga connection ya DB (idle timeout)
+            # — funga kabla ya save ili isave kwa connection mpya
+            _db_conn.close()
+            _, pages = pdf_first_pages_text(data)
+            hints = classify_by_rules(pp.title or pp.url, '')
+            subj, subj_name = match_subject(pp.subject_name or hints.get('subject_name') or '')
+            mat = ScrapedMaterial(
+                title=(pp.title or pp.exam_code or 'Past Paper')[:300],
+                original_url=pp.url,
+                file_size=len(data),
+                pages=pages,
+                content_hash=hashlib.sha256(data).hexdigest(),
+                material_type='exam',
+                education_level=pp.education_level,
+                class_name=pp.class_name,
+                subject=pp.subject or subj,
+                subject_name=pp.subject_name or subj_name,
+                classified_by='rules',
+            )
+            fname = re.sub(r'[^A-Za-z0-9._ -]', '', mat.title)[:80] or 'paper'
+            if not fname.lower().endswith('.pdf'):
+                fname += '.pdf'
+            mat.file.save(fname, ContentFile(data), save=False)
+            mat.save()
+    elif str(m_id).isdigit():
+        mat = ScrapedMaterial.objects.filter(id=int(m_id), published=True).first()
+        if mat is None:
+            return HttpResponse('Material haipatikani.', status=404)
+    else:
+        return HttpResponse('m au pp inahitajika', status=400)
+
+    # Faili ikiwapo storage — itumike moja kwa moja; ikiwapo imepotea, chota mara hii
+    if not mat.file or not mat.file.storage.exists(mat.file.name):
+        if not mat.original_url:
+            return HttpResponse('Faili haipatikani kwenye server.', status=404)
+        from django.core.files.base import ContentFile
+        from field_app.materials_importer import download_file
+        data, err = download_file(mat.original_url)
+        if data is None:
+            return HttpResponse(
+                f'Faili ya chanzo haitoshi tena ({err}). Itachotwa upya na scheduler.',
+                status=502)
+        _db_conn.close()  # download ndefu — connection ya DB inaweza kuwa imekufa
+        fname = re.sub(r'[^A-Za-z0-9._ -]', '', mat.title)[:80] or 'material'
+        if not fname.lower().endswith('.pdf'):
+            fname += '.pdf'
+        mat.file.save(fname, ContentFile(data), save=False)
+        if not mat.file_size:
+            mat.file_size = len(data)
+        mat.save()
+
+    mat.downloads += 1
+    mat.save(update_fields=['downloads'])
+    return FileResponse(
+        mat.file.open('rb'), as_attachment=True,
+        filename=os.path.basename(mat.file.name) or 'material.pdf',
+        content_type='application/pdf')
+
+
+def notes_library_textbook_file(request, book_id):
+    """Pakua PDF ya kitabu MFINAMO — Textbook ya uploads/TIE.
+
+    Kitabu kikiwa na link tu (bila file), mfumo unapakua PDF kutoka link
+    hiyo mara hii na kuihifadhi — mtumiaji hapelekwi site ya nje.
+    """
+    if not _tlm_or_staff(request):
+        return HttpResponse('Jisajili kwanza', status=401)
+    tb = Textbook.objects.filter(id=book_id, is_active=True).first()
+    if not tb:
+        return HttpResponse('Kitabu hakipatikani.', status=404)
+
+    if (not tb.file or not tb.file.storage.exists(tb.file.name)) and tb.url:
+        from django.core.files.base import ContentFile
+        from field_app.materials_importer import download_file
+        data, err = download_file(tb.url)
+        if data is None:
+            return HttpResponse(f'PDF ya kitabu hichi haipatikani ({err}).', status=502)
+        _db_conn.close()  # download ndefu — connection ya DB inaweza kuwa imekufa
+        fname = re.sub(r'[^A-Za-z0-9._ -]', '', tb.title)[:80] or 'kitabu'
+        if not fname.lower().endswith('.pdf'):
+            fname += '.pdf'
+        tb.file.save(fname, ContentFile(data), save=False)
+        tb.save(update_fields=['file'])
+
+    if not tb.file or not tb.file.storage.exists(tb.file.name):
+        return HttpResponse('Kitabu hiki hakina PDF kwenye mfumo.', status=404)
+    return FileResponse(
+        tb.file.open('rb'), as_attachment=True,
+        filename=os.path.basename(tb.file.name) or 'kitabu.pdf',
+        content_type='application/pdf')
 
 
 # =============================================================================

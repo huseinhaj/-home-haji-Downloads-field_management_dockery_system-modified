@@ -66,12 +66,28 @@ SOURCES = [
         'default_type': 'exam',
         'max_articles_per_run': 10,
     },
+    {
+        # Maktaba TETEA — past papers 5000+ (NECTA PSLE/FTNA/CSEE/ACSEE),
+        # marking schemes, syllabi na study aids (Shika na Mikono) — PDF za
+        # moja kwa moja kwenye kurasa za resources, hakuna JS-gating.
+        'name': 'Maktaba TETEA',
+        'site_url': 'https://maktaba.tetea.org',
+        'listing_urls': [
+            'https://maktaba.tetea.org/resources/standard-1-4/',
+            'https://maktaba.tetea.org/resources/standard-5-7/',
+            'https://maktaba.tetea.org/resources/form-1-2/',
+            'https://maktaba.tetea.org/resources/form-3-4/',
+            'https://maktaba.tetea.org/resources/form-5-6/',
+        ],
+        'default_type': 'exam',
+        'max_articles_per_run': 60,
+    },
 ]
 
 
 class Command(BaseCommand):
     help = ('Weka/refresh vyanzo vya Maktaba (Wazaelimu, Lusa Elimu, Mitihani, '
-            'Elimu Zone, Teacher.ac, Shule Direct).')
+            'Elimu Zone, Teacher.ac, Shule Direct, Maktaba TETEA).')
 
     def handle(self, *args, **opts):
         created_count = 0

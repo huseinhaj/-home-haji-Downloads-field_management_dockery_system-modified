@@ -18,8 +18,8 @@ class Command(BaseCommand):
                             help='Saa ya EAT ya kuendesha kila siku (default 3).')
         parser.add_argument('--minute', type=int, default=15,
                             help='Dakika (default 15).')
-        parser.add_argument('--max-new', type=int, default=20,
-                            help='Materials mpya kwa kila chanzo kila run (default 20).')
+        parser.add_argument('--max-new', type=int, default=40,
+                            help='Materials mpya kwa kila chanzo kila run (default 40).')
         parser.add_argument('--once', action='store_true',
                             help='Endesha mara moja sasa kisha toka.')
         parser.add_argument('--catch-up', action='store_true',

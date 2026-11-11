@@ -109,6 +109,9 @@ def maktaba_download(request, material_id):
             return HttpResponse(
                 f'Faili ya chanzo haitoshi tena ({err}). '
                 f'Itachotwa upya na scheduler.', status=502)
+        # download ndefu inaweza kufunga connection ya DB — funga kabla ya save
+        from django.db import connection as _db_conn
+        _db_conn.close()
         fname = _re.sub(r'[^A-Za-z0-9._ -]', '', mat.title)[:80] or 'material'
         if not fname.lower().endswith('.pdf'):
             fname += '.pdf'

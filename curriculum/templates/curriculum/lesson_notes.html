@@ -525,67 +525,77 @@ document.addEventListener('DOMContentLoaded', function() {
       generateBtn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Notes';
       
       if (data.success) {
-        const noteData = data.note_data;
-        lastGeneratedData = noteData;
-        lastGeneratedHtml = data.note_html || '';
-        
-        // Build beautiful notebook display
-        let html = '';
-        
-        // Title
-        html += `<h2>📖 ${noteData.title || 'Lesson Notes'}</h2>`;
-        
-        // Summary paragraphs
-        const paragraphs = noteData.summary_paragraphs || [];
-        if (paragraphs.length > 0) {
-          html += '<h3>📝 Muhtasari / Summary</h3>';
-          paragraphs.forEach(function(p) {
-            if (p.trim()) html += `<p>${p.trim()}</p>`;
-          });
-        }
-        
-        html += '<hr class="section-divider">';
-        
-        // Key points
-        const keyPoints = noteData.key_points || [];
-        if (keyPoints.length > 0) {
-          html += '<h3>📍 Nukta Muhimu / Key Points</h3><ul>';
-          keyPoints.forEach(function(kp) {
-            if (kp.trim()) html += `<li>${kp.trim()}</li>`;
-          });
-          html += '</ul>';
-          html += '<hr class="section-divider">';
-        }
-        
-        // Teaching methods
-        const tm = noteData.teaching_methods || '';
-        if (tm.trim()) {
-          html += '<h3>🎯 Mbinu za Ufundishaji / Teaching Methods</h3>';
-          html += `<p>${tm.trim()}</p>`;
-          html += '<hr class="section-divider">';
-        }
-        
-        // Quiz
-        const quiz = noteData.quiz || [];
-        if (quiz.length > 0) {
-          html += '<h3>❓ Tathmini / Assessment — Maswali na Majibu</h3>';
-          quiz.forEach(function(q, i) {
-            if (q.question || q.answer) {
-              html += '<div class="quiz-item">';
-              html += `<div class="question">Swali ${i+1}: ${q.question || ''}</div>`;
-              html += `<div class="answer"><strong>Jibu:</strong> ${q.answer || ''}</div>`;
-              html += '</div>';
-            }
-          });
-          html += '<hr class="section-divider">';
-        }
-        
-        // Conclusion
-        const conclusion = noteData.conclusion || '';
-        if (conclusion.trim()) {
-          html += '<h3>💡 Mwongozo / Conclusion & Recommendations</h3>';
-          html += `<div class="conclusion-box"><p style="margin:0;">${conclusion.trim()}</p></div>`;
-        }
+         const noteData = data.note_data;
+         lastGeneratedData = noteData;
+         lastGeneratedHtml = data.note_html || '';
+
+         // Vichwa kwa lugha sahihi: primary -> Kiswahili; O/A-Level -> English
+         const sw = data.lang !== 'en';
+         const L = sw
+           ? { summary: 'Muhtasari', points: 'Nukta Muhimu', methods: 'Mbinu za Ufundishaji',
+               quiz: 'Tathmini — Maswali na Majibu', conclusion: 'Mwongozo',
+               qLbl: 'Swali', aLbl: 'Jibu' }
+           : { summary: 'Summary', points: 'Key Points', methods: 'Teaching Methods',
+               quiz: 'Assessment — Questions & Answers', conclusion: 'Conclusion',
+               qLbl: 'Question', aLbl: 'Answer' };
+
+         // Build beautiful notebook display
+         let html = '';
+         
+         // Title
+         html += `<h2>${noteData.title || 'Lesson Notes'}</h2>`;
+         
+         // Summary paragraphs
+         const paragraphs = noteData.summary_paragraphs || [];
+         if (paragraphs.length > 0) {
+           html += `<h3>${L.summary}</h3>`;
+           paragraphs.forEach(function(p) {
+             if (p.trim()) html += `<p>${p.trim()}</p>`;
+           });
+         }
+         
+         html += '<hr class="section-divider">';
+         
+         // Key points
+         const keyPoints = noteData.key_points || [];
+         if (keyPoints.length > 0) {
+           html += `<h3>${L.points}</h3><ul>`;
+           keyPoints.forEach(function(kp) {
+             if (kp.trim()) html += `<li>${kp.trim()}</li>`;
+           });
+           html += '</ul>';
+           html += '<hr class="section-divider">';
+         }
+         
+         // Teaching methods
+         const tm = noteData.teaching_methods || '';
+         if (tm.trim()) {
+           html += `<h3>${L.methods}</h3>`;
+           html += `<p>${tm.trim()}</p>`;
+           html += '<hr class="section-divider">';
+         }
+         
+         // Quiz
+         const quiz = noteData.quiz || [];
+         if (quiz.length > 0) {
+           html += `<h3>${L.quiz}</h3>`;
+           quiz.forEach(function(q, i) {
+             if (q.question || q.answer) {
+               html += '<div class="quiz-item">';
+               html += `<div class="question">${L.qLbl} ${i+1}: ${q.question || ''}</div>`;
+               html += `<div class="answer"><strong>${L.aLbl}:</strong> ${q.answer || ''}</div>`;
+               html += '</div>';
+             }
+           });
+           html += '<hr class="section-divider">';
+         }
+         
+         // Conclusion
+         const conclusion = noteData.conclusion || '';
+         if (conclusion.trim()) {
+           html += `<h3>${L.conclusion}</h3>`;
+           html += `<div class="conclusion-box"><p style="margin:0;">${conclusion.trim()}</p></div>`;
+         }
         
         notebookContent.innerHTML = html;
         notebookContainer.style.display = 'block';
