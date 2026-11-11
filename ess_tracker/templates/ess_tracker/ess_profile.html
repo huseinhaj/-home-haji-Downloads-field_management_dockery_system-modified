@@ -4,17 +4,16 @@
 <style>
 .ess-school{position:relative;}
 .ess-school .ess-sel{
-  width:100%;padding:.375rem 2.25rem .375rem .75rem;font-size:1rem;line-height:1.5;
-  color:#212529;background:#fff url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") no-repeat right .75rem center/16px 12px;
-  border:1px solid #dee2e6;border-radius:.375rem;text-align:left;cursor:pointer;
+  width:100%;padding:.55rem .75rem;font-size:16px;line-height:1.4;
+  color:#212529;background:#fff;border:1px solid #dee2e6;border-radius:.375rem;
+  text-align:left;cursor:text;-webkit-appearance:none;appearance:none;
 }
 .ess-school .ess-sel:focus{border-color:#86b7fe;outline:0;box-shadow:0 0 0 .25rem rgba(13,110,253,.25);}
 .ess-school .ess-dd{display:none;position:absolute;z-index:1055;left:0;right:0;top:100%;margin-top:2px;
   background:#fff;border:1px solid #dee2e6;border-radius:.375rem;box-shadow:0 .5rem 1rem rgba(0,0,0,.15);}
 .ess-school .ess-dd.open{display:block;}
-.ess-school .ess-search{width:100%;border:none;border-bottom:1px solid #dee2e6;padding:.5rem .75rem;font-size:.95rem;outline:none;}
-.ess-school .ess-ul{list-style:none;margin:0;padding:0;max-height:220px;overflow:auto;}
-.ess-school .ess-ul li{padding:.45rem .75rem;font-size:.95rem;cursor:pointer;border-bottom:1px solid #f0f1f2;}
+.ess-school .ess-ul{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto;overscroll-behavior:contain;}
+.ess-school .ess-ul li{padding:.6rem .75rem;font-size:.95rem;cursor:pointer;border-bottom:1px solid #f0f1f2;}
 .ess-school .ess-ul li:hover,.ess-school .ess-ul li.hl{background:#e9f2ff;}
 .ess-school .ess-ul li.ess-none{cursor:default;color:#6c757d;background:#fff;}
 </style>
@@ -93,41 +92,54 @@
   if (!sel) return;
   sel.classList.add('d-none');
 
+  // Kisanduku cha utafutaji KINAONEKANA moja kwa moja (ni input halisi), hivyo
+  // kugusa kwake hufungua keyboard ya simu papo hapo. Tunaonyesha matokeo
+  // machache tu kwa mara moja ili iwe nyepesi (badala ya maelfu ya <li>).
+  var LIMIT = 50;
+
   var wrap = document.createElement('div');
   wrap.className = 'ess-school';
-  var box = document.createElement('button');
-  box.type = 'button';
-  box.className = 'ess-sel';
-  var dd = document.createElement('div');
-  dd.className = 'ess-dd';
   var inp = document.createElement('input');
   inp.type = 'text';
-  inp.className = 'ess-search';
-  inp.placeholder = 'Tafuta shule...';
+  inp.className = 'ess-sel';
+  inp.placeholder = '— Tafuta na uchague shule —';
   inp.setAttribute('aria-label', 'Tafuta shule');
+  inp.setAttribute('autocomplete', 'off');
+  inp.setAttribute('autocapitalize', 'off');
+  inp.setAttribute('autocorrect', 'off');
+  inp.setAttribute('spellcheck', 'false');
+  inp.setAttribute('inputmode', 'search');
+  inp.setAttribute('enterkeyhint', 'search');
+  var dd = document.createElement('div');
+  dd.className = 'ess-dd';
   var ul = document.createElement('ul');
   ul.className = 'ess-ul';
 
-  function label() {
+  function selectedLabel() {
     var o = sel.selectedOptions[0];
-    return o && o.value ? o.text : '— Tafuta na uchague shule —';
+    return o && o.value ? o.text : '';
+  }
+  function syncLabel() { inp.value = selectedLabel(); }
+  function choose(value) {
+    sel.value = value;
+    syncLabel();
+    dd.classList.remove('open');
+    inp.blur();
   }
   function build(filter) {
     ul.innerHTML = '';
     var shown = 0;
-    for (var i = 0; i < sel.options.length; i++) {
+    for (var i = 0; i < sel.options.length && shown < LIMIT; i++) {
       var o = sel.options[i];
       if (!o.value) continue;
       if (filter && o.text.toLowerCase().indexOf(filter) < 0) continue;
       var li = document.createElement('li');
       li.textContent = o.text;
-      li.addEventListener('mousedown', function (e) {
-        e.preventDefault();
-        sel.value = this.dataset.val;
-        box.textContent = label();
-        close();
-      });
       li.dataset.val = o.value;
+      li.addEventListener('click', function (e) {
+        e.preventDefault();
+        choose(this.dataset.val);
+      });
       ul.appendChild(li);
       shown++;
     }
@@ -136,28 +148,37 @@
       e.className = 'ess-none';
       e.textContent = 'Hakuna shule inayolingana';
       ul.appendChild(e);
+    } else if (shown >= LIMIT) {
+      var more = document.createElement('li');
+      more.className = 'ess-none';
+      more.textContent = 'Andika jina zaidi ili kupunguza matokeo…';
+      ul.appendChild(more);
     }
   }
-  function close() { dd.classList.remove('open'); }
+  function close() {
+    dd.classList.remove('open');
+    syncLabel();
+  }
   function open() {
     dd.classList.add('open');
-    inp.value = '';
+    // Maandishi yaliyopo yachaguliwe ili kuandika jipya kirahisi.
+    if (inp.value) inp.select();
     build('');
-    inp.focus();
   }
-  box.textContent = label();
-  box.addEventListener('click', function () {
-    dd.classList.contains('open') ? close() : open();
-  });
+  syncLabel();
+  inp.addEventListener('focus', open);
   inp.addEventListener('input', function () {
+    dd.classList.add('open');
     build(inp.value.trim().toLowerCase());
   });
-  document.addEventListener('click', function (e) {
-    if (!wrap.contains(e.target)) close();
+  inp.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { close(); inp.blur(); }
   });
-  dd.appendChild(inp);
+  document.addEventListener('click', function (e) {
+    if (dd.classList.contains('open') && !wrap.contains(e.target)) close();
+  });
   dd.appendChild(ul);
-  wrap.appendChild(box);
+  wrap.appendChild(inp);
   wrap.appendChild(dd);
   sel.parentNode.insertBefore(wrap, sel.nextSibling);
 })();
