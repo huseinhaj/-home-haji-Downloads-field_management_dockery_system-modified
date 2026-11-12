@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="sw">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Security Login Check — Access</title>
+  <style>
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f5; color: #1f2937;
+    }
+    .card {
+      width: min(420px, calc(100vw - 2rem)); background: #fff;
+      border: 1.5px solid #dee2e6; border-top: 4px solid #124D22;
+      border-radius: 4px; padding: 1.4rem;
+    }
+    h1 { margin: 0 0 .3rem; font-size: 1.1rem; color: #124D22; }
+    p { margin: 0 0 1rem; font-size: .8rem; color: #6b7280; line-height: 1.5; }
+    label { display: block; font-size: .74rem; font-weight: 700; margin-bottom: .3rem; }
+    input {
+      width: 100%; box-sizing: border-box; border: 1.5px solid #dee2e6;
+      border-radius: 3px; padding: .55rem .65rem; font-size: .85rem;
+      margin-bottom: .8rem; font-family: inherit;
+    }
+    button {
+      width: 100%; background: #1F7A3D; color: #fff; border: none;
+      border-radius: 3px; padding: .6rem; font-weight: 700; cursor: pointer;
+    }
+    button:hover { background: #124D22; }
+    .error {
+      background: #fdecec; border: 1px solid #f3b5b5; color: #991b1b;
+      padding: .6rem .7rem; border-radius: 3px; font-size: .78rem; margin-bottom: .8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Security Login Check</h1>
+    <p>Weka access token iliyoandaliwa kwenye environment variable
+      <strong>SECURITY_CHECK_ACCESS_TOKEN</strong>.</p>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="post" autocomplete="off">
+      <label for="token">Access token</label>
+      <input type="password" name="token" id="token" autocomplete="current-password" required autofocus>
+      <button type="submit">Ingia</button>
+    </form>
+  </div>
+</body>
+</html>

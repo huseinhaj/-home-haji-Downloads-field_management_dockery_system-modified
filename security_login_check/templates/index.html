@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="sw">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Security Login Check</title>
+  <style>
+    :root {
+      --green: #124D22;
+      --green-2: #1F7A3D;
+      --gold: #D9A441;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --line: #dee2e6;
+      --bg: #f4f6f5;
+      --ok: #166534;
+      --ok-bg: #e6f7ec;
+      --bad: #991b1b;
+      --bad-bg: #fdecec;
+      --warn: #8a6d1f;
+      --warn-bg: #fffbf0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    .hero {
+      background: linear-gradient(135deg, #124D22, #145226);
+      border-bottom: 3px solid var(--gold);
+      color: #fff;
+      padding: 1.4rem 1.5rem;
+    }
+    .hero h1 { margin: 0 0 .25rem; font-size: 1.35rem; }
+    .hero p { margin: 0; color: #d9e7dd; font-size: .82rem; max-width: 900px; }
+    .wrap { max-width: 1040px; margin: 1.4rem auto 3rem; padding: 0 1rem; }
+    .grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 1rem; align-items: start; }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      background: #fff; border: 1.5px solid var(--line); border-radius: 4px;
+      padding: 1.2rem;
+    }
+    .card h2 { margin: 0 0 .9rem; font-size: 1rem; color: var(--green); }
+    label { display: block; font-size: .74rem; font-weight: 700; margin: 0 0 .25rem; }
+    input, select {
+      width: 100%; border: 1.5px solid var(--line); border-radius: 3px;
+      padding: .5rem .65rem; font-size: .84rem; margin-bottom: .75rem;
+      font-family: inherit; background: #fff;
+    }
+    input:focus, select:focus { outline: 2px solid #b7dcc4; border-color: var(--green-2); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .checks { display: flex; gap: 1rem; flex-wrap: wrap; margin: .2rem 0 .9rem; }
+    .checks label { display: flex; align-items: center; gap: .4rem; font-weight: 600; font-size: .74rem; }
+    .checks input { width: auto; margin: 0; }
+    button {
+      background: var(--green-2); color: #fff; border: none; border-radius: 3px;
+      padding: .62rem 1.4rem; font-weight: 700; font-size: .84rem; cursor: pointer;
+    }
+    button:hover { background: var(--green); }
+    .note {
+      font-size: .72rem; color: var(--muted); line-height: 1.45;
+      background: #f9fafb; border-top: 1px solid var(--line); padding: .65rem .8rem;
+      border-radius: 3px; margin-top: .8rem;
+    }
+    .warn {
+      background: var(--warn-bg); border: 1px solid #f0d58c; color: var(--warn);
+      padding: .7rem .85rem; border-radius: 3px; font-size: .78rem; margin-bottom: 1rem;
+    }
+    .error {
+      background: var(--bad-bg); border: 1px solid #f3b5b5; color: var(--bad);
+      padding: .7rem .85rem; border-radius: 3px; font-size: .8rem; margin-bottom: 1rem;
+    }
+    .score { display: flex; align-items: center; gap: 1rem; margin-bottom: .8rem; }
+    .score .num {
+      font-size: 2.3rem; font-weight: 800; line-height: 1; color: var(--green);
+    }
+    .score .num small { font-size: .9rem; color: var(--muted); font-weight: 600; }
+    .bar { height: 10px; background: #e5e7eb; border-radius: 99px; overflow: hidden; flex: 1; }
+    .bar span { display: block; height: 100%; background: linear-gradient(90deg, #1F7A3D, #D9A441); }
+    table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+    th, td { text-align: left; padding: .5rem .45rem; border-bottom: 1px solid #eef0f2; vertical-align: top; }
+    th { color: var(--muted); font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; }
+    .pill {
+      display: inline-block; padding: .15rem .5rem; border-radius: 99px;
+      font-size: .68rem; font-weight: 700; white-space: nowrap;
+    }
+    .pill.ok { color: var(--ok); background: var(--ok-bg); }
+    .pill.bad { color: var(--bad); background: var(--bad-bg); }
+    .box { border: 1px solid var(--line); border-radius: 3px; padding: .7rem .8rem; margin-bottom: .8rem; font-size: .78rem; }
+    .box.ok { background: var(--ok-bg); border-color: #a3d9b4; color: #14532d; }
+    .box.bad { background: var(--bad-bg); border-color: #f3b5b5; color: var(--bad); }
+    .box.warn { background: var(--warn-bg); border-color: #f0d58c; color: var(--warn); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+    ul.findings { margin: .3rem 0 0 1rem; padding: 0; font-size: .78rem; }
+    ul.findings li { margin-bottom: .35rem; }
+    .small { font-size: .7rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <h1>Security Login Check</h1>
+    <p>
+      Mini app ya kujaribu login na role permissions kwa test accounts kwenye
+      system zako halali (Results / TLM). Haitumii ukurasa wa kudanganya,
+      haikamati, wala kuhifadhi username/password za watumiaji wengine.
+    </p>
+    {% if token_enabled %}
+    <p style="margin-top:.6rem;"><a href="{{ url_for('logout') }}" style="color:#D9A441;font-weight:700;">Toka (logout)</a></p>
+    {% endif %}
+  </div>
+
+  <div class="wrap">
+    <div class="warn">
+      <strong>Tumia test accounts tu.</strong> Nywila unazoingiza zinatumika
+      kwenye browser ya check pekee, hazihifadhiwi kwenye disk, hazilogwi,
+      na hazirudishwi kwenye ukurasa. Hakikisha una ruhusa ya kupima system.
+    </div>
+
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+    <div class="grid">
+      <div class="card">
+        <h2>Mipangilio ya check</h2>
+        <form method="post" action="{{ url_for('check') }}" autocomplete="off">
+          <label for="preset">System</label>
+          <select name="preset" id="preset">
+            {% for key, preset in presets.items() %}
+            <option value="{{ key }}" {% if form.preset == key %}selected{% endif %}>{{ preset.label }}</option>
+            {% endfor %}
+          </select>
+
+          <label for="base_url">Base URL</label>
+          <input type="url" name="base_url" id="base_url" placeholder="https://mfano.co.tz"
+                 value="{{ form.base_url or '' }}" required>
+
+          <div class="row">
+            <div>
+              <label for="login_path">Login path</label>
+              <input type="text" name="login_path" id="login_path" placeholder="/shule/ingia/"
+                     value="{{ form.login_path or '' }}" required>
+            </div>
+            <div>
+              <label for="protected_path">Protected path</label>
+              <input type="text" name="protected_path" id="protected_path" placeholder="/shule/academic/"
+                     value="{{ form.protected_path or '' }}" required>
+            </div>
+          </div>
+
+          <label for="role">Jukumu unalojaribu</label>
+          <input type="text" name="role" id="role" placeholder="mf. Admin / Mwalimu"
+                 value="{{ form.role or '' }}" autocomplete="off">
+
+          <div class="row">
+            <div>
+              <label for="username">Test username / email</label>
+              <input type="text" name="username" id="username" autocomplete="off" required>
+            </div>
+            <div>
+              <label for="password">Test password</label>
+              <input type="password" name="password" id="password" autocomplete="new-password" required>
+            </div>
+          </div>
+
+          <div class="checks">
+            <label>
+              <input type="checkbox" name="expect_access" value="1" {% if form.expect_access %}checked{% endif %}>
+              Ukurasa wa role unapaswa kufunguka
+            </label>
+            <label>
+              <input type="checkbox" name="check_wrong_password" value="1" {% if form.check_wrong_password %}checked{% endif %}>
+              Jaribu password isiyo sahihi mara moja
+            </label>
+          </div>
+
+          <button type="submit">Anza check</button>
+
+          <div class="note">
+            Hosts zinazoruhusiwa: <span class="mono">{{ allowed_hosts|join(', ') }}</span>.
+            Kwa host nyingine weka <span class="mono">SECURITY_CHECK_ALLOWED_HOSTS</span>
+            kabla ya kuanzisha app.
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Matokeo</h2>
+        {% if not result %}
+        <p class="small">Hakuna matokeo bado. Jaza fomu upande wa kushoto kisha bofya "Anza check".</p>
+        {% else %}
+        <div class="score">
+          <div class="num">{{ result.score }}<small>/100</small></div>
+          <div class="bar"><span style="width: {{ result.score }}%"></span></div>
+        </div>
+
+        <div class="box {{ 'ok' if result.login.ok else 'bad' }}">
+          <strong>Login:</strong>
+          {{ 'Imefanikiwa' if result.login.ok else 'Imeshindwa' }}
+          {% if result.login.error %}<br>{{ result.login.error }}{% endif %}
+        </div>
+
+        <div class="box {{ 'ok' if result.role.ok else 'bad' }}">
+          <strong>Role / access-control:</strong>
+          {{ 'Sawa' if result.role.ok else 'Haijakidhi matarajio' }}<br>
+          <span class="mono">{{ result.role.url }}</span>
+          {% if result.role.status %} &middot; HTTP {{ result.role.status }}{% endif %}
+          {% if result.role.login_page %} &middot; imerudisha kwenye login{% endif %}
+          {% if result.role.denied %} &middot; access denied{% endif %}
+        </div>
+
+        {% if result.wrong_password.tested %}
+        <div class="box {{ 'ok' if result.wrong_password.rejected else 'bad' }}">
+          <strong>Password isiyo sahihi:</strong>
+          {{ result.wrong_password.message }}
+        </div>
+        {% endif %}
+
+        <table>
+          <thead><tr><th>Check</th><th>Hali</th></tr></thead>
+          <tbody>
+            {% for check in result.checks %}
+            <tr>
+              <td>{{ check.label }}</td>
+              <td><span class="pill {{ 'ok' if check.ok else 'bad' }}">{{ 'PASS' if check.ok else 'FAIL' }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        {% if result.findings %}
+        <div class="box warn" style="margin-top:.9rem;">
+          <strong>Mapendekezo / mambo ya kuangalia</strong>
+          <ul class="findings">
+            {% for finding in result.findings %}<li>{{ finding }}</li>{% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        <div class="note">
+          Login URL: <span class="mono">{{ result.login_url }}</span><br>
+          Protected URL: <span class="mono">{{ result.protected_url }}</span><br>
+          Cookies zilizopatikana: <span class="mono">{{ result.cookies.cookies|join(', ') or 'hakuna' }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PRESETS = {{ presets|tojson }};
+    const presetSelect = document.getElementById('preset');
+    const fields = {
+      base_url: document.getElementById('base_url'),
+      login_path: document.getElementById('login_path'),
+      protected_path: document.getElementById('protected_path'),
+    };
+    presetSelect.addEventListener('change', () => {
+      const preset = PRESETS[presetSelect.value] || {};
+      for (const key of Object.keys(fields)) {
+        if (preset[key] !== undefined) fields[key].value = preset[key];
+      }
+    });
+  </script>
+</body>
+</html>

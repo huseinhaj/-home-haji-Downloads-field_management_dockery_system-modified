@@ -59,3 +59,6 @@ node_modules/
 *.csv
 *.tar.gz
 *.zip
+
+# Standalone security checker — deployed as its own service
+security_login_check/
