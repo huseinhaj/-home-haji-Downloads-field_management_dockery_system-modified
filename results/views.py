@@ -2653,19 +2653,24 @@ def set_class_teacher(request, exam_id):
     ).order_by('full_name')
 
     if request.method == 'POST':
+        from django.utils.dateparse import parse_date
         class_teacher_id = request.POST.get('class_teacher_id') or ''
         exam.class_teacher_id = int(class_teacher_id) if class_teacher_id.isdigit() else None
         exam.headmaster_comment = request.POST.get('headmaster_comment', '').strip()
         exam.term_closing_date = request.POST.get('term_closing_date') or None
         exam.term_opening_date = request.POST.get('term_opening_date') or None
+        exam.date = parse_date(request.POST.get('exam_date') or '')
         exam.save(update_fields=[
-            'class_teacher', 'headmaster_comment', 'term_closing_date', 'term_opening_date',
+            'class_teacher', 'headmaster_comment', 'term_closing_date', 'term_opening_date', 'date',
         ])
         messages.success(request, "Mipangilio ya ripoti ya mwanafunzi imehifadhiwa.")
-        return redirect(reverse('exam_overview', args=[exam.id]))
+        return redirect(reverse('set_class_teacher', args=[exam.id]))
+
+    from .services.combined_report_service import find_partner_exam
+    partner = find_partner_exam(exam)
 
     return render(request, 'results/set_class_teacher.html', {
-        'exam': exam, 'teachers': teachers,
+        'exam': exam, 'teachers': teachers, 'partner_exam': partner,
     })
 
 

@@ -60,6 +60,32 @@
       </small>
     </div>
 
+    <div class="ct-field">
+      <label for="exam_date">
+        {% if LANG == 'sw' %}Tarehe ya Mtihani (Mwezi){% else %}Exam Date (Month){% endif %}
+      </label>
+      <input type="date" name="exam_date" id="exam_date" value="{{ exam.date|date:'Y-m-d' }}">
+      <small style="color:#888;font-size:0.72rem;">
+        {% if LANG == 'sw' %}
+        Tarehe hii inaamua mchanganyiko wa muhula: Machi+Juni (3+6) au Septemba+Novemba/Desemba (9+11/12). Bila tarehe, ripoti itaonyesha mtihani huu pekee.
+        {% else %}
+        This date drives the term combination: March+June (3+6) or September+November/December (9+11/12). Without it, the report shows this exam alone.
+        {% endif %}
+      </small>
+    </div>
+
+    {% if partner_exam %}
+    <div class="ct-field" style="background:#e6f7ec;border:1px solid #a3d9b4;padding:0.7rem 0.9rem;border-radius:2px;font-size:0.8rem;color:#1a7a3b;">
+      ✅ {% if LANG == 'sw' %}Ripoti ya mwanafunzi itachanganya:{% else %}Student report will combine:{% endif %}
+      <b>{{ exam.name }}</b> + <b>{{ partner_exam.name }}</b>
+      ({% if LANG == 'sw' %}wastani wa alama{% else %}average of scores{% endif %})
+    </div>
+    {% else %}
+    <div class="ct-field" style="background:#fffbf0;border:1px solid #f0d58c;padding:0.7rem 0.9rem;border-radius:2px;font-size:0.8rem;color:#8a6d1f;">
+      ⚠️ {% if LANG == 'sw' %}Hakuna mtihani wa mwenza wa muhula uliobainika. Weka tarehe ya mtihani huu na wa mwenza wake (mf. Septemba na Novemba) ili ripoti ijumuishe wastani.{% else %}No partner exam found for this term. Set this exam's date and its partner's date (e.g. September and November) so the report includes the average.{% endif %}
+    </div>
+    {% endif %}
+
     <div class="ct-row">
       <div class="ct-field">
         <label for="term_closing_date">{% if LANG == 'sw' %}Shule Imefungwa Tarehe{% else %}Term Closing Date{% endif %}</label>
