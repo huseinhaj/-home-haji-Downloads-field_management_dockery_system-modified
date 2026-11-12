@@ -508,6 +508,29 @@ def _safe_b64_img(data_uri, x, y, w, h, canvas):
         pass
 
 
+def _load_headmaster_stamp(school):
+    """Muhuri/sahihi ya Mkuu wa Shule — base64 DB kwanza, ImageField fallback.
+    Inarudisha '' ikiwa haipo — haisababishi PDF kufeli."""
+    if not school:
+        return ''
+    return _load_logo_b64(
+        getattr(school, 'headmaster_stamp', None),
+        getattr(school, 'headmaster_stamp_b64', ''),
+    )
+
+
+def _stamp_image_flowable(data_uri, width, height):
+    """ReportLab Image ya muhuri, au None ikiwa haipo/haisomeki."""
+    if not data_uri or not data_uri.startswith('data:'):
+        return None
+    try:
+        b64_part = data_uri.split(',', 1)[1]
+        img_data = base64.b64decode(b64_part)
+        return Image(io.BytesIO(img_data), width=width, height=height)
+    except Exception:
+        return None
+
+
 def _std_table_style(n_rows, header_bg=None, header_fg=None, band_bg=None, necta=False, prestige=False, line_color=None):
     hdr = header_bg or NAVY
     hfg = header_fg or WHITE
@@ -1143,6 +1166,8 @@ def _make_numbered_canvas(doc):
             sig_x_right = w - doc.rightMargin
             content_w_val = getattr(doc, '_content_w', w - 3 * cm)
             sig_w = content_w_val * 0.42
+            stamp_uri = getattr(doc, '_stamp_uri', '')
+            headmaster_name = getattr(doc, '_headmaster_name', '')
 
             self.saveState()
             # Left signature
@@ -1159,12 +1184,17 @@ def _make_numbered_canvas(doc):
             self.setStrokeColor(DARK_LINE)
             self.setLineWidth(0.4)
             self.line(sig_x_right - sig_w, sig_y + 14, sig_x_right, sig_y + 14)
+            # Muhuri wa Mkuu wa Shule — juu ya mstari wa sahihi
+            if stamp_uri:
+                _safe_b64_img(stamp_uri, sig_x_right - sig_w / 2 - 26,
+                              sig_y + 16, 52, 46, self)
             self.setFont('Helvetica-Bold', 7.5)
             self.setFillColor(NAVY)
             self.drawCentredString(sig_x_right - sig_w / 2, sig_y + 6, 'Signature & Stamp')
             self.setFont('Helvetica', 7)
             self.setFillColor(SLATE)
-            self.drawCentredString(sig_x_right - sig_w / 2, sig_y - 4, 'Head of School')
+            self.drawCentredString(sig_x_right - sig_w / 2, sig_y - 4,
+                                   f'Head of School — {headmaster_name}' if headmaster_name else 'Head of School')
             # Date
             self.setFont('Helvetica', 7)
             self.drawString(sig_x_left, sig_y - 16, f'Date: {datetime.now().strftime("%d %B %Y")}')
@@ -2149,6 +2179,8 @@ def generate_results_pdf_response(exam, style='normal', request=None, student_id
     doc._style_key = style_key
     # necta: swap the navy+gold page border for the NECTA double-line frame
     doc._necta_frame = is_necta
+    doc._stamp_uri = _load_headmaster_stamp(exam.school)
+    doc._headmaster_name = (getattr(exam.school, 'headmaster_name', '') if exam.school else '')
 
     # NumberedCanvas draws "Page X of Y" + signature after all pages are laid
     # out, once the true total page count is known — no second build needed.
@@ -2229,6 +2261,8 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
         coa_uri = _load_logo_b64(getattr(exam.school, 'coat_of_arms', None), getattr(exam.school, 'coat_of_arms_b64', ''))
         if not coa_uri:
             coa_uri = dlogo_uri
+    stamp_uri = _load_headmaster_stamp(exam.school)
+    headmaster_name = (getattr(exam.school, 'headmaster_name', '') if exam.school else '')
 
     district = exam.school.district if exam.school and exam.school.district else ''
     exam_month = (exam.date.strftime('%B-%Y').upper() if exam.date else datetime.now().strftime('%B-%Y').upper())
@@ -2411,11 +2445,36 @@ def _build_student_result_pdf_bytes(result, *, school_type=None, total_students=
         st['td_name'],
     ))
     story.append(Spacer(1, 4))
-    story.append(_p(
+    _hm_comment = _p(
         f"<b>MAONI YA MKUU WA SHULE:</b> "
         f"{_xml_escape(exam.headmaster_comment) if exam.headmaster_comment else '.......................................................'}",
         st['td_name'],
-    ))
+    )
+    # Muhuri/sahihi ya Mkuu wa Shule — inaambatishwa AUTOMATIC kwenye kila
+    # report card mara tu muhuri unapopakiwa kwenye Shule Yangu.
+    _stamp_img = _stamp_image_flowable(stamp_uri, 2.0 * cm, 2.0 * cm)
+    if _stamp_img is not None:
+        _stamp_cell = [_stamp_img]
+        if headmaster_name:
+            _stamp_cell.append(_p(
+                _xml_escape(headmaster_name),
+                ParagraphStyle('stampname', parent=st['td_sm'], fontSize=6, alignment=1),
+            ))
+        _hm_table = Table(
+            [[_hm_comment, _stamp_cell]],
+            colWidths=[content_w - 2.4 * cm, 2.4 * cm],
+        )
+        _hm_table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+            ('TOPPADDING', (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ]))
+        story.append(_hm_table)
+    else:
+        story.append(_hm_comment)
     story.append(Spacer(1, 5))
     # Block ya MAONI YA MZAZI/MLEZI (dots + JINA LA MZAZI/SIMU/SAHIHI)
     # imeondolewa KABISA kwa ombi la shule — ilichukua nafasi kubwa kwenye

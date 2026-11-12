@@ -150,8 +150,9 @@
   </div>
 </div>
 
+<div class="row g-4">
   <!-- Coat of Arms -->
-  <div class="col-md-4">
+  <div class="col-md-6">
     <div class="logo-section">
       <h3>🛡️ Coat of Arms</h3>
       <p style="font-size:0.8rem;color:#888;">
@@ -181,6 +182,57 @@
         <div class="d-grid">
           <button type="submit" class="btn" style="background:#1F7A3D;color:#fff;font-weight:700;border-radius:2px;">
             💾 Save Coat of Arms
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Headmaster Stamp -->
+  <div class="col-md-6">
+    <div class="logo-section">
+      <h3>🖋️ {% if LANG == 'sw' %}Muhuri wa Mkuu wa Shule{% else %}Head Teacher's Stamp{% endif %}</h3>
+      <p style="font-size:0.8rem;color:#888;">
+        {% if LANG == 'sw' %}
+        Pakia muhuri/sahihi ya Mkuu wa Shule mara MOJA. Itaambatishwa AUTOMATIC kwenye kila report card ya mwanafunzi.
+        {% else %}
+        Upload the Head Teacher's stamp/signature ONCE. It is attached AUTOMATICALLY to every student report card.
+        {% endif %}
+      </p>
+
+      {% if stamp_exists %}
+      <div class="current-logo">
+        <img src="{{ stamp_url }}" alt="Head Teacher's Stamp">
+        <small>{% if LANG == 'sw' %}Muhuri wa sasa{% else %}Current stamp{% endif %}{% if headmaster_name %} — {{ headmaster_name }}{% endif %}</small>
+      </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="logo_type" value="stamp">
+        <div class="mb-2">
+          <label class="form-label fw-bold" style="font-size:0.8rem;">
+            {% if LANG == 'sw' %}Jina la Mkuu wa Shule (hiari){% else %}Head Teacher's Name (optional){% endif %}
+          </label>
+          <input type="text" name="headmaster_name" class="form-control" maxlength="150"
+                 value="{{ headmaster_name }}" placeholder="Mwl. Juma Ally"
+                 style="border-radius:2px;">
+        </div>
+        <div class="logo-box" onclick="this.querySelector('input').click()">
+          <div style="font-size:2rem;">🔏</div>
+          <div style="font-weight:700;color:#1F7A3D;">
+            {% if LANG == 'sw' %}Bonyeza kupakia muhuri{% else %}Click to upload stamp{% endif %}
+          </div>
+          <div style="font-size:0.75rem;color:#888;">
+            PNG yenye uwazi (transparent) inashauriwa — max 2MB
+          </div>
+          <input type="file" name="logo_file" accept=".png,.jpg,.jpeg" required
+                 onchange="previewLogo(this, 'stampPreview')">
+        </div>
+        <img id="stampPreview" class="logo-preview" style="display:none;">
+        <div class="d-grid">
+          <button type="submit" class="btn" style="background:#1F7A3D;color:#fff;font-weight:700;border-radius:2px;">
+            💾 {% if LANG == 'sw' %}Hifadhi Muhuri wa Mkuu{% else %}Save Head Teacher's Stamp{% endif %}
           </button>
         </div>
       </form>

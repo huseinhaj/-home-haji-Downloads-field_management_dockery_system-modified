@@ -55,6 +55,9 @@
     <div class="d-flex gap-2 flex-wrap">
       <a href="{% url 'school_subjects' %}" class="btn btn-brand">{% if LANG == 'sw' %}Masomo ya Shule{% else %}School Subjects{% endif %}</a>
       <a href="{% url 'create_exam_for_school' %}" class="btn btn-outline-secondary">{% if LANG == 'sw' %}Unda Mtihani{% else %}Create Exam{% endif %}</a>
+      <a href="{% url 'upload_logos' %}" class="btn btn-outline-secondary">
+        🖋️ {% if LANG == 'sw' %}Logos na Muhuri wa Mkuu{% else %}Logos & Head Teacher's Stamp{% endif %}
+      </a>
     </div>
     {% else %}
     <p class="text-secondary mb-0">

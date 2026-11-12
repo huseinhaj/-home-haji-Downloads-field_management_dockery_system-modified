@@ -698,6 +698,17 @@ def student_result_public(request, token):
     from .services.subject_pdf_service import get_grade_keys_for_form
     grade_key = get_grade_keys_for_form(exam.form, primary=_primary)
 
+    stamp_uri = ''
+    headmaster_name = ''
+    if exam.school:
+        headmaster_name = getattr(exam.school, 'headmaster_name', '') or ''
+        stamp_uri = getattr(exam.school, 'headmaster_stamp_b64', '') or ''
+        if not stamp_uri and getattr(exam.school, 'headmaster_stamp', None):
+            try:
+                stamp_uri = exam.school.headmaster_stamp.url
+            except Exception:
+                stamp_uri = ''
+
     return render(request, 'results/student_result_public.html', {
         'result': result,
         'exam': exam,
@@ -711,6 +722,8 @@ def student_result_public(request, token):
         'location': location,
         'school_name': exam.school_name or (exam.school.name if exam.school else ''),
         'total_students': ProcessedResult.objects.filter(exam=exam).count(),
+        'stamp_uri': stamp_uri,
+        'headmaster_name': headmaster_name,
     })
 
 
@@ -3843,6 +3856,7 @@ def upload_logos(request):
     if request.method == 'POST':
         logo_type = request.POST.get('logo_type', '')
         uploaded_file = request.FILES.get('logo_file')
+        headmaster_name = (request.POST.get('headmaster_name') or '').strip()
 
         if not uploaded_file:
             messages.error(request, "Hakuna faili lililochaguliwa.")
@@ -3901,6 +3915,15 @@ def upload_logos(request):
             school.coat_of_arms_b64 = b64_str
             school.save(update_fields=['coat_of_arms', 'coat_of_arms_b64'])
             logo_name = "ya Coat of Arms"
+        elif logo_type == 'stamp':
+            school.headmaster_stamp = uploaded_file
+            school.headmaster_stamp_b64 = b64_str
+            update_fields = ['headmaster_stamp', 'headmaster_stamp_b64']
+            if headmaster_name:
+                school.headmaster_name = headmaster_name
+                update_fields.append('headmaster_name')
+            school.save(update_fields=update_fields)
+            logo_name = "ya Mkuu wa Shule (muhuri)"
         else:
             messages.error(request, "Aina ya logo haijulikani.")
             return redirect('upload_logos')
@@ -3912,9 +3935,15 @@ def upload_logos(request):
         'school_logo_exists': bool(school.school_logo_b64 or school.school_logo) if school else False,
         'district_logo_exists': bool(school.district_logo_b64 or school.district_logo) if school else False,
         'coa_exists': bool(school.coat_of_arms_b64 or school.coat_of_arms) if school else False,
+        'stamp_exists': bool(school.headmaster_stamp_b64 or school.headmaster_stamp) if school else False,
         'school_logo_url': school.school_logo.url if school and school.school_logo else '',
         'district_logo_url': school.district_logo.url if school and school.district_logo else '',
         'coa_url': school.coat_of_arms.url if school and school.coat_of_arms else '',
+        'stamp_url': (
+            school.headmaster_stamp_b64
+            or (school.headmaster_stamp.url if school.headmaster_stamp else '')
+        ) if school else '',
+        'headmaster_name': school.headmaster_name if school else '',
     })
 
 

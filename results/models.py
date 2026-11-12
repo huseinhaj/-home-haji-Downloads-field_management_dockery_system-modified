@@ -24,6 +24,12 @@ class School(models.Model):
         help_text="Coat of Arms logo — appears in the center of the header")
     coat_of_arms_b64 = models.TextField(blank=True, default='',
         help_text="Coat of arms stored as base64 — persists on Railway")
+    headmaster_stamp = models.ImageField(upload_to='headmaster_stamps/', blank=True, null=True,
+        help_text="Muhuri/sahihi ya Mkuu wa Shule — inaonekana kwenye KILA report card ya mwanafunzi")
+    headmaster_stamp_b64 = models.TextField(blank=True, default='',
+        help_text="Muhuri wa Mkuu wa Shule kama base64 — hudumu Railway")
+    headmaster_name = models.CharField(max_length=150, blank=True, default='',
+        help_text="Jina la Mkuu wa Shule — linaonekana chini ya muhuri kwenye report card")
     source_school_id = models.PositiveIntegerField(
         null=True, blank=True, unique=True,
         help_text="PK of the matching field_app.School record (nationwide master list). "

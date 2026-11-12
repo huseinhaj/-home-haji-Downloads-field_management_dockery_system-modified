@@ -196,6 +196,21 @@
     }
     .footer-note a { color: var(--navy); }
 
+    .stamp-block {
+      text-align: center;
+      padding: 0.6rem 2rem 0.2rem;
+    }
+    .school-stamp {
+      width: 110px;
+      height: 110px;
+      object-fit: contain;
+    }
+    .stamp-caption {
+      font-size: 0.65rem;
+      color: #666;
+      margin-top: -0.2rem;
+    }
+
     .grade-key {
       display: flex;
       justify-content: center;
@@ -368,6 +383,16 @@
         </div>
         {% endif %}
       </div>
+
+      {% if stamp_uri %}
+      <div class="stamp-block">
+        <img src="{{ stamp_uri }}" alt="Muhuri wa Mkuu wa Shule" class="school-stamp">
+        <div class="stamp-caption">
+          {% if headmaster_name %}<strong>{{ headmaster_name }}</strong><br>{% endif %}
+          Signature &amp; Stamp &mdash; Head of School
+        </div>
+      </div>
+      {% endif %}
 
       <!-- Footer -->
       <div class="footer-note">
