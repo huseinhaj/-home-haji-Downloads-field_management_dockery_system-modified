@@ -2660,8 +2660,30 @@ def set_class_teacher(request, exam_id):
         exam.term_closing_date = request.POST.get('term_closing_date') or None
         exam.term_opening_date = request.POST.get('term_opening_date') or None
         exam.date = parse_date(request.POST.get('exam_date') or '')
+
+        partner_id = request.POST.get('report_partner_id') or ''
+        partner = None
+        if partner_id.isdigit():
+            partner = (
+                Exam.objects.filter(pk=int(partner_id))
+                .exclude(pk=exam.pk)
+                .first()
+            )
+            if partner and (
+                partner.school_id != exam.school_id
+                or partner.year != exam.year
+                or partner.form != exam.form
+            ):
+                partner = None
+                messages.warning(
+                    request,
+                    "Mtihani wa pili uliochaguliwa si wa shule, mwaka na "
+                    "form hii — mchanganyiko haujahifadhiwa.",
+                )
+        exam.report_partner = partner
         exam.save(update_fields=[
-            'class_teacher', 'headmaster_comment', 'term_closing_date', 'term_opening_date', 'date',
+            'class_teacher', 'headmaster_comment', 'term_closing_date',
+            'term_opening_date', 'date', 'report_partner',
         ])
         messages.success(request, "Mipangilio ya ripoti ya mwanafunzi imehifadhiwa.")
         return redirect(reverse('set_class_teacher', args=[exam.id]))
@@ -2669,8 +2691,24 @@ def set_class_teacher(request, exam_id):
     from .services.combined_report_service import find_partner_exam
     partner = find_partner_exam(exam)
 
+    # Mitihani inayoweza kuunganishwa: shule/mwaka/form hiyo hiyo, isiyo
+    # huu, na yenye matokeo. Stream haichujwi kwa makusudi — inasaidia
+    # pale mitihani ya form moja imeandikishwa kwa stream tofauti.
+    candidates = Exam.objects.none()
+    if exam.school_id:
+        candidates = (
+            Exam.objects.filter(
+                school_id=exam.school_id, year=exam.year, form=exam.form,
+            )
+            .exclude(pk=exam.pk)
+            .annotate(_n_results=Count('examresult'))
+            .filter(_n_results__gt=0)
+            .order_by('stream', '-date', 'name')
+        )
+
     return render(request, 'results/set_class_teacher.html', {
         'exam': exam, 'teachers': teachers, 'partner_exam': partner,
+        'candidate_exams': candidates,
     })
 
 

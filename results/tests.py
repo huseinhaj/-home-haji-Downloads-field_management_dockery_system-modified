@@ -1368,6 +1368,34 @@ class SetClassTeacherAndConductTests(TestCase):
 		self.assertEqual(self.exam.headmaster_comment, 'Hongera kwa juhudi.')
 		self.assertEqual(str(self.exam.term_closing_date), '2026-11-01')
 
+	def test_academic_can_pick_manual_report_partner(self):
+		partner = Exam.objects.create(
+			name='Annual 2026', year=2026, form=2, school=self.school,
+			exam_type='ANNUAL',
+		)
+		client = Client()
+		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+		response = client.post(reverse('set_class_teacher', args=[self.exam.id]), {
+			'report_partner_id': str(partner.id),
+		})
+		self.assertEqual(response.status_code, 302)
+		self.exam.refresh_from_db()
+		self.assertEqual(self.exam.report_partner_id, partner.id)
+
+	def test_report_partner_from_another_school_is_rejected(self):
+		other_school = School.objects.create(name='Nyingine Secondary', region='Dodoma', district='Dodoma')
+		foreign = Exam.objects.create(
+			name='Annual 2026', year=2026, form=2, school=other_school,
+		)
+		client = Client()
+		client.force_login(self.academic, backend='results.backends.ResultsAuthBackend')
+		response = client.post(reverse('set_class_teacher', args=[self.exam.id]), {
+			'report_partner_id': str(foreign.id),
+		})
+		self.assertEqual(response.status_code, 302)
+		self.exam.refresh_from_db()
+		self.assertIsNone(self.exam.report_partner_id)
+
 	def test_non_academic_cannot_assign_class_teacher(self):
 		client = Client()
 		client.force_login(self.class_teacher, backend='results.backends.ResultsAuthBackend')

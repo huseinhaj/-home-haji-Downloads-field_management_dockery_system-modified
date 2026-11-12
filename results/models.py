@@ -326,6 +326,17 @@ class Exam(models.Model):
         'JointExam', null=True, blank=True, on_delete=models.SET_NULL,
         related_name='school_exams',
     )
+    # Mtihani wa pili unaounganishwa na huu kwenye report card (wastani wa
+    # alama). Akiwekwa, huchukua nafasi ya mchanganyiko wa kiotomatiki wa
+    # miezi (3+6, 9+11/12) — hivyo mtu anaweza kuchagua mwenza hata kama
+    # tarehe za mitihani hazipo au hazioani.
+    report_partner = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='report_partner_for',
+        help_text="Mtihani wa pili unaounganishwa na huu kwenye report card "
+                  "(wastani wa alama). Akiwekwa, huchukua nafasi ya "
+                  "mchanganyiko wa kiotomatiki wa miezi.",
+    )
 
     # ── Full report-card extras (class-teacher/headmaster sign-off) ────
     # One value per exam, shared by every student's report card — not

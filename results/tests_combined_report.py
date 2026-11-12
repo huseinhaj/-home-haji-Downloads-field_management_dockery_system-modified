@@ -85,6 +85,44 @@ class CombinedReportTests(TestCase):
         self.assertIsNone(find_partner_exam(self.unpaired))
         self.assertIsNone(build_combined_payload(self.unpaired))
 
+    def test_manual_partner_overrides_unpaired_month(self):
+        self._seed(self.unpaired, [60] * 7, [40] * 7)
+        self._seed(self.dec, [80] * 7, [60] * 7)
+        self.unpaired.report_partner = self.dec
+        self.unpaired.save(update_fields=['report_partner'])
+
+        self.assertEqual(find_partner_exam(self.unpaired), self.dec)
+        payload = build_combined_payload(self.unpaired)
+        self.assertIsNotNone(payload)
+        maths = self.subjects[0]
+        self.assertEqual(
+            payload['scores_by_student'][self.student_a.id][maths.id], 70,
+        )
+
+    def test_manual_partner_works_from_either_side(self):
+        self._seed(self.unpaired, [60] * 7, [40] * 7)
+        self._seed(self.dec, [80] * 7, [60] * 7)
+        self.dec.report_partner = self.unpaired
+        self.dec.save(update_fields=['report_partner'])
+
+        self.dec.refresh_from_db()
+        self.unpaired.refresh_from_db()
+        self.assertEqual(find_partner_exam(self.unpaired), self.dec)
+        self.assertEqual(find_partner_exam(self.dec), self.unpaired)
+
+    def test_manual_partner_does_not_change_stored_results(self):
+        self._seed(self.unpaired, [60] * 7, [40] * 7)
+        self._seed(self.dec, [80] * 7, [60] * 7)
+        self.unpaired.report_partner = self.dec
+        self.unpaired.save(update_fields=['report_partner'])
+        stored = ProcessedResult.objects.create(
+            exam=self.unpaired, student=self.student_a,
+            total_score=420, average_score=60, points=17, division='II', position=1,
+        )
+        build_combined_payload(self.unpaired)
+        stored.refresh_from_db()
+        self.assertEqual(stored.total_score, 420)
+
     def test_combined_scores_are_average_of_both_exams(self):
         self._seed(self.sep, [60] * 7, [40] * 7)
         self._seed(self.dec, [80] * 7, [60] * 7)

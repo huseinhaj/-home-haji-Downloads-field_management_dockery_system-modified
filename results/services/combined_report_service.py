@@ -59,11 +59,25 @@ def _exam_month(exam):
 def find_partner_exam(exam):
     """Mweza wa mtihani huu ndani ya muhula (au None).
 
-    Huchagua Exam ya shule hiyo hiyo, mwaka huo, form/stream hiyo hiyo,
-    yenye tarehe kwenye mwezi wa mwenza na yenye matokeo. Aina ya mtihani
-    inayotarajiwa kwa mwezi huo hupendelewa (mf. TERMINAL kwa Desemba),
-    kisha tarehe ya karibuni zaidi.
+    Mwenza aliyechaguliwa manua kwenye Report Card Settings anapendelewa
+    (upande wowote — exam.report_partner au exam inayomtaja huyu kama
+    report_partner). Bila mwenza wa manua, huchagua Exam ya shule hiyo
+    hiyo, mwaka huo, form/stream hiyo hiyo, yenye tarehe kwenye mwezi wa
+    mwenza na yenye matokeo. Aina ya mtihani inayotarajiwa kwa mwezi huo
+    hupendelewa (mf. TERMINAL kwa Desemba), kisha tarehe ya karibuni zaidi.
     """
+    if exam.report_partner_id and exam.report_partner:
+        return exam.report_partner
+
+    # Mwenza wa manua upande wa pili (mtihani mwingine unamchagua huu).
+    reverse = (
+        Exam.objects.filter(report_partner_id=exam.pk)
+        .exclude(pk=exam.pk)
+        .first()
+    )
+    if reverse is not None:
+        return reverse
+
     month = _exam_month(exam)
     if month not in TERM_PAIRS or not exam.school_id:
         return None

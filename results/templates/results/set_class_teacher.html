@@ -74,6 +74,29 @@
       </small>
     </div>
 
+    <div class="ct-field">
+      <label for="report_partner_id">
+        {% if LANG == 'sw' %}Mtihani wa Pili wa Ripoti{% else %}Second Exam to Combine{% endif %}
+      </label>
+      <select name="report_partner_id" id="report_partner_id">
+        <option value="">
+          {% if LANG == 'sw' %}— Automatic (kwa mwezi) —{% else %}— Automatic (by month) —{% endif %}
+        </option>
+        {% for c in candidate_exams %}
+        <option value="{{ c.id }}" {% if exam.report_partner_id == c.id %}selected{% endif %}>
+          {{ c.name }} — {{ c.get_exam_type_display }}{% if c.date %} ({{ c.date|date:'m/Y' }}){% endif %}{% if c.stream %} · Stream {{ c.stream }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+      <small style="color:#888;font-size:0.72rem;">
+        {% if LANG == 'sw' %}
+        Chagua mtihani wa pili ili ripoti ionyeshe wastani wa mitihani yote mawili — hii inachukua nafasi ya mchanganyiko wa kiotomatiki wa miezi. Acha "Automatic" kama unataka mfumo uchague kwa mwezi.
+        {% else %}
+        Pick the second exam so the report shows the average of both exams — this overrides the automatic month pairing. Leave "Automatic" to let the system pair by month.
+        {% endif %}
+      </small>
+    </div>
+
     {% if partner_exam %}
     <div class="ct-field" style="background:#e6f7ec;border:1px solid #a3d9b4;padding:0.7rem 0.9rem;border-radius:2px;font-size:0.8rem;color:#1a7a3b;">
       ✅ {% if LANG == 'sw' %}Ripoti ya mwanafunzi itachanganya:{% else %}Student report will combine:{% endif %}
@@ -82,7 +105,7 @@
     </div>
     {% else %}
     <div class="ct-field" style="background:#fffbf0;border:1px solid #f0d58c;padding:0.7rem 0.9rem;border-radius:2px;font-size:0.8rem;color:#8a6d1f;">
-      ⚠️ {% if LANG == 'sw' %}Hakuna mtihani wa mwenza wa muhula uliobainika. Weka tarehe ya mtihani huu na wa mwenza wake (mf. Septemba na Novemba) ili ripoti ijumuishe wastani.{% else %}No partner exam found for this term. Set this exam's date and its partner's date (e.g. September and November) so the report includes the average.{% endif %}
+      ⚠️ {% if LANG == 'sw' %}Hakuna mtihani wa mwenza wa muhula uliobainika. Chagua mtihani wa pili hapo juu, au weka tarehe za mitihani yote mawili (mf. Septemba na Novemba) ili ripoti ijumuishe wastani.{% else %}No partner exam found for this term. Pick the second exam above, or set both exams' dates (e.g. September and November) so the report includes the average.{% endif %}
     </div>
     {% endif %}
 
