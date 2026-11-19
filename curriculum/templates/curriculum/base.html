@@ -903,18 +903,9 @@
                 <a href="{% url 'curriculum:lesson_plan' %}" class="nav-link-tlm {% if request.resolver_match.url_name == 'lesson_plan' %}active{% endif %}">
                     <i class="fas fa-chalkboard"></i> Lesson Plan
                 </a>
-                <a href="{% url 'curriculum:lesson_notes' %}" class="nav-link-tlm {% if request.resolver_match.url_name == 'lesson_notes' %}active{% endif %}">
-                    <i class="fas fa-sticky-note"></i> Notes
-                </a>
-                <a href="{% url 'curriculum:notes_library' %}" class="nav-link-tlm {% if request.resolver_match.url_name == 'notes_library' %}active{% endif %}">
-                    <i class="fas fa-book-open"></i> Maktaba
-                </a>
                 {% if user.is_authenticated or tlm_teacher %}
                 <a href="{% url 'curriculum:submit_logbook' %}" class="nav-link-tlm {% if request.resolver_match.url_name == 'submit_logbook' %}active{% endif %}">
                     <i class="fas fa-book-medical"></i> Logbook
-                </a>
-                <a href="{% url 'curriculum:pace_advisor' %}" class="nav-link-tlm {% if request.resolver_match.url_name == 'pace_advisor' %}active{% endif %}">
-                    <i class="fas fa-gauge-high"></i> Pace AI
                 </a>
                 <span class="nav-sep" style="display:inline-block;width:1px;height:20px;background:var(--border-color);margin:0 2px;"></span>
                 {% if user.is_authenticated %}
@@ -965,19 +956,10 @@
             <a href="{% url 'curriculum:lesson_plan' %}" class="{% if request.resolver_match.url_name == 'lesson_plan' %}active{% endif %}">
                 <i class="fas fa-chalkboard"></i> Lesson Plan
             </a>
-            <a href="{% url 'curriculum:lesson_notes' %}" class="{% if request.resolver_match.url_name == 'lesson_notes' %}active{% endif %}">
-                <i class="fas fa-sticky-note"></i> Lesson Notes
-            </a>
-            <a href="{% url 'curriculum:notes_library' %}" class="{% if request.resolver_match.url_name == 'notes_library' %}active{% endif %}">
-                <i class="fas fa-book-open"></i> Maktaba ya Notes &amp; Papers
-            </a>
             {% if user.is_authenticated or tlm_teacher %}
             <div class="nav-sep"></div>
             <a href="{% url 'curriculum:submit_logbook' %}" class="{% if request.resolver_match.url_name == 'submit_logbook' %}active{% endif %}">
                 <i class="fas fa-book-medical"></i> Logbook (Jaza + PDF)
-            </a>
-            <a href="{% url 'curriculum:pace_advisor' %}" class="{% if request.resolver_match.url_name == 'pace_advisor' %}active{% endif %}">
-                <i class="fas fa-gauge-high"></i> Pace Advisor (AI)
             </a>
             <div class="nav-sep"></div>
             {% if user.is_authenticated %}
@@ -1006,12 +988,6 @@
         </a>
         <a href="{% url 'curriculum:lesson_plan' %}" class="{% if request.resolver_match.url_name == 'lesson_plan' %}active{% endif %}">
             <i class="fas fa-chalkboard"></i> Lesson
-        </a>
-        <a href="{% url 'curriculum:lesson_notes' %}" class="{% if request.resolver_match.url_name == 'lesson_notes' %}active{% endif %}">
-            <i class="fas fa-sticky-note"></i> Notes
-        </a>
-        <a href="{% url 'curriculum:notes_library' %}" class="{% if request.resolver_match.url_name == 'notes_library' %}active{% endif %}">
-            <i class="fas fa-book-open"></i> Maktaba
         </a>
         {% if user.is_authenticated or tlm_teacher %}
         <a href="{% url 'curriculum:submit_logbook' %}" class="{% if request.resolver_match.url_name == 'submit_logbook' %}active{% endif %}">

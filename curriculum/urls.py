@@ -31,27 +31,6 @@ urlpatterns = [
     path('lesson-plan/download-all-pdf/', views.download_all_lesson_plans_pdf, name='download_all_lesson_plans_pdf'),
     path('lesson-plan/download-word/', views.download_lesson_plan_word, name='download_lesson_plan_word'),
 
-    # Lesson Notes
-    path('lesson-notes/', views.lesson_notes_view, name='lesson_notes'),
-    path('notes-library/', views.notes_library_view, name='notes_library'),
-    path('notes-library/ajax-topics/', views.ajax_notes_library_topics, name='notes_library_topics'),
-    path('notes-library/ajax-syllabus/', views.ajax_notes_library_syllabus, name='notes_library_syllabus'),
-    path('notes-library/ajax-generate/', views.ajax_generate_full_notes, name='notes_library_generate'),
-    path('notes-library/ajax-notes/', views.ajax_notes_library_notes, name='notes_library_notes'),
-    path('notes-library/ajax-papers/', views.ajax_past_papers, name='notes_library_papers'),
-    path('notes-library/note-pdf/', views.download_note_pdf, name='notes_library_note_pdf'),
-    path('notes-library/ajax-books/', views.ajax_notes_library_books, name='notes_library_books'),
-    path('notes-library/material-file/', views.notes_library_material_file, name='notes_library_material_file'),
-    path('notes-library/textbook-file/<int:book_id>/', views.notes_library_textbook_file, name='notes_library_textbook_file'),
-    path('notes-library/upload-book/', views.ajax_upload_textbook, name='notes_library_upload_book'),
-    path('notes-library/delete-book/', views.ajax_delete_textbook, name='notes_library_delete_book'),
-    path('notes-library/marking-schemes/', views.ajax_list_marking_schemes, name='notes_library_marking_schemes'),
-    path('notes-library/marking-scheme/generate/', views.ajax_generate_marking_scheme, name='notes_library_generate_scheme'),
-    path('notes-library/marking-scheme/delete/', views.ajax_delete_marking_scheme, name='notes_library_delete_scheme'),
-    path('notes-library/marking-scheme/pdf/<int:scheme_id>/', views.download_marking_scheme_pdf, name='notes_library_scheme_pdf'),
-    path('lesson-notes/ajax-save/', views.ajax_save_lesson_note, name='save_lesson_note'),
-    path('lesson-notes/ajax-get/<int:note_id>/', views.ajax_get_lesson_note, name='get_lesson_note'),
-    path('lesson-notes/ajax-delete/', views.ajax_delete_lesson_note, name='delete_lesson_note'),
 
     # Logbook
     path('logbook/', views.submit_logbook, name='submit_logbook'),
@@ -72,12 +51,6 @@ urlpatterns = [
     path('scheme/ajax-save-edits/', views.ajax_save_scheme_edits, name='save_scheme_edits'),
     path('lesson-plan/ajax-save-edits/', views.ajax_save_lesson_edits, name='save_lesson_edits'),
 
-    # Template Library
-    path('library/', views.template_library, name='template_library'),
-
-    # Testimonials
-    path('api/submit-testimonial/', views.ajax_submit_testimonial, name='submit_testimonial'),
-
     # Profile auto-save (for old users)
     path('api/update-teacher-profile/', views.ajax_update_teacher_profile, name='update_teacher_profile'),
 
@@ -92,33 +65,11 @@ urlpatterns = [
     path('api/search-schools/', views.ajax_search_schools, name='search_schools'),
     path('api/submit-update-comment/', views.ajax_submit_update_comment, name='submit_update_comment'),
 
-    # My Lessons Library
-    path('my-lessons/', views.my_lessons, name='my_lessons'),
-
     # Full Subject Lesson Generation
     path('lesson-plan/ajax-generate-all/', views.ajax_generate_all_lessons, name='ajax_generate_all_lessons'),
     path('lesson-plan/ajax-generate-one/', views.ajax_generate_one_lesson, name='ajax_generate_one_lesson'),
 
-    # AI Lesson Notes generation from Lesson Plan
-    path('lesson-notes/ajax-generate-from-lp/', views.ajax_generate_lesson_note_from_lp, name='generate_lesson_note_from_lp'),
-
     # Diagnostic: test AI API keys
     path('api/ai-diagnostic/', views.ajax_ai_diagnostic, name='ai_diagnostic'),
 
-    # ── Exam Generator (NECTA format) ──
-    path('exams/', views.exam_generator_view, name='exam_generator'),
-    path('exams/ajax-generate/', views.ajax_generate_exam, name='ajax_generate_exam'),
-    path('exams/<int:exam_id>/', views.exam_detail_view, name='exam_detail'),
-    path('exams/<int:exam_id>/pdf/<str:mode>/', views.download_exam_pdf, name='download_exam_pdf'),
-    path('exams/<int:exam_id>/word/<str:mode>/', views.download_exam_word, name='download_exam_word'),
-    path('my-exams/', views.my_exams, name='my_exams'),
-    path('exams/ajax-delete/', views.ajax_delete_exam, name='ajax_delete_exam'),
-
-    # ── AI Pace Advisor ──
-    path('pace-advisor/', views.pace_advisor, name='pace_advisor'),
-    path('pace-advisor/ajax-advice/', views.ajax_pace_advice, name='ajax_pace_advice'),
-
-    # ── Results Upload + AI Analysis ──
-    path('results-analysis/', views.results_analysis, name='results_analysis'),
-    path('results-analysis/ajax-analyze/', views.ajax_analyze_results, name='ajax_analyze_results'),
 ]
