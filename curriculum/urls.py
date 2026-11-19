@@ -65,6 +65,9 @@ urlpatterns = [
     path('api/search-schools/', views.ajax_search_schools, name='search_schools'),
     path('api/submit-update-comment/', views.ajax_submit_update_comment, name='submit_update_comment'),
 
+    # Testimonials — form ya maoni kwenye landing page inaituma hapa
+    path('api/submit-testimonial/', views.ajax_submit_testimonial, name='submit_testimonial'),
+
     # Full Subject Lesson Generation
     path('lesson-plan/ajax-generate-all/', views.ajax_generate_all_lessons, name='ajax_generate_all_lessons'),
     path('lesson-plan/ajax-generate-one/', views.ajax_generate_one_lesson, name='ajax_generate_one_lesson'),
