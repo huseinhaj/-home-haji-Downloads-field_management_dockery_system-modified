@@ -339,6 +339,13 @@
               </div>
             </div>
 
+            <div class="mb-2" style="margin-top:6px;">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;">
+                <input type="checkbox" id="handwrittenToggle" style="width:14px;height:14px;">
+                Pakua PDF kwa mkono (handwritten)
+              </label>
+            </div>
+
             <!-- Topic: AI suggestions + manual (SINGLE TOPIC mode tu) -->
             <div id="singleTopicSection">
             <div class="mb-2">
@@ -565,9 +572,6 @@
               <i class="fas fa-chalkboard text-gold"></i> Generated Lesson Plan
             </h3>
             <div style="display:flex;gap:5px;flex-wrap:wrap;">
-              <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;margin:0;cursor:pointer;" title="Pakua PDF ionekane kama iliandikwa kwa mkono">
-                <input type="checkbox" id="handwrittenToggle" style="width:14px;height:14px;"> Kwa mkono
-              </label>
               <button class="btn-tlm btn-primary-tlm btn-sm-tlm" id="downloadPdfBtn">
                 <i class="fas fa-file-pdf"></i> PDF
               </button>
@@ -1024,6 +1028,7 @@ document.addEventListener('DOMContentLoaded', function() {
       school_name: document.getElementById('school_name').value,
       language: document.getElementById('langSelect')?.value || 'auto',
       format: getSelectedFormat(),
+      handwritten: document.getElementById('handwrittenToggle')?.checked || false,
       period: document.getElementById('period').value,
       time: document.getElementById('period_time').value,
     };

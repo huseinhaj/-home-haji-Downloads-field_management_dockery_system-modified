@@ -305,6 +305,14 @@
               </div>
             </div>
             <div class="row g-1 mb-2">
+              <div class="col-12">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;margin:0;">
+                  <input type="checkbox" id="handwrittenToggle" style="width:14px;height:14px;">
+                  Pakua PDF kwa mkono (handwritten)
+                </label>
+              </div>
+            </div>
+            <div class="row g-1 mb-2">
               <div class="col-6">
                 <label>Periods/Week</label>
                 <input class="form-control" id="periods_per_week" value="8" type="number" min="1" max="50">
@@ -460,9 +468,6 @@
               <button class="btn-tlm btn-primary-tlm btn-sm-tlm" id="copyTableBtn" title="Nakili kwenye clipboard">
                 <i class="fas fa-copy"></i> Nakili
               </button>
-              <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;margin:0;cursor:pointer;" title="Pakua PDF ionekane kama iliandikwa kwa mkono">
-                <input type="checkbox" id="handwrittenToggle" style="width:14px;height:14px;"> Kwa mkono
-              </label>
               <button class="btn-tlm btn-primary-tlm btn-sm-tlm" id="downloadPdfBtn">
                 <i class="fas fa-file-pdf"></i> PDF
               </button>
@@ -781,6 +786,7 @@ document.addEventListener('DOMContentLoaded', function() {
       breaks: breaks,
       language: document.getElementById('langSelect')?.value || 'auto',
       format: schemeFormat,
+      handwritten: document.getElementById('handwrittenToggle')?.checked || false,
     };
   }
 
