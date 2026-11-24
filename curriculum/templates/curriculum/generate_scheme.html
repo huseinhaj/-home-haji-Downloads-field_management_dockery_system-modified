@@ -884,6 +884,7 @@ document.addEventListener('DOMContentLoaded', function() {
           currentSavedId = data.saved_id;
           renderTable(data.data);
           resultsArea.style.display = 'block';
+          resultsArea.scrollIntoView({behavior:'smooth', block:'start'});
           const fd = getFormData();
           document.getElementById('resultMetaInfo').textContent = fd.teacher_name ?
             `${fd.teacher_name} — ${fd.class_name}${fd.stream ? fd.stream : ''} — Term ${fd.term} ${fd.year}` : '';
@@ -1024,6 +1025,7 @@ document.addEventListener('DOMContentLoaded', function() {
         renderTable(data.data);
         if (data.meta && data.meta.format) setSchemeFormat(data.meta.format);
         resultsArea.style.display = 'block';
+          resultsArea.scrollIntoView({behavior:'smooth', block:'start'});
         emptyState.style.display = 'none';
         showToast('📂 Scheme imepakiwa kutoka hifadhi!', 'success');
       } else {
@@ -1266,6 +1268,7 @@ document.addEventListener('DOMContentLoaded', function() {
         renderTable(data.data);
         if (data.meta && data.meta.format) setSchemeFormat(data.meta.format);
         resultsArea.style.display = 'block';
+          resultsArea.scrollIntoView({behavior:'smooth', block:'start'});
         emptyState.style.display = 'none';
         // Auto-fill form meta from the loaded scheme
         if (data.meta) {

@@ -1160,6 +1160,7 @@ document.addEventListener('DOMContentLoaded', function() {
           currentSavedId = data.saved_id;
           renderLesson(data.data);
           resultsArea.style.display = 'block';
+          resultsArea.scrollIntoView({behavior:'smooth', block:'start'});
           showToast('✅ Lesson Plan imezalishwa!', 'success');
           // ── Auto-save teacher profile (for old users with incomplete data) ──
           autoSaveTeacherProfile(getFormData());
@@ -1509,6 +1510,7 @@ document.addEventListener('DOMContentLoaded', function() {
           restoreFormFromSavedData(data.form_data);
         }
         document.getElementById('resultsArea').style.display = 'block';
+      document.getElementById('resultsArea').scrollIntoView({behavior:'smooth', block:'start'});
         document.getElementById('emptyState').style.display = 'none';
         showToast('📂 Lesson Plan imepakiwa!', 'success');
       } else {
@@ -1770,6 +1772,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!results || results.length === 0) { panel.style.display = 'none'; return; }
     // Hakikisha resultsArea iko visible hata kama loadSavedBtn itashindikana
     document.getElementById('resultsArea').style.display = 'block';
+      document.getElementById('resultsArea').scrollIntoView({behavior:'smooth', block:'start'});
     document.getElementById('emptyState').style.display = 'none';
     document.getElementById('fullSubjectPanelTitle').textContent = `Full Subject — ${subjectName}: ${results.length} topics`;
     let html = '';
@@ -1813,9 +1816,9 @@ document.addEventListener('DOMContentLoaded', function() {
       currentSavedId = data.saved_id;
       renderLesson(data.data);
       document.getElementById('resultsArea').style.display = 'block';
+      document.getElementById('resultsArea').scrollIntoView({behavior:'smooth', block:'start'});
       document.getElementById('emptyState').style.display = 'none';
       if (data.form_data) restoreFormFromSavedData(data.form_data);
-      document.getElementById('resultsArea').scrollIntoView({behavior: 'smooth', block: 'start'});
     });
   }
 
@@ -1889,6 +1892,7 @@ document.addEventListener('DOMContentLoaded', function() {
             restoreFormFromSavedData(data.form_data);
           }
           document.getElementById('resultsArea').style.display = 'block';
+      document.getElementById('resultsArea').scrollIntoView({behavior:'smooth', block:'start'});
           document.getElementById('emptyState').style.display = 'none';
           showToast('📂 Lesson Plan imepakiwa kutoka maktaba!', 'success');
         }
