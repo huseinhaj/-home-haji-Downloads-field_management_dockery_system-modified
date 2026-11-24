@@ -85,6 +85,9 @@
         badge.className = 'badge ' + (d.status === 'done' ? 'bg-success' : 'bg-danger');
         pbar.style.width = '100%';
         if (d.status === 'error') showError(d);
+        {% if run.kind == 'read' %}
+        setTimeout(function(){ window.location.href = "{% url 'ess_tracker:ess_logout' %}"; }, 4000);
+        {% endif %}
         return;
       }
       const total = d.required || 1;

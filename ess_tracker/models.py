@@ -49,6 +49,7 @@ class TeacherProfile(models.Model):
         help_text='Jina au barua pepe unayotumia kuingia ESS (e-Tendaji)')
     ess_password = models.CharField(max_length=512, blank=True)
     ess_ready = models.BooleanField(default=False, editable=False)
+    ess_login_locked = models.BooleanField(default=False, help_text='Imefungwa baada ya login ya kwanza - admin acheki')
     school_open = models.DateField(
         null=True, blank=True,
         help_text='Tarehe shule inavyofunguliwa mwaka huu (mf. 2026-01-12)')

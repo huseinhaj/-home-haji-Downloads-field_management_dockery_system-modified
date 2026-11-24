@@ -46,6 +46,11 @@ def ess_login(request):
                 ess_username__iexact=username).select_related('user').first()
         if profile is None:
             messages.error(request, 'Username hii ya ESS haijasajiliwa. Jisajili kwanza.')
+        elif getattr(profile, 'ess_login_locked', False):
+            messages.error(
+                request,
+                f'Akaunti yako imeshasajiliwa na kufuliwa. Wasiliana na '
+                f'msimamizi/ICT: {ESS_ADMIN_PHONE} kwa msaada.')
         elif not _ess_password_ok(profile, password):
             if profile.ess_password and not profile.ess_password_plain:
                 messages.error(
@@ -57,7 +62,19 @@ def ess_login(request):
         else:
             login(request, profile.user, backend='field_app.backends.EmailBackend')
             request.session.set_expiry(60 * 60 * 24 * 30)  # wiki 4 — ingia mara moja
+            # Funga akaunti baada ya login ya kwanza
+            profile.ess_login_locked = True
+            profile.save(update_fields=['ess_login_locked'])
             messages.success(request, 'Umeingia e-Tendaji (ESS).')
+            # Vuta asilimia kutoka ESS official kiotomatiki kama akaunti iko tayari
+            if getattr(profile, 'ess_ready', False):
+                try:
+                    from .runs import launch_run
+                    run = launch_run(profile=profile, kind='read', task=run_ess_read,
+                                     thread_target=_run_read)
+                    return redirect('ess_tracker:ess_fill_status', run_id=run.id)
+                except Exception:
+                    pass
             return redirect(_safe_next(request))
     return render(request, 'ess_tracker/ess_login.html', {'hide_navbar': True})
 
