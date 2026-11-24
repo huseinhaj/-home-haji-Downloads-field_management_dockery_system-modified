@@ -2127,10 +2127,22 @@ def download_scheme_pdf(request):
     # VETA → mistari ya pambizo black; level zingine → rangi za theme (kama mwanzo)
     _is_veta = _is_veta_level(teacher, education_level, fmt)
 
-    # Handwritten mode → tumia font ya mkono kwa maandishi yote
+    # Handwritten mode → tumia font ya mkono, wino wa bluu, karatasi plain
+    _ink = colors.HexColor('#1e3a8a')
+    _hdr_text = colors.white
+    _body_text = colors.black
     if handwritten and _HANDWRITING_AVAILABLE:
         _BODY_FONT = _HANDWRITING_FONT
         _HEAD_FONT = _HANDWRITING_FONT_BOLD
+        NAVY = _ink
+        GOLD = _ink
+        DARK_GOLD = _ink
+        STRIPE = colors.white
+        LIGHT = colors.white
+        BORDER = colors.HexColor('#bfc9db')
+        _hdr_text = _ink
+        _body_text = _ink
+        _fs = max(_fs, 11)
 
     # ── Create Tanzania flag watermark ──
     _tz_watermark = None
@@ -2230,9 +2242,9 @@ def download_scheme_pdf(request):
     elements.append(HRFlowable(width="100%", thickness=1.5, color=NAVY, spaceAfter=12))
 
     cell_style = ParagraphStyle('SchCell', fontName=_BODY_FONT, fontSize=_fs,
-                                leading=_fs + 3.5, wordWrap='LTR')
+                                leading=_fs + 3.5, textColor=_body_text, wordWrap='LTR')
     hdr_style = ParagraphStyle('SchHdr', fontName=_HEAD_FONT, fontSize=_fs,
-                               leading=_fs + 3.5, textColor=colors.white, wordWrap='LTR', alignment=1)
+                               leading=_fs + 3.5, textColor=_hdr_text, wordWrap='LTR', alignment=1)
 
     # ── TAMISEMI Header (centered, bold) — bilingual ──
     _pm = _tl("PRIME MINISTER'S OFFICE", was_swahili)
@@ -2291,8 +2303,7 @@ def download_scheme_pdf(request):
         # Kichwa kimepambwa kwa rangi ya accent — background bar
         elements.append(Spacer(1, 2))
         elements.append(Paragraph(_pm,
-            ParagraphStyle('MH1f', fontName=_HEAD_FONT, fontSize=14, alignment=1,
-                           textColor=colors.white, spaceAfter=1, backColor=NAVY,
+            ParagraphStyle('MH1f', fontName=_HEAD_FONT, fontSize=14, alignment=1,                            textColor=_hdr_text, spaceAfter=1, backColor=(colors.white if handwritten and _HANDWRITING_AVAILABLE else NAVY),
                            borderPadding=3, borderWidth=0)))
         elements.append(Paragraph(_ralg,
             ParagraphStyle('MH2f', fontName=_HEAD_FONT, fontSize=10, alignment=1,
@@ -3396,10 +3407,22 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
     # VETA → mistari ya pambizo black; level zingine → rangi za theme (kama mwanzo)
     _is_veta = _is_veta_level(teacher, form.get('education_level', ''), form.get('format', ''))
 
-    # Handwritten mode → tumia font ya mkono kwa maandishi yote
+    # Handwritten mode → tumia font ya mkono, wino wa bluu, karatasi plain
+    _ink = colors.HexColor('#1e3a8a')
+    _hdr_text = colors.white
+    _body_text = colors.black
     if handwritten and _HANDWRITING_AVAILABLE:
         _BODY_FONT = _HANDWRITING_FONT
         _HEAD_FONT = _HANDWRITING_FONT_BOLD
+        NAVY = _ink
+        GOLD = _ink
+        DARK_GOLD = _ink
+        STRIPE = colors.white
+        LIGHT = colors.white
+        BORDER = colors.HexColor('#bfc9db')
+        _hdr_text = _ink
+        _body_text = _ink
+        _lp_fs = max(_lp_fs, 11)
 
     # ── Determine language mode for LP (check form data for language hint) ──
     _lp_subj = str(form.get('subject', '') or '')
@@ -3419,11 +3442,10 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
     doc = SimpleDocTemplate(buffer, pagesize=A4,
                             rightMargin=36, leftMargin=36, topMargin=40, bottomMargin=30)
     elements = []
-
-    normal = ParagraphStyle('LP_N', fontName=_BODY_FONT, fontSize=_lp_fs + 0.5, leading=_lp_fs + 4.5, wordWrap='LTR', spaceAfter=3)
+    normal = ParagraphStyle('LP_N', fontName=_BODY_FONT, fontSize=_lp_fs + 0.5, leading=_lp_fs + 4.5, textColor=_body_text, wordWrap='LTR', spaceAfter=3)
     section_hdr = ParagraphStyle('LP_H', fontName=_HEAD_FONT, fontSize=_lp_fs + 1.5, textColor=NAVY, spaceBefore=10, spaceAfter=4)
-    cell_s = ParagraphStyle('LP_C', fontName=_BODY_FONT, fontSize=_lp_fs, leading=_lp_fs + 3, wordWrap='LTR')
-    hdr_s = ParagraphStyle('LP_CH', fontName=_HEAD_FONT, fontSize=_lp_fs, leading=_lp_fs + 3, textColor=colors.white, wordWrap='LTR', alignment=1)
+    cell_s = ParagraphStyle('LP_C', fontName=_BODY_FONT, fontSize=_lp_fs, leading=_lp_fs + 3, textColor=_body_text, wordWrap='LTR')
+    hdr_s = ParagraphStyle('LP_CH', fontName=_HEAD_FONT, fontSize=_lp_fs, leading=_lp_fs + 3, textColor=_hdr_text, wordWrap='LTR', alignment=1)
     label_s = ParagraphStyle('LP_L', fontName=_HEAD_FONT, fontSize=_lp_fs, leading=_lp_fs + 3, textColor=NAVY)
     title_s = ParagraphStyle('LP_TITLE', fontName=_HEAD_FONT, fontSize=16, alignment=1, textColor=NAVY, spaceAfter=1)
     subtitle_s = ParagraphStyle('LP_SUBTITLE', fontName=_HEAD_FONT, fontSize=_lp_fs - 0.5, alignment=1, textColor=DARK_GOLD, spaceAfter=1)
@@ -3547,8 +3569,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
         # Navy background bar, white text
         elements.append(Spacer(1, 2))
         elements.append(Paragraph(_pm,
-            ParagraphStyle('MH1f', fontName=_HEAD_FONT, fontSize=14, alignment=1,
-                           textColor=colors.white, spaceAfter=1, backColor=NAVY,
+            ParagraphStyle('MH1f', fontName=_HEAD_FONT, fontSize=14, alignment=1,                            textColor=_hdr_text, spaceAfter=1, backColor=(colors.white if handwritten and _HANDWRITING_AVAILABLE else NAVY),
                            borderPadding=3, borderWidth=0)))
         elements.append(Paragraph(_ralg,
             ParagraphStyle('MH2f', fontName=_HEAD_FONT, fontSize=10, alignment=1,
