@@ -108,6 +108,53 @@ except Exception:
 _HANDWRITING_FONT = 'Caveat'
 _HANDWRITING_FONT_BOLD = 'Caveat-Bold'
 
+import math as _hw_math
+
+class _HandwrittenTable(Table):
+    """Table variant whose grid lines are drawn with a slight hand-drawn wobble."""
+    _hw_wobble = 0.0
+    _hw_phase = 0.0
+
+    def _drawLines(self):
+        if not getattr(self, '_hw_wobble', 0):
+            return super()._drawLines()
+        orig_line = self.canv.line
+        amp = float(self._hw_wobble)
+        phase_seed = float(getattr(self, '_hw_phase', 0.0))
+
+        def wavy_line(x0, y0, x1, y1):
+            dx = x1 - x0
+            dy = y1 - y0
+            length = _hw_math.hypot(dx, dy)
+            if length < 1.5:
+                orig_line(x0, y0, x1, y1)
+                return
+            steps = max(4, min(24, int(length / 6)))
+            inv = 1.0 / length
+            px = -dy * inv
+            py = dx * inv
+            phase = (x0 * 0.013 + y0 * 0.029 + x1 * 0.017 + y1 * 0.023 + phase_seed)
+            px0, py0 = x0, y0
+            for i in range(1, steps + 1):
+                t = i / steps
+                x = x0 + dx * t
+                y = y0 + dy * t
+                env = _hw_math.sin(t * _hw_math.pi)
+                w = amp * env * _hw_math.sin(t * length * 0.28 + phase)
+                nx = x + px * w
+                ny = y + py * w
+                orig_line(px0, py0, nx, ny)
+                px0, py0 = nx, ny
+
+        self.canv.line = wavy_line
+        try:
+            super()._drawLines()
+        finally:
+            self.canv.line = orig_line
+
+# Use the wobbly table everywhere; wobble is 0 unless handwritten mode is on.
+Table = _HandwrittenTable
+
 # Convenience flag: is at least one handwriting font actually registered?
 _HANDWRITING_AVAILABLE = False
 for _n, _b, _rf, _bf in _HANDWRITING_FONTS:
@@ -117,6 +164,16 @@ for _n, _b, _rf, _bf in _HANDWRITING_FONTS:
         break
     except Exception:
         continue
+
+
+def _handwriting_seed(teacher):
+    """Stable seed for a teacher's handwriting (id + phone + name)."""
+    parts = '|'.join([
+        str(getattr(teacher, 'id', '') or ''),
+        str(getattr(teacher, 'phone_number', '') or ''),
+        str(getattr(teacher, 'full_name', '') or ''),
+    ])
+    return sum(ord(c) for c in parts)
 
 
 def _pick_handwriting_fonts(teacher):
@@ -135,11 +192,7 @@ def _pick_handwriting_fonts(teacher):
             pass
     if not registered:
         return _HANDWRITING_FONT, _HANDWRITING_FONT_BOLD
-    seed = 0
-    try:
-        seed = sum(ord(c) for c in (getattr(teacher, 'full_name', '') or ''))
-    except Exception:
-        seed = 0
+    seed = _handwriting_seed(teacher)
     idx = seed % len(registered)
     return registered[idx]
 
@@ -2168,6 +2221,7 @@ def download_scheme_pdf(request):
     _hdr_text = colors.white
     _body_text = colors.black
     _hdr_bg = NAVY
+    _muted = colors.HexColor('#555555')
     _tilt = 0
     if handwritten and _HANDWRITING_AVAILABLE:
         _BODY_FONT, _HEAD_FONT = _pick_handwriting_fonts(teacher)
@@ -2176,12 +2230,17 @@ def download_scheme_pdf(request):
         DARK_GOLD = _ink
         STRIPE = colors.white
         LIGHT = colors.white
-        BORDER = colors.HexColor('#bfc9db')
+        BORDER = _ink
         _hdr_text = _ink
         _body_text = _ink
+        _muted = _ink
         _hdr_bg = colors.white
-        _tilt = ((sum(ord(c) for c in (getattr(teacher, 'full_name', '') or '')) % 7) - 3) * 0.15
+        _is_veta = False
+        _tilt = ((_handwriting_seed(teacher) % 7) - 3) * 0.15
         _fs = max(_fs, 11)
+        _header_style = (_pdf_profile_seed(teacher, '', '') // 11) % 8
+        _cover_style = (_pdf_profile_seed(teacher, '', '') // 13) % 3
+    _HandwrittenTable._hw_wobble = 0.6 if (handwritten and _HANDWRITING_AVAILABLE) else 0.0
 
     # ── Create Tanzania flag watermark ──
     _tz_watermark = None
@@ -2290,10 +2349,14 @@ def download_scheme_pdf(request):
     elements.append(HRFlowable(width="100%", thickness=3, color=GOLD, spaceAfter=2))
     elements.append(HRFlowable(width="100%", thickness=1.5, color=NAVY, spaceAfter=12))
 
+    _hw_indent = ((_handwriting_seed(teacher) % 4) if (handwritten and _HANDWRITING_AVAILABLE) else 0)
+    _hw_lead = ((_handwriting_seed(teacher) // 7) % 3 if (handwritten and _HANDWRITING_AVAILABLE) else 0)
     cell_style = ParagraphStyle('SchCell', fontName=_BODY_FONT, fontSize=_fs,
-                                leading=_fs + 3.5, textColor=_body_text, wordWrap='LTR')
+                                leading=_fs + 3.5 + _hw_lead, textColor=_body_text,
+                                leftIndent=_hw_indent, wordWrap='LTR')
     hdr_style = ParagraphStyle('SchHdr', fontName=_HEAD_FONT, fontSize=_fs,
-                               leading=_fs + 3.5, textColor=_hdr_text, wordWrap='LTR', alignment=1)
+                               leading=_fs + 3.5 + _hw_lead, textColor=_hdr_text,
+                               leftIndent=_hw_indent, wordWrap='LTR', alignment=1)
 
     # ── TAMISEMI Header (centered, bold) — bilingual ──
     _pm = _tl("PRIME MINISTER'S OFFICE", was_swahili)
@@ -2333,7 +2396,7 @@ def download_scheme_pdf(request):
         elements.append(Spacer(1, 4))
         elements.append(Paragraph(_pm,
             ParagraphStyle('MH1d', fontName=_HEAD_FONT, fontSize=13, alignment=1,
-                           textColor=NAVY, spaceAfter=0, backColor=colors.HexColor('#F0F4FF'))))
+                           textColor=NAVY, spaceAfter=0, backColor=(colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#F0F4FF')))))
         elements.append(Paragraph(_ralg,
             ParagraphStyle('MH2d', fontName=_HEAD_FONT, fontSize=10, alignment=1,
                            textColor=GOLD, spaceAfter=2)))
@@ -2347,7 +2410,7 @@ def download_scheme_pdf(request):
                            borderWidth=0, borderPadding=2)))
         elements.append(Paragraph(_ralg,
             ParagraphStyle('MH2e', fontName=_HEAD_FONT, fontSize=9, alignment=1,
-                           textColor=colors.HexColor('#555555'), spaceAfter=4)))
+                           textColor=_muted, spaceAfter=4)))
     elif _style_seed == 5:
         # Kichwa kimepambwa kwa rangi ya accent — background bar
         elements.append(Spacer(1, 2))
@@ -2382,8 +2445,8 @@ def download_scheme_pdf(request):
                        textColor=NAVY, spaceAfter=10)))
 
     # ── Cover info: styled table (bilingual labels) ──
-    lbl = ParagraphStyle('lbl', fontName=_HEAD_FONT, fontSize=10, textColor=colors.white, leading=14)
-    val = ParagraphStyle('val', fontName=_BODY_FONT, fontSize=10, textColor=colors.HexColor('#222222'), leading=14)
+    lbl = ParagraphStyle('lbl', fontName=_HEAD_FONT, fontSize=10, textColor=_hdr_text, leading=14)
+    val = ParagraphStyle('val', fontName=_BODY_FONT, fontSize=10, textColor=_body_text, leading=14)
     def _pv(value, fallback=''):
         """Safe value for Paragraph — kamwe usipe None."""
         return str(value or fallback)
@@ -2400,10 +2463,10 @@ def download_scheme_pdf(request):
     ]
     info_table = Table(info_rows, colWidths=[180, 280])
     info_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), NAVY),
-        ('TEXTCOLOR', (0, 0), (0, -1), colors.white),
-        ('BACKGROUND', (1, 0), (1, -1), colors.HexColor('#FAFBFD')),
-        ('ROWBACKGROUNDS', (1, 0), (1, -1), [colors.HexColor('#FAFBFD'), STRIPE]),
+        ('BACKGROUND', (0, 0), (0, -1), (colors.white if handwritten and _HANDWRITING_AVAILABLE else NAVY)),
+        ('TEXTCOLOR', (0, 0), (0, -1), (_hdr_text if handwritten and _HANDWRITING_AVAILABLE else colors.white)),
+        ('BACKGROUND', (1, 0), (1, -1), (colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#FAFBFD'))),
+        ('ROWBACKGROUNDS', (1, 0), (1, -1), [(colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#FAFBFD')), STRIPE]),
         ('GRID', (0, 0), (-1, -1), 0.5, BORDER),
         ('BOX', (0, 0), (-1, -1), 2, GOLD),
         ('LINEBELOW', (0, 0), (-1, 0), 1.2, GOLD),
@@ -2425,7 +2488,7 @@ def download_scheme_pdf(request):
         _lb_head = ParagraphStyle('LbHead', fontName=_HEAD_FONT, fontSize=_fs + 1.5,
                                   leading=_fs + 5, textColor=NAVY, spaceBefore=10, spaceAfter=3)
         _lb_val = ParagraphStyle('LbVal', fontName=_BODY_FONT, fontSize=_fs,
-                                 leading=_fs + 3.5, textColor=colors.HexColor('#222222'),
+                                 leading=_fs + 3.5, textColor=_body_text,
                                  leftIndent=14, spaceAfter=2.5)
         _field_order = ['Month', 'Week', 'Number of Periods', 'Main Competence', 'Specific Competences',
                         'Main Learning Activities', 'Specific Learning Activities',
@@ -3471,6 +3534,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
     _hdr_text = colors.white
     _body_text = colors.black
     _hdr_bg = NAVY
+    _muted = colors.HexColor('#555555')
     _tilt = 0
     if handwritten and _HANDWRITING_AVAILABLE:
         _BODY_FONT, _HEAD_FONT = _pick_handwriting_fonts(teacher)
@@ -3479,12 +3543,17 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
         DARK_GOLD = _ink
         STRIPE = colors.white
         LIGHT = colors.white
-        BORDER = colors.HexColor('#bfc9db')
+        BORDER = _ink
         _hdr_text = _ink
         _body_text = _ink
+        _muted = _ink
         _hdr_bg = colors.white
-        _tilt = ((sum(ord(c) for c in (getattr(teacher, 'full_name', '') or '')) % 7) - 3) * 0.15
+        _is_veta = False
+        _tilt = ((_handwriting_seed(teacher) % 7) - 3) * 0.15
         _lp_fs = max(_lp_fs, 11)
+        _header_style = (_pdf_profile_seed(teacher, '', '') // 11) % 8
+        _cover_style = (_pdf_profile_seed(teacher, '', '') // 13) % 3
+    _HandwrittenTable._hw_wobble = 0.6 if (handwritten and _HANDWRITING_AVAILABLE) else 0.0
 
     # ── Determine language mode for LP (check form data for language hint) ──
     _lp_subj = str(form.get('subject', '') or '')
@@ -3504,10 +3573,12 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
     doc = SimpleDocTemplate(buffer, pagesize=A4,
                             rightMargin=36, leftMargin=36, topMargin=40, bottomMargin=30)
     elements = []
-    normal = ParagraphStyle('LP_N', fontName=_BODY_FONT, fontSize=_lp_fs + 0.5, leading=_lp_fs + 4.5, textColor=_body_text, wordWrap='LTR', spaceAfter=3)
-    section_hdr = ParagraphStyle('LP_H', fontName=_HEAD_FONT, fontSize=_lp_fs + 1.5, textColor=NAVY, spaceBefore=10, spaceAfter=4)
-    cell_s = ParagraphStyle('LP_C', fontName=_BODY_FONT, fontSize=_lp_fs, leading=_lp_fs + 3, textColor=_body_text, wordWrap='LTR')
-    hdr_s = ParagraphStyle('LP_CH', fontName=_HEAD_FONT, fontSize=_lp_fs, leading=_lp_fs + 3, textColor=_hdr_text, wordWrap='LTR', alignment=1)
+    _lp_hw_indent = ((_handwriting_seed(teacher) % 3) if (handwritten and _HANDWRITING_AVAILABLE) else 0)
+    _lp_hw_lead = ((_handwriting_seed(teacher) // 5) % 2 if (handwritten and _HANDWRITING_AVAILABLE) else 0)
+    normal = ParagraphStyle('LP_N', fontName=_BODY_FONT, fontSize=_lp_fs + 0.5, leading=_lp_fs + 4.5 + _lp_hw_lead, textColor=_body_text, leftIndent=_lp_hw_indent, wordWrap='LTR', spaceAfter=3)
+    section_hdr = ParagraphStyle('LP_H', fontName=_HEAD_FONT, fontSize=_lp_fs + 1.5, textColor=NAVY, spaceBefore=10, spaceAfter=4, leftIndent=_lp_hw_indent)
+    cell_s = ParagraphStyle('LP_C', fontName=_BODY_FONT, fontSize=_lp_fs, leading=_lp_fs + 3 + _lp_hw_lead, textColor=_body_text, leftIndent=_lp_hw_indent, wordWrap='LTR')
+    hdr_s = ParagraphStyle('LP_CH', fontName=_HEAD_FONT, fontSize=_lp_fs, leading=_lp_fs + 3 + _lp_hw_lead, textColor=_hdr_text, leftIndent=_lp_hw_indent, wordWrap='LTR', alignment=1)
     label_s = ParagraphStyle('LP_L', fontName=_HEAD_FONT, fontSize=_lp_fs, leading=_lp_fs + 3, textColor=NAVY)
     title_s = ParagraphStyle('LP_TITLE', fontName=_HEAD_FONT, fontSize=16, alignment=1, textColor=NAVY, spaceAfter=1)
     subtitle_s = ParagraphStyle('LP_SUBTITLE', fontName=_HEAD_FONT, fontSize=_lp_fs - 0.5, alignment=1, textColor=DARK_GOLD, spaceAfter=1)
@@ -3533,7 +3604,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
                            textColor=NAVY, spaceAfter=2)))
         elements.append(Paragraph("(Format to be used in E-Logbook. Type against each item)",
             ParagraphStyle('LP_SUB_NB', fontName=_BODY_FONT, fontSize=9, alignment=1,
-                           textColor=colors.HexColor('#C00000'), spaceAfter=10)))
+                           textColor=(_ink if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#C00000')), spaceAfter=10)))
 
         # ── Info block (hati ya E-Logbook — bila jedwali) ──
         def _dotted(value):
@@ -3618,7 +3689,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
         # Navy with decorative border
         elements.append(Paragraph(_pm,
             ParagraphStyle('MH1d', fontName=_HEAD_FONT, fontSize=13, alignment=1,
-                           textColor=NAVY, spaceAfter=0, backColor=colors.HexColor('#F0F4FF'))))
+                           textColor=NAVY, spaceAfter=0, backColor=(colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#F0F4FF')))))
         elements.append(Paragraph(_ralg,
             ParagraphStyle('MH2d', fontName=_HEAD_FONT, fontSize=10, alignment=1,
                            textColor=GOLD, spaceAfter=2)))
@@ -3626,7 +3697,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
         # Inline style
         elements.append(Paragraph(f"{_pm}  |  {_ralg}",
             ParagraphStyle('MH1e', fontName=_HEAD_FONT, fontSize=8, alignment=1,
-                           textColor=colors.HexColor('#555555'), spaceAfter=2)))
+                           textColor=_muted, spaceAfter=2)))
     elif _lp_style_seed == 5:
         # Navy background bar, white text
         elements.append(Spacer(1, 2))
@@ -3662,11 +3733,11 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
     _year_label = _tl('Year', _lp_sw)
     elements.append(Paragraph(
         f"{form.get('subject','')}  |  {form.get('class_name','')}  |  {_term_label} {form.get('term','')} {_year_label} {form.get('year','')}",
-        ParagraphStyle('LP_S', fontName=_BODY_FONT, fontSize=9, alignment=1, textColor=colors.grey, spaceAfter=6)))
+        ParagraphStyle('LP_S', fontName=_BODY_FONT, fontSize=9, alignment=1, textColor=_muted, spaceAfter=6)))
 
     # ── Cover info: styled table (bilingual labels) ──
-    lbl = ParagraphStyle('lbl', fontName=_HEAD_FONT, fontSize=10, textColor=colors.white, leading=14)
-    val = ParagraphStyle('val', fontName=_BODY_FONT, fontSize=10, textColor=colors.HexColor('#222222'), leading=14)
+    lbl = ParagraphStyle('lbl', fontName=_HEAD_FONT, fontSize=10, textColor=_hdr_text, leading=14)
+    val = ParagraphStyle('val', fontName=_BODY_FONT, fontSize=10, textColor=_body_text, leading=14)
 
     def _pv(value, fallback=''):
         """Safe value for Paragraph — kamwe usipe None."""
@@ -3684,10 +3755,10 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
     ]
     info_table = Table(info_rows, colWidths=[180, 220])
     info_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), NAVY),
-        ('TEXTCOLOR', (0, 0), (0, -1), colors.white),
-        ('BACKGROUND', (1, 0), (1, -1), colors.HexColor('#FAFBFD')),
-        ('ROWBACKGROUNDS', (1, 0), (1, -1), [colors.HexColor('#FAFBFD'), STRIPE]),
+        ('BACKGROUND', (0, 0), (0, -1), (colors.white if handwritten and _HANDWRITING_AVAILABLE else NAVY)),
+        ('TEXTCOLOR', (0, 0), (0, -1), (_hdr_text if handwritten and _HANDWRITING_AVAILABLE else colors.white)),
+        ('BACKGROUND', (1, 0), (1, -1), (colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#FAFBFD'))),
+        ('ROWBACKGROUNDS', (1, 0), (1, -1), [(colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#FAFBFD')), STRIPE]),
         ('GRID', (0, 0), (-1, -1), 0.5, BORDER),
         ('BOX', (0, 0), (-1, -1), 2, GOLD),
         ('LINEBELOW', (0, 0), (-1, 0), 1.2, GOLD),
