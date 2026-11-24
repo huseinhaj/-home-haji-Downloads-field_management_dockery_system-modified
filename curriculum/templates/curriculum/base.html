@@ -989,6 +989,9 @@
         <a href="{% url 'curriculum:lesson_plan' %}" class="{% if request.resolver_match.url_name == 'lesson_plan' %}active{% endif %}">
             <i class="fas fa-chalkboard"></i> Lesson
         </a>
+        <a href="/shule/" target="_blank" rel="noopener">
+            <i class="fas fa-chart-bar"></i> Matokeo
+        </a>
         {% if user.is_authenticated or tlm_teacher %}
         <a href="{% url 'curriculum:submit_logbook' %}" class="{% if request.resolver_match.url_name == 'submit_logbook' %}active{% endif %}">
             <i class="fas fa-book-medical"></i> Logbook
@@ -1004,49 +1007,6 @@
         </a>
         {% endif %}
     </nav>
-
-        <!-- SYSTEM ANNOUNCEMENT BANNER (dismissible, 2-day expiry) -->
-    <div id="systemUpdateBanner" style="display:none;">
-        <div style="
-            position: sticky; top: 0; z-index: 95;
-            background: linear-gradient(135deg, #1F7A3D, #0D4F2B);
-            color: white;
-            padding: 0.65rem 1rem;
-            font-size: var(--font-size-sm);
-            text-align: center;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        ">
-            <i class="fas fa-bullhorn" style="color:var(--gold-400);font-size:0.9rem;"></i>
-            <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                <strong style="background:var(--gold-400);color:#0D4F2B;padding:1px 8px;border-radius:4px;font-size:10px;text-transform:uppercase;">Muhimu</strong>
-                <span>
-                    <strong>📱 Sakinisha App — Matokeo ya Shule</strong>
-                    Pakia alama za mitihani, tengeneza PDF na ugawie wanafunzi matokeo — moja kwa moja kutoka simu yako.
-                </span>
-            </span>
-            <a href="/shule/" style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.15);padding:3px 10px;border-radius:var(--radius-full);font-size:10px;text-decoration:none;color:white;">
-                <i class="fas fa-download"></i> Fungua App
-            </a>
-            <button onclick="dismissUpdateBanner()" style="
-                background: rgba(255,255,255,0.1);
-                border: none;
-                border-radius: 50%;
-                color: white;
-                width: 26px; height: 26px;
-                cursor: pointer;
-                font-size: 13px;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                transition: background 0.2s;
-            " aria-label="Funga" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'"><i class="fas fa-times"></i></button>
-        </div>
-    </div>
 
     <!-- Messages -->
     {% if messages %}

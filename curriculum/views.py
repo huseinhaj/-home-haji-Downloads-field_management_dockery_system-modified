@@ -639,7 +639,7 @@ def get_tlm_teacher(request):
 # =============================================================================
 
 # TTLs (seconds)
-_CACHE_LANDING = 600       # landing stats — 10 min
+_CACHE_LANDING = 60       # landing stats — 1 min
 _CACHE_STATIC = 600        # subjects/levels/classes — 10 min
 _CACHE_SYLLABUS = 3600     # topics/subtopics — 1 hour
 _CACHE_LOGBOOK_COUNTS = 120  # logbook PDF counts — 2 min
@@ -1624,6 +1624,18 @@ def generate_scheme_view(request):
         except StudentTeacher.DoesNotExist:
             pass
 
+    # Internal stats for schemes
+    _now = timezone.now()
+    _today = _now.replace(hour=0, minute=0, second=0, microsecond=0)
+    _week = _today - timedelta(days=_today.weekday())
+    _month = _today.replace(day=1)
+    scheme_stats = {
+        'total': SchemeOfWork.objects.count(),
+        'today': SchemeOfWork.objects.filter(created_at__gte=_today).count(),
+        'week': SchemeOfWork.objects.filter(created_at__gte=_week).count(),
+        'month': SchemeOfWork.objects.filter(created_at__gte=_month).count(),
+    }
+
     # Get teacher info for auto-fill
     teacher_name = teacher.full_name if teacher else ''
     teacher_school_name = teacher.school.name if teacher and teacher.school else ''
@@ -1652,6 +1664,7 @@ def generate_scheme_view(request):
         'teacher_subject_level': teacher_subject_level,
         'teacher_class_name': teacher_class_name,
         'teacher_stream': teacher_stream,
+        'scheme_stats': scheme_stats,
         'teacher_total_boys': teacher_total_boys,
         'teacher_total_girls': teacher_total_girls,
     })
@@ -1948,6 +1961,7 @@ RULES:
                     else:
                         scheme_obj = SchemeOfWork.objects.create(student=None, **defaults)
                     saved_id = scheme_obj.id
+                    cache.delete('curriculum_landing_stats')
         except Exception as save_err:
             logger.warning(f"[Scheme] Save error (non-fatal): {save_err}")
 
@@ -3291,6 +3305,7 @@ All text values must be plain strings. Use REAL Tanzanian content. Return ONLY t
                         generated_by_ai=True,
                     )
                     saved_id = lp_obj.id
+                    cache.delete('curriculum_landing_stats')
         except Exception as save_err:
             logger.warning(f"[Curriculum] LessonPlan save error: {save_err}")
 
@@ -6473,6 +6488,7 @@ Return ONLY the JSON object. ALL content must be specific to {topic.name}."""
                         remarks=lesson_data.get('remarks', ''),
                         generated_by_ai=True,
                     )
+                    cache.delete('curriculum_landing_stats')
                     results.append({
                         'id': lp.id,
                         'topic': topic.name,
@@ -6786,6 +6802,7 @@ All text values must be plain strings. Use REAL Tanzanian content. Return ONLY t
             format=fmt,
             generated_by_ai=True,
         )
+        cache.delete('curriculum_landing_stats')
 
         return JsonResponse({
             'success': True,
