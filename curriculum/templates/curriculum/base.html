@@ -989,8 +989,8 @@
         <a href="{% url 'curriculum:lesson_plan' %}" class="{% if request.resolver_match.url_name == 'lesson_plan' %}active{% endif %}">
             <i class="fas fa-chalkboard"></i> Lesson
         </a>
-        <a href="/shule/" target="_blank" rel="noopener">
-            <i class="fas fa-chart-bar"></i> Matokeo
+        <a href="{% url 'curriculum:edit_hub' %}" class="{% if request.resolver_match.url_name == 'edit_hub' %}active{% endif %}">
+            <i class="fas fa-edit"></i> Hariri
         </a>
         {% if user.is_authenticated or tlm_teacher %}
         <a href="{% url 'curriculum:submit_logbook' %}" class="{% if request.resolver_match.url_name == 'submit_logbook' %}active{% endif %}">

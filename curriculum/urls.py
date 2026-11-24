@@ -16,6 +16,7 @@ urlpatterns = [
 
     # Scheme of Work
     path('scheme/', views.generate_scheme_view, name='generate_scheme'),
+    path('hariri/', views.edit_hub, name='edit_hub'),
     path('scheme/ajax-generate/', views.ajax_generate_scheme, name='ajax_generate_scheme'),
     path('scheme/ajax-load-saved/', views.ajax_load_saved_scheme, name='ajax_load_saved_scheme'),
     path('scheme/ajax-load-by-id/<int:scheme_id>/', views.ajax_load_scheme_by_id, name='ajax_load_scheme_by_id'),

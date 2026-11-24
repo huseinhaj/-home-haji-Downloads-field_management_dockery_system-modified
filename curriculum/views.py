@@ -1593,6 +1593,40 @@ def _get_lp_language_instruction(language_param, subject, school_level):
 # SCHEME OF WORK
 # =============================================================================
 
+def edit_hub(request):
+    """Hub ya kuhariri schemes/lesson plans zilizopo (badala ya Matokeo)."""
+    teacher = get_tlm_teacher(request)
+    schemes = []
+    lessons = []
+    if request.user.is_authenticated and _is_curriculum_user(request.user):
+        try:
+            student = StudentTeacher.objects.get(user=request.user)
+            schemes = (SchemeOfWork.objects
+                       .filter(student=student)
+                       .select_related('subject', 'school')
+                       .order_by('-updated_at')[:30])
+            lessons = (LessonPlan.objects
+                       .filter(student=student)
+                       .select_related('subject', 'school')
+                       .order_by('-created_at')[:30])
+        except StudentTeacher.DoesNotExist:
+            pass
+    if not schemes and not lessons and teacher and getattr(teacher, 'school', None):
+        schemes = (SchemeOfWork.objects
+                   .filter(school=teacher.school, teacher_name=teacher.full_name)
+                   .select_related('subject', 'school')
+                   .order_by('-updated_at')[:30])
+        lessons = (LessonPlan.objects
+                   .filter(school=teacher.school, teacher_name=teacher.full_name)
+                   .select_related('subject', 'school')
+                   .order_by('-created_at')[:30])
+    return render(request, 'curriculum/edit_hub.html', {
+        'schemes': schemes,
+        'lessons': lessons,
+        'teacher': teacher,
+    })
+
+
 def generate_scheme_view(request):
     """Display scheme of work generator form — requires TLM registration."""
     teacher = get_tlm_teacher(request)
