@@ -359,7 +359,7 @@ def pwa_manifest(request):
 
 def pwa_service_worker(request):
     """Serve the Service Worker JS for offline caching & PWA install."""
-    sw_code = '''const CACHE_NAME = "tlm-tanzania-v1";
+    sw_code = '''const CACHE_NAME = "tlm-tanzania-v2";
 const STATIC_ASSETS = [
   "/static/curriculum/pwa-icon-192.png",
   "/static/curriculum/pwa-icon-512.png",
