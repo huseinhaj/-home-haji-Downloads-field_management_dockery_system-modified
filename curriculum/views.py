@@ -1716,7 +1716,7 @@ def ajax_generate_scheme(request):
         stream = data.get('stream', '')
         subject = data.get('subject', '')
         term = data.get('term', 'I')
-        year = data.get('year', '2026')
+        year = data.get('year', str(datetime.now().year))
         syllabus = data.get('syllabus', 'New Syllabus')
         total_weeks = int(data.get('total_weeks', 12))
         periods_per_week = int(data.get('periods_per_week', 8))
