@@ -91,6 +91,7 @@ _HANDWRITING_FONTS = [
     ('Caveat', 'Caveat-Bold', 'Caveat-Regular.ttf', 'Caveat-Bold.ttf'),
     ('PatrickHand', 'PatrickHand', 'PatrickHand-Regular.ttf', None),
     ('Kalam', 'Kalam', 'Kalam-Regular.ttf', None),
+    ('ShadowsIntoLight', 'ShadowsIntoLight', 'ShadowsIntoLight-Regular.ttf', None),
 ]
 try:
     for _name, _bold, _reg_file, _bold_file in _HANDWRITING_FONTS:
@@ -164,6 +165,45 @@ for _n, _b, _rf, _bf in _HANDWRITING_FONTS:
         break
     except Exception:
         continue
+
+
+import random as _hw_random
+
+
+def _hw_vary_text(text, style, rng):
+    """Vary font size word-by-word to mimic natural handwriting speed."""
+    if not isinstance(text, str) or '<' in text:
+        return text
+    fs = getattr(style, 'fontSize', 11) or 11
+    words = text.split(' ')
+    out = []
+    for w in words:
+        if not w:
+            out.append(w)
+            continue
+        delta = rng.choice((-1.0, -0.5, 0.0, 0.5, 1.0))
+        size = max(8.0, min(15.0, float(fs) + delta))
+        out.append(f'<font size="{size:.1f}">{w}</font>')
+    return ' '.join(out)
+
+
+def _hw_vary_elements(elements, teacher):
+    """Apply per-word size variation to paragraphs (incl. table cells)."""
+    if not (teacher is not None):
+        return
+    rng = _hw_random.Random(_handwriting_seed(teacher))
+    for el in list(elements):
+        if isinstance(el, Paragraph):
+            new_text = _hw_vary_text(el.text, el.style, rng)
+            if new_text != el.text:
+                elements[elements.index(el)] = Paragraph(new_text, el.style)
+        elif isinstance(el, Table):
+            for row in getattr(el, '_cellvalues', []) or []:
+                for i, cell in enumerate(row):
+                    if isinstance(cell, Paragraph):
+                        new_text = _hw_vary_text(cell.text, cell.style, rng)
+                        if new_text != cell.text:
+                            row[i] = Paragraph(new_text, cell.style)
 
 
 def _handwriting_seed(teacher):
@@ -2561,6 +2601,8 @@ def download_scheme_pdf(request):
         tbl.setStyle(TableStyle(ts))
         elements.append(tbl)
 
+    if handwritten and _HANDWRITING_AVAILABLE:
+        _hw_vary_elements(elements, teacher)
     doc.build(elements, onFirstPage=_scheme_cover, onLaterPages=_scheme_header)
     buffer.seek(0)
     response = HttpResponse(buffer, content_type='application/pdf')
@@ -3648,6 +3690,8 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
             elements.append(Spacer(1, 6))
             elements.append(Paragraph(f"<b>Remarks:</b> {remarks}", normal))
 
+        if handwritten and _HANDWRITING_AVAILABLE:
+            _hw_vary_elements(elements, teacher)
         doc.build(elements, onFirstPage=_lp_cover, onLaterPages=_lp_header)
         buffer.seek(0)
         return buffer
@@ -3919,6 +3963,8 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
         else:
             elements.append(Paragraph(str(remarks), normal))
 
+    if handwritten and _HANDWRITING_AVAILABLE:
+        _hw_vary_elements(elements, teacher)
     doc.build(elements, onFirstPage=_lp_cover, onLaterPages=_lp_header)
     buffer.seek(0)
     return buffer
