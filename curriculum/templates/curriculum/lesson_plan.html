@@ -565,6 +565,9 @@
               <i class="fas fa-chalkboard text-gold"></i> Generated Lesson Plan
             </h3>
             <div style="display:flex;gap:5px;flex-wrap:wrap;">
+              <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;margin:0;cursor:pointer;" title="Pakua PDF ionekane kama iliandikwa kwa mkono">
+                <input type="checkbox" id="handwrittenToggle" style="width:14px;height:14px;"> Kwa mkono
+              </label>
               <button class="btn-tlm btn-primary-tlm btn-sm-tlm" id="downloadPdfBtn">
                 <i class="fas fa-file-pdf"></i> PDF
               </button>
@@ -1780,7 +1783,7 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchForBlob('{% url "curriculum:download_lesson_plan_pdf" %}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
-      body: JSON.stringify({lesson_data: currentLessonData, form_data: currentFormData}),
+      body: JSON.stringify({lesson_data: currentLessonData, form_data: currentFormData, handwritten: document.getElementById('handwrittenToggle')?.checked || false}),
     }, currentFormData, 'pdf');
   });
 
@@ -1818,7 +1821,7 @@ document.addEventListener('DOMContentLoaded', function() {
       fetchForBlob('{% url "curriculum:download_lesson_plan_pdf" %}', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
-        body: JSON.stringify({lesson_data: data.data, form_data: data.form_data}),
+        body: JSON.stringify({lesson_data: data.data, form_data: data.form_data, handwritten: document.getElementById('handwrittenToggle')?.checked || false}),
       }, data.form_data, 'pdf');
     });
   }
@@ -1865,7 +1868,7 @@ document.addEventListener('DOMContentLoaded', function() {
     fetch('{% url "curriculum:download_all_lesson_plans_pdf" %}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
-      body: JSON.stringify({ lp_ids: ids }),
+      body: JSON.stringify({ lp_ids: ids, handwritten: document.getElementById('handwrittenToggle')?.checked || false }),
     })
     .then(r => {
       if (!r.ok) return r.text().then(t => { throw new Error('HTTP ' + r.status + ': ' + t.substring(0, 150)); });
@@ -1889,7 +1892,7 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchForBlob('{% url "curriculum:download_lesson_plan_pdf" %}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
-      body: JSON.stringify({lesson_data: currentLessonData, form_data: currentFormData}),
+      body: JSON.stringify({lesson_data: currentLessonData, form_data: currentFormData, handwritten: document.getElementById('handwrittenToggle')?.checked || false}),
     }, currentFormData, 'pdf');
   });
 
@@ -1969,7 +1972,7 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchForBlob('{% url "curriculum:download_lesson_plan_word" %}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
-      body: JSON.stringify({lesson_data: currentLessonData, form_data: currentFormData}),
+      body: JSON.stringify({lesson_data: currentLessonData, form_data: currentFormData, handwritten: document.getElementById('handwrittenToggle')?.checked || false}),
     }, currentFormData, 'docx');
   });
 });
