@@ -2167,6 +2167,8 @@ def download_scheme_pdf(request):
     _ink = colors.HexColor('#1e3a8a')
     _hdr_text = colors.white
     _body_text = colors.black
+    _hdr_bg = NAVY
+    _tilt = 0
     if handwritten and _HANDWRITING_AVAILABLE:
         _BODY_FONT, _HEAD_FONT = _pick_handwriting_fonts(teacher)
         NAVY = _ink
@@ -2177,6 +2179,8 @@ def download_scheme_pdf(request):
         BORDER = colors.HexColor('#bfc9db')
         _hdr_text = _ink
         _body_text = _ink
+        _hdr_bg = colors.white
+        _tilt = ((sum(ord(c) for c in (getattr(teacher, 'full_name', '') or '')) % 7) - 3) * 0.15
         _fs = max(_fs, 11)
 
     # ── Create Tanzania flag watermark ──
@@ -2201,6 +2205,11 @@ def download_scheme_pdf(request):
         """Draw border frame with flag watermark. VETA → mistari black; level
         zingine → rangi za theme (kama mwanzo). Sura: 0=double+corners,
         1=double plain, 2=single."""
+        if handwritten and _HANDWRITING_AVAILABLE:
+            _pw = doc_obj.pagesize[0]; _ph = doc_obj.pagesize[1]
+            can.translate(_pw/2, _ph/2)
+            can.rotate(_tilt)
+            can.translate(-_pw/2, -_ph/2)
         can.saveState()
         pw = doc_obj.pagesize[0]
         ph = doc_obj.pagesize[1]
@@ -2234,7 +2243,7 @@ def download_scheme_pdf(request):
                 can.rect(18, 18, 14, 8, fill=1, stroke=0)
                 can.rect(pw - 32, 18, 14, 8, fill=1, stroke=0)
         # ── Draw Tanzania flag watermark ──
-        if _tz_watermark:
+        if _tz_watermark and not (handwritten and _HANDWRITING_AVAILABLE):
             try:
                 _tz_watermark.seek(0)
                 fw = pw * 0.50
@@ -2248,6 +2257,11 @@ def download_scheme_pdf(request):
     # ── Page header (appears from page 2 onwards) ──
     def _scheme_header(can, doc_obj):
         """Draw NAME OF SCHOOL / TEACHER header bar on pages 2+."""
+        if handwritten and _HANDWRITING_AVAILABLE:
+            _pw = doc_obj.pagesize[0]; _ph = doc_obj.pagesize[1]
+            can.translate(_pw/2, _ph/2)
+            can.rotate(_tilt)
+            can.translate(-_pw/2, -_ph/2)
         can.saveState()
         can.setFont(_HEAD_FONT, 7)
         can.setFillColor(NAVY)
@@ -2468,7 +2482,7 @@ def download_scheme_pdf(request):
 
         tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
         ts = [
-            ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+            ('BACKGROUND', (0, 0), (-1, 0), _hdr_bg),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
             ('GRID', (0, 0), (-1, -1), 0.35, BORDER),
@@ -3225,6 +3239,11 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
         """Draw border frame with flag watermark. VETA → mistari black; level
         zingine → rangi za theme (kama mwanzo). Sura: 0=double+corners,
         1=double plain, 2=single."""
+        if handwritten and _HANDWRITING_AVAILABLE:
+            _pw = doc_obj.pagesize[0]; _ph = doc_obj.pagesize[1]
+            can.translate(_pw/2, _ph/2)
+            can.rotate(_tilt)
+            can.translate(-_pw/2, -_ph/2)
         can.saveState()
         pw = doc_obj.pagesize[0]
         ph = doc_obj.pagesize[1]
@@ -3258,7 +3277,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
                 can.rect(36, 36, 14, 8, fill=1, stroke=0)
                 can.rect(pw - 50, 36, 14, 8, fill=1, stroke=0)
         # ── Draw Tanzania flag watermark ──
-        if _tz_watermark:
+        if _tz_watermark and not (handwritten and _HANDWRITING_AVAILABLE):
             try:
                 _tz_watermark.seek(0)
                 fw = pw * 0.45
@@ -3272,6 +3291,11 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
     # ── Page header (appears from page 2 onwards) ──
     def _lp_header(can, doc_obj):
         """Draw NAME OF SCHOOL / TEACHER header bar on pages 2+."""
+        if handwritten and _HANDWRITING_AVAILABLE:
+            _pw = doc_obj.pagesize[0]; _ph = doc_obj.pagesize[1]
+            can.translate(_pw/2, _ph/2)
+            can.rotate(_tilt)
+            can.translate(-_pw/2, -_ph/2)
         can.saveState()
         can.setFont(_HEAD_FONT, 7)
         can.setFillColor(NAVY)
@@ -3446,6 +3470,8 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
     _ink = colors.HexColor('#1e3a8a')
     _hdr_text = colors.white
     _body_text = colors.black
+    _hdr_bg = NAVY
+    _tilt = 0
     if handwritten and _HANDWRITING_AVAILABLE:
         _BODY_FONT, _HEAD_FONT = _pick_handwriting_fonts(teacher)
         NAVY = _ink
@@ -3456,6 +3482,8 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
         BORDER = colors.HexColor('#bfc9db')
         _hdr_text = _ink
         _body_text = _ink
+        _hdr_bg = colors.white
+        _tilt = ((sum(ord(c) for c in (getattr(teacher, 'full_name', '') or '')) % 7) - 3) * 0.15
         _lp_fs = max(_lp_fs, 11)
 
     # ── Determine language mode for LP (check form data for language hint) ──
@@ -3719,7 +3747,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
     ]
     stat_inner = Table(stat_rows, colWidths=[48, 48, 48, 44])
     stat_inner.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+        ('BACKGROUND', (0, 0), (-1, 0), _hdr_bg),
         ('BACKGROUND', (0, 1), (0, -1), LIGHT),
         ('GRID', (0, 0), (-1, -1), 0.3, BORDER),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -3797,7 +3825,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
             ])
         ld_tbl = Table(ld_data, colWidths=[72, 38, 118, 118, 105], repeatRows=1)
         ld_ts = [
-            ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+            ('BACKGROUND', (0, 0), (-1, 0), _hdr_bg),
             ('LINEBELOW', (0, 0), (-1, 0), 1.2, GOLD),
             ('GRID', (0, 0), (-1, -1), 0.4, BORDER),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
