@@ -1,4 +1,5 @@
 from django import forms
+import datetime
 from field_app.models import LogbookEntry
 
 
@@ -24,7 +25,7 @@ class SchemeOfWorkForm(forms.Form):
         choices=[('I', 'Term I'), ('II', 'Term II'), ('III', 'Term III')],
         widget=forms.Select(attrs={'class': 'form-control'})
     )
-    year = forms.IntegerField(initial=2026, min_value=2000, max_value=2100,
+    year = forms.IntegerField(initial=datetime.datetime.now().year, min_value=2000, max_value=2100,
                               widget=forms.NumberInput(attrs={'class': 'form-control'}))
     syllabus = forms.CharField(initial='New Syllabus',
                                widget=forms.TextInput(attrs={'class': 'form-control'}))

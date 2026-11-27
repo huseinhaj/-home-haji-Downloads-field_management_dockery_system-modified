@@ -1792,7 +1792,7 @@ def ajax_generate_scheme(request):
         stream = data.get('stream', '')
         subject = data.get('subject', '')
         term = data.get('term', 'I')
-        year = data.get('year', '2026')
+        year = data.get('year', str(datetime.now().year))
         syllabus = data.get('syllabus', 'New Syllabus')
         total_weeks = int(data.get('total_weeks', 12))
         periods_per_week = int(data.get('periods_per_week', 8))
@@ -1814,6 +1814,38 @@ def ajax_generate_scheme(request):
 
         full_class_name = f"{class_name}{stream}" if stream else class_name
         ref_text = f"\nReference source: {reference_source}" if reference_source else ''
+
+        # ── Reuse saved scheme (instant) unless force_regenerate ──
+        _force = bool(data.get('force_regenerate', False))
+        if not _force:
+            try:
+                from field_app.models import SchemeOfWork, Subject, StudentTeacher
+                subj_obj = Subject.objects.filter(name__iexact=subject).first()
+                if subj_obj:
+                    existing = None
+                    if user_id:
+                        try:
+                            student = StudentTeacher.objects.get(user_id=user_id)
+                            existing = (SchemeOfWork.objects
+                                        .filter(student=student, subject=subj_obj, term=term, year=int(year))
+                                        .order_by('-updated_at').first())
+                        except StudentTeacher.DoesNotExist:
+                            pass
+                    if existing is None and school_id and teacher_name:
+                        existing = (SchemeOfWork.objects
+                                    .filter(school_id=school_id, subject=subj_obj, term=term, year=int(year), teacher_name=teacher_name)
+                                    .order_by('-updated_at').first())
+                    if existing and existing.scheme_data:
+                        return JsonResponse({
+                            'success': True,
+                            'data': existing.scheme_data,
+                            'saved_id': existing.id,
+                            'groups': [],
+                            'format': existing.format or _scheme_format,
+                            'cached': True,
+                        })
+            except Exception as _e:
+                logger.warning(f"[Scheme] reuse lookup failed: {_e}")
 
         # ── school_id and user_id for saving ──
         school_id = None
