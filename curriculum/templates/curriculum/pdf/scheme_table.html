@@ -1,0 +1,58 @@
+{% extends "curriculum/pdf/_pdf_base.html" %}
+{% block pagesize %}A4 landscape{% endblock %}
+{% block css %}.t th{font-size:8pt;padding:1.8mm 1mm}.t td{font-size:8.3pt;padding:1.5mm 1.2mm}.c{text-align:center}{% endblock %}
+{% block body %}
+{% include "curriculum/pdf/_cover.html" with doc_title="AZIMIO LA KAZI" doc_sub="Scheme of Work" %}
+{# School/teacher info is NOT repeated on table pages. Only the column header row repeats (thead). #}
+<table class="t" style="table-layout:fixed">
+  <colgroup>
+    <col style="width:9.5%">
+    <col style="width:10%">
+    <col style="width:9%">
+    <col style="width:11%">
+    <col style="width:6.5%">
+    <col style="width:4.5%">
+    <col style="width:5%">
+    <col style="width:10%">
+    <col style="width:9.5%">
+    <col style="width:8.5%">
+    <col style="width:9.5%">
+    <col style="width:7%">
+  </colgroup>
+  <thead><tr>
+    <th>Main Competence</th>
+    <th>Specific Competences</th>
+    <th>Main Learning Activities</th>
+    <th>Specific Learning Activities</th>
+    <th>Month</th>
+    <th>Week</th>
+    <th>No. of Periods</th>
+    <th>Teaching and Learning Methods</th>
+    <th>Teaching and Learning Resources</th>
+    <th>Assessment Tools</th>
+    <th>References</th>
+    <th>Remarks</th>
+  </tr></thead>
+  <tbody>{% for r in rows %}
+    {% if r.is_break %}<tr>
+      <td colspan="4" class="c" style="font-weight:700;background:#EDEDED">{{ r.name|upper }}</td>
+      <td class="c" style="background:#EDEDED">{{ r.month }}</td>
+      <td class="c" style="background:#EDEDED">{{ r.week }}</td>
+      <td class="c" style="background:#EDEDED">—</td>
+      <td colspan="5" style="background:#EDEDED"></td></tr>
+    {% else %}<tr>
+      <td>{{ r.main_competence }}</td>
+      <td>{{ r.specific_competence }}</td>
+      <td>{{ r.main_activity }}</td>
+      <td>{{ r.specific_activity }}</td>
+      <td class="c">{{ r.month }}</td>
+      <td class="c">{{ r.week }}</td>
+      <td class="c">{{ r.periods }}</td>
+      <td>{{ r.methods }}</td>
+      <td>{{ r.resources }}</td>
+      <td>{{ r.assessment }}</td>
+      <td>{{ r.references }}</td>
+      <td>{{ r.remarks }}</td></tr>{% endif %}
+  {% endfor %}</tbody>
+</table>
+{% endblock %}

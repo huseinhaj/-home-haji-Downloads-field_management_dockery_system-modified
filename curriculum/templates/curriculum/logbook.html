@@ -1,466 +1,82 @@
-{% extends 'curriculum/base.html' %}
-{% block title %}Andika Logbook{% endblock %}
+{% extends "curriculum/base.html" %}
+{% block title %}Logbook · TLM Tanzania{% endblock %}
 {% block content %}
-<style>
-  .period-card {
-    background: var(--bg-card-solid);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    padding: 1rem;
-    margin-bottom: 0.75rem;
-    animation: fadeUp 250ms var(--ease-out);
-    transition: box-shadow 0.2s;
-  }
-  .period-card:hover { box-shadow: var(--shadow-sm); border-color: rgba(31,122,61,0.2); }
-  .period-header {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 0.6rem; padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-color);
-  }
-  .lang-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; display: block; margin-bottom: 2px; }
-  .lang-label-sw { color: var(--green-500); }
-  .lang-label-en { color: var(--info); display: none; }
-  body.lang-en .lang-label-sw { display: none; }
-  body.lang-en .lang-label-en { display: block; }
-  .lang-label-en { color: var(--info); }
-  .field-tip { font-size: 8px; color: var(--text-muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
-</style>
+{# Save one topic at a time. Term / Month / Week are DERIVED from the dates (client preview + server is source of truth). #}
+<form method="post" action="{% url 'curriculum:logbook' %}" id="lb" class="page">
+  {% csrf_token %}
+  <h1>Logbook</h1><p class="page-sub">Jaza mada moja kila unapomaliza kuifundisha.</p>
 
-<div class="container-fluid px-0">
-  <!-- Header -->
-  <div class="c-card p-2 mb-2" style="border-left:3px solid var(--green-500);">
-    <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-      <div style="flex:1;">
-        <h4 style="font-family:var(--font-display);font-weight:700;color:var(--text-primary);margin:0;font-size:clamp(0.85rem,1.5vw,1.05rem);">
-          📖 <span class="lang-label-sw">Logbook</span><span class="lang-label-en">Teacher's Logbook</span>
-          — {{ today_name }}, {{ today|date:"d/m/Y" }}
-        </h4>
-        <div style="font-size:var(--font-size-xs);color:var(--text-secondary);margin:1px 0 0;display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
-          {% if tlm_school_name %}<span><i class="fas fa-school me-1 text-gold" style="font-size:9px;"></i>{{ tlm_school_name }}</span>{% elif school %}<span><i class="fas fa-school me-1 text-gold" style="font-size:9px;"></i>{{ school.name }}</span>{% endif %}
-          <span style="color:var(--text-muted);font-size:8px;">|</span>
-          <span><i class="fas fa-user me-1" style="font-size:9px;color:var(--primary);"></i>{{ tlm_teacher_name }}</span>
-          {% if tlm_subject_name %}
-          <span class="chip chip-green" style="font-size:8px;padding:0 6px;line-height:16px;">{{ tlm_subject_name }}</span>
-          {% endif %}
-        </div>
-      </div>
-      <!-- Language toggle -->
-      <div style="display:flex;align-items:center;gap:4px;">
-        <button class="btn-tlm btn-sm-tlm" onclick="toggleLogbookLang('sw')" id="langSwBtn" style="{% if preferred_language != 'english' %}background:var(--green-500);color:white;{% else %}background:rgba(31,122,61,0.08);color:var(--green-500);{% endif %}font-size:9px;padding:2px 8px;border-radius:4px;">
-          🇹🇿 SW
-        </button>
-        <button class="btn-tlm btn-sm-tlm" onclick="toggleLogbookLang('en')" id="langEnBtn" style="{% if preferred_language == 'english' %}background:var(--green-500);color:white;{% else %}background:rgba(31,122,61,0.08);color:var(--green-500);{% endif %}font-size:9px;padding:2px 8px;border-radius:4px;">
-          🇬🇧 EN
-        </button>
-      </div>
+  <div class="kb"><div class="stt">Mada</div>
+    <div class="f"><div class="lb">Somo</div><select name="subject" data-picker data-title="Chagua Somo" data-search="Tafuta somo…">
+      {% for s in subject_choices %}<option {% if s == tlm_teacher.subject %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+    <div class="f r2">
+      <div><div class="lb">Darasa</div><select name="class_label" data-picker data-title="Chagua Darasa">{% for c in my_classes %}<option>{{ c }}</option>{% endfor %}</select></div>
+      <div><div class="lb">Muhula</div><select name="term" data-picker data-title="Chagua Muhula"><option value="1">Muhula wa Kwanza</option><option value="2">Muhula wa Pili</option></select></div>
     </div>
+    <div class="f"><div class="lb">Mada kuu</div>
+      <select name="topic" data-picker data-title="Chagua Mada" data-search="Tafuta mada…" data-placeholder="Chagua mada">
+        <option value=""></option>{% for t in topic_choices %}
+        <option>{{ t }}</option>{% endfor %}
+      </select></div>
+    <div class="or">au</div><input class="tlm-input" name="topic_custom" placeholder="Andika mada yako">
+    <div class="f"><div class="lb">Mada ndogo</div><select name="subtopic" data-picker data-title="Chagua Mada Ndogo" data-search="Tafuta mada ndogo…" data-placeholder="Chagua mada ndogo"><option value=""></option></select></div>
+    <div class="or">au</div><input class="tlm-input" name="subtopic_custom" placeholder="Andika mada ndogo yako">
   </div>
 
-  <!-- ✅ SUCCESS PANEL — PDF hapo hapo baada ya kusajiliwa -->
-  {% if just_submitted %}
-  <div class="c-card mb-3" style="border:2px solid var(--success);border-left:6px solid var(--success);background:linear-gradient(135deg,rgba(5,150,105,0.06),rgba(5,150,105,0.02));">
-    <div class="c-card-body" style="padding:1.25rem;">
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-        <div style="width:52px;height:52px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(5,150,105,0.3);">
-          <i class="fas fa-check" style="color:#fff;font-size:1.4rem;"></i>
-        </div>
-        <div style="flex:1;min-width:200px;">
-          <h5 style="font-family:var(--font-display);font-weight:800;margin:0;color:var(--success);font-size:1rem;">
-            ✅ Logbook imesajiliwa kikamilifu!
-          </h5>
-          <p style="font-size:var(--font-size-xs);color:var(--text-secondary);margin:2px 0 0;">
-            Pakua PDF ya logbook yako hapo chini — Leo, Wiki hii, Mwezi huu au zote.
-          </p>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:0.9rem;">
-        <a href="{% url 'curriculum:download_logbook_pdf' 'today' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm">
-          <i class="fas fa-file-pdf me-1"></i> Pakua PDF ya Leo
-        </a>
-        <a href="{% url 'curriculum:download_logbook_pdf' 'week' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm">
-          <i class="fas fa-file-pdf me-1"></i> Wiki hii
-        </a>
-        <a href="{% url 'curriculum:download_logbook_pdf' 'month' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm">
-          <i class="fas fa-file-pdf me-1"></i> Mwezi huu
-        </a>
-        <a href="{% url 'curriculum:download_logbook_pdf' 'all' %}" class="btn-tlm btn-gold-tlm btn-sm-tlm">
-          <i class="fas fa-file-archive me-1"></i> Zote
-        </a>
-      </div>
+  <div class="kb"><div class="stt">Muda</div>
+    <div class="f r2">
+      <div><div class="lb">Tarehe ya kuanza</div><input type="hidden" name="date_started" data-date data-title="Tarehe ya kuanza"></div>
+      <div><div class="lb">Tarehe ya kumaliza</div><input type="hidden" name="date_ended" data-date data-title="Tarehe ya kumaliza"></div>
+    </div>
+    <div class="f"><div class="lb">Inajaza yenyewe kutoka kwenye tarehe</div>
+      <div class="auto"><span>Muhula: <b id="a-term">—</b></span><span>Mwezi: <b id="a-month">—</b></span><span>Wiki: <b id="a-week">—</b></span></div></div>
+  </div>
+
+  <div class="kb"><div class="stt">Maoni na sahihi</div>
+    <div class="f"><div class="lb">Maoni ya mwalimu</div><textarea class="tlm-input" name="teacher_comment" placeholder="Mafanikio, changamoto, mapendekezo…"></textarea></div>
+    <div class="sub">Mkuu wa idara</div>
+    <div class="f"><div class="lb">Maoni</div><textarea class="tlm-input" name="hod_comment" placeholder="Maoni ya mkuu wa idara…"></textarea></div>
+    <div class="f"><div class="lb">Jina</div><input class="tlm-input" name="hod_name" placeholder="Jina kamili"></div>
+    <div class="sub">Mkuu wa shule</div>
+    <div class="f"><div class="lb">Maelezo</div><textarea class="tlm-input" name="head_remarks" placeholder="Maelezo / uthibitisho wa mkuu wa shule…"></textarea></div>
+    <div class="f"><div class="lb">Jina</div><input class="tlm-input" name="head_name" placeholder="Jina kamili"></div>
+  </div>
+
+  <button class="btn-tlm" style="margin-top:18px"><svg class="ic"><use href="#i-save"/></svg>Hifadhi kwenye Logbook</button>
+
+  <div class="kb" style="margin-bottom:24px"><div class="stt">Pakua Logbook</div>
+    <p class="page-sub">Mada {{ saved_count }} zimehifadhiwa.</p>
+    <div class="r2" style="margin-top:12px">
+      <a class="btn-tlm grey" style="height:40px;font-size:13.5px" href="{% url 'curriculum:logbook_download' %}"><svg class="ic ic-sm"><use href="#i-download"/></svg>Logbook yote</a>
+      <button type="button" class="btn-tlm grey" style="height:40px;font-size:13.5px" id="by-month"><svg class="ic ic-sm"><use href="#i-download"/></svg>Kwa mwezi</button>
     </div>
   </div>
-  {% endif %}
-
-  <div class="row g-2">
-    <div class="col-lg-8">
-      <div class="c-card">
-        <div class="c-card-body">
-
-          <form method="post" id="logbookForm">
-            {% csrf_token %}
-            <input type="hidden" name="latitude" id="latitude" value="">
-            <input type="hidden" name="longitude" id="longitude" value="">
-            <input type="hidden" name="is_location_verified" id="is_location_verified" value="true">
-            <input type="hidden" name="lessons_data" id="lessons_data" value="[]">
-
-            <!-- Lesson Periods -->
-            <div class="sec-hd mb-2">
-              <h3><i class="fas fa-chalkboard"></i> <span class="lang-label-sw">Vipindi vya Masomo</span><span class="lang-label-en">Lesson Periods</span></h3>
-              <button type="button" class="btn-tlm btn-primary-tlm btn-sm-tlm" id="addPeriodBtn">
-                <i class="fas fa-plus me-1"></i> <span class="lang-label-sw">Ongeza Kipindi</span><span class="lang-label-en">Add Period</span>
-              </button>
-            </div>
-            <div id="periodsContainer"></div>
-
-            <!-- Other Activities -->
-            <div class="mb-2">
-              <label class="form-label-tlm"><span class="lang-label-sw">Shughuli Nyingine</span><span class="lang-label-en">Other Activities</span></label>
-              <textarea name="other_activities" rows="3" class="form-control" placeholder="Mikutano, majukumu ya shule, ziara, n.k...">{{ logbook_entry.other_activities|default:'' }}</textarea>
-            </div>
-            <div class="mb-2">
-              <label class="form-label-tlm"><span class="lang-label-sw">Changamoto / Vikwazo</span><span class="lang-label-en">Challenges</span></label>
-              <textarea name="challenges_faced" rows="3" class="form-control" placeholder="Changamoto ulizokutana nazo leo...">{{ logbook_entry.challenges_faced|default:'' }}</textarea>
-            </div>
-            <div class="mb-3">
-              <label class="form-label-tlm"><span class="lang-label-sw">Tafakari ya Kibinafsi</span><span class="lang-label-en">Personal Reflection</span></label>
-              <textarea name="lessons_learned" rows="3" class="form-control" placeholder="Mafunzo na tafakari ya kibinafsi...">{{ logbook_entry.lessons_learned|default:'' }}</textarea>
-            </div>
-
-            <button type="submit" class="btn-tlm btn-gold-tlm w-100 py-2" id="submitBtn" style="border-radius:var(--radius-md);">
-              <i class="fas fa-save me-2"></i> <span class="lang-label-sw">Wasilisha Logbook</span><span class="lang-label-en">Submit Logbook</span>
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- Side info -->
-    <div class="col-lg-4">
-      <!-- ⬇️ PAKUA PDF — hapo hapo, hakuna page nyingine -->
-      <div class="c-card p-3 mb-3" style="border-left:3px solid var(--gold-400);">
-        <div class="sec-hd">
-          <h3><i class="fas fa-file-pdf"></i> <span class="lang-label-sw">Pakua PDF</span><span class="lang-label-en">Download PDF</span></h3>
-        </div>
-        <p style="font-size:var(--font-size-xs);color:var(--text-muted);margin:0 0 8px;">
-          <span class="lang-label-sw">Chagua kipindi cha logbook unachotaka kupakua</span>
-          <span class="lang-label-en">Choose the logbook period you want to download</span>
-        </p>
-        <div style="display:flex;flex-direction:column;gap:6px;">
-          <a href="{% url 'curriculum:download_logbook_pdf' 'today' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm w-100" style="justify-content:flex-start;">
-            <i class="fas fa-calendar-day me-1"></i> <span class="lang-label-sw">Leo — {% now "d/m/Y" %}</span><span class="lang-label-en">Today — {% now "d/m/Y" %}</span>
-          </a>
-          <a href="{% url 'curriculum:download_logbook_pdf' 'week' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm w-100" style="justify-content:flex-start;">
-            <i class="fas fa-calendar-week me-1"></i> <span class="lang-label-sw">Wiki hii</span><span class="lang-label-en">This week</span>
-            {% if week_entries_count %}<span class="chip chip-gold" style="font-size:8px;padding:0 6px;line-height:14px;margin-left:auto;">{{ week_entries_count }}</span>{% endif %}
-          </a>
-          <a href="{% url 'curriculum:download_logbook_pdf' 'month' %}" class="btn-tlm btn-primary-tlm btn-sm-tlm w-100" style="justify-content:flex-start;">
-            <i class="fas fa-calendar-alt me-1"></i> <span class="lang-label-sw">Mwezi huu</span><span class="lang-label-en">This month</span>
-            {% if month_entries_count %}<span class="chip chip-gold" style="font-size:8px;padding:0 6px;line-height:14px;margin-left:auto;">{{ month_entries_count }}</span>{% endif %}
-          </a>
-          <a href="{% url 'curriculum:download_logbook_pdf' 'all' %}" class="btn-tlm btn-gold-tlm btn-sm-tlm w-100" style="justify-content:flex-start;">
-            <i class="fas fa-file-archive me-1"></i> <span class="lang-label-sw">Logbook zote</span><span class="lang-label-en">All logbooks</span>
-            {% if total_entries_count %}<span class="chip chip-gold" style="font-size:8px;padding:0 6px;line-height:14px;margin-left:auto;">{{ total_entries_count }}</span>{% endif %}
-          </a>
-        </div>
-      </div>
-
-      {% if logbook_entry and logbook_entry.lessons_data %}
-      <div class="c-card p-3 mb-3">
-        <div class="sec-hd"><h3><i class="fas fa-history"></i> <span class="lang-label-sw">Leo Umeshajaza</span><span class="lang-label-en">Today's Submissions</span></h3></div>
-        {% for lesson in logbook_entry.lessons_data %}
-        <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background:rgba(15,23,42,0.02);border-radius:var(--radius-sm);">
-          <div>
-            <strong style="font-size:var(--font-size-sm);">{{ lesson.subject }}</strong>
-            <div style="font-size:var(--font-size-xs);color:var(--text-muted);">
-              <span class="lang-label-sw">Darasa</span><span class="lang-label-en">Class</span> {{ lesson.class }} &bull;
-              <span class="lang-label-sw">Kipindi</span><span class="lang-label-en">Period</span> {{ lesson.period }}</div>
-          </div>
-          <span class="chip chip-green" style="font-size:9px;"><span class="lang-label-sw">Imehifadhiwa</span><span class="lang-label-en">Saved</span></span>
-        </div>
-        {% endfor %}
-      </div>
-      {% endif %}
-
-      <!-- 🕐 HISTORIA NDOGO — wiki hii, kwenye ukurasa mmoja -->
-      {% if recent_entries %}
-      <div class="c-card p-3 mb-3">
-        <div class="sec-hd"><h3><i class="fas fa-list"></i> <span class="lang-label-sw">Historia ya Wiki Hii</span><span class="lang-label-en">This Week's History</span></h3></div>
-        <div style="display:flex;flex-direction:column;gap:5px;">
-          {% for e in recent_entries %}
-          <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(15,23,42,0.02);border-radius:var(--radius-sm);border-left:3px solid var(--green-500);">
-            <i class="fas fa-check-circle" style="color:var(--success);font-size:0.8rem;flex-shrink:0;"></i>
-            <div style="flex:1;min-width:0;">
-              <strong style="font-size:var(--font-size-xs);color:var(--text-primary);">{{ e.date|date:"d/m/Y" }}</strong>
-              <span style="font-size:9px;color:var(--text-muted);display:block;">{{ e.get_day_of_week_display }} · {{ e.lessons_data|length }} vipindi</span>
-            </div>
-            <a href="{% url 'curriculum:download_logbook_pdf' 'week' %}" title="Pakua PDF (Wiki hii)" style="flex-shrink:0;color:var(--error);font-size:0.85rem;">
-              <i class="fas fa-file-pdf"></i>
-            </a>
-          </div>
-          {% endfor %}
-        </div>
-        {% if week_entries_count > 5 %}
-        <p style="font-size:9px;color:var(--text-muted);margin:6px 0 0;">+ {{ week_entries_count|add:"-5" }} zaidi wiki hii — pakua PDF hapo juu.</p>
-        {% endif %}
-      </div>
-      {% endif %}
-
-      <div class="c-card p-3">
-        <div class="sec-hd"><h3><i class="fas fa-info-circle"></i> <span class="lang-label-sw">Maelekezo</span><span class="lang-label-en">Instructions</span></h3></div>
-        <ul style="font-size:var(--font-size-sm);color:var(--text-secondary);padding-left:1rem;margin:0;">
-          <li class="mb-2"><span class="lang-label-sw">Jaza kila kipindi ulichofundisha kwa ukamilifu</span><span class="lang-label-en">Fill in each lesson period you taught completely</span></li>
-          <li class="mb-2"><span class="lang-label-sw">Andika changamoto na tafakari zako</span><span class="lang-label-en">Write challenges and personal reflection</span></li>
-          <li><span class="lang-label-sw">Baada ya kusajiliwa, pakua PDF hapo juu mara moja</span><span class="lang-label-en">After saving, download the PDF right here</span></li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</div>
+</form>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
 <script>
-// ── Bilingual labels for period card ──
-const L = {
-  period: { sw: 'Kipindi', en: 'Period' },
-  subject: { sw: 'Somo', en: 'Subject' },
-  class: { sw: 'Darasa', en: 'Class' },
-  periodNo: { sw: 'Kipindi #', en: 'Period #' },
-  remove: { sw: 'Ondoa', en: 'Remove' },
-  type: { sw: 'Aina ya Somo', en: 'Activity Type' },
-  theory: { sw: 'Nadharia', en: 'Theory' },
-  practical: { sw: 'Vitendo', en: 'Practical' },
-  revision: { sw: 'Mapitio', en: 'Revision' },
-  assessment: { sw: 'Tathmini', en: 'Assessment' },
-  topic: { sw: 'Mada Kuu', en: 'Main Topic' },
-  subtopic: { sw: 'Mada Ndogo', en: 'Subtopic' },
-  enrolledBoys: { sw: 'Wavulana (Waliojisajili)', en: 'Enrolled Boys' },
-  enrolledGirls: { sw: 'Wasichana (Waliojisajili)', en: 'Enrolled Girls' },
-  presentBoys: { sw: 'Wavulana (Waliohudhuria)', en: 'Present Boys' },
-  presentGirls: { sw: 'Wasichana (Waliohudhuria)', en: 'Present Girls' },
-  methods: { sw: 'Mbinu za Ufundishaji', en: 'Teaching Methods' },
-  aids: { sw: 'Vifaa vya Kufundishia', en: 'Teaching Aids' },
-  achievements: { sw: 'Mafanikio', en: 'Achievements' },
-  challenges: { sw: 'Changamoto', en: 'Challenges' },
-  select: { sw: '— Chagua —', en: '— Select —' },
-  selectSubj: { sw: '— Chagua Somo —', en: '— Select Subject —' },
-};
+document.addEventListener('DOMContentLoaded', () => {
+  const f = document.getElementById('lb');
+  const MONTHS = ['Januari','Februari','Machi','Aprili','Mei','Juni','Julai','Agosti','Septemba','Oktoba','Novemba','Desemba'];
 
-document.addEventListener('DOMContentLoaded', function() {
-  let periodCount = 0;
-  const subjects = [{% for subj in subjects %}'{{ subj.name }}',{% endfor %}];
-  const autoSubject = '{{ tlm_subject_name|escapejs }}';
-  const prefersEnglish = '{{ preferred_language }}' === 'english';
-  
-  function tSw(key) { return L[key] ? L[key].sw : key; }
-  function tEn(key) { return L[key] ? L[key].en : key; }
-  // Alias for backward compatibility
-  function t(key) { return document.body.classList.contains('lang-en') ? tEn(key) : tSw(key); }
-  
-{% if preferred_language == 'english' %}
-  document.body.classList.add('lang-en');
-{% endif %}
-
-  const periodTemplate = function(index) {
-    const currentLang = document.body.classList.contains('lang-en') ? 'en' : 'sw';
-    return `<div class="period-card" data-index="${index}">
-      <div class="period-header">
-        <strong style="color:var(--text-primary);font-size:var(--font-size-sm);">
-          <span class="lang-label-sw">${t('periodNo')}</span><span class="lang-label-en">${t('periodNo')}</span> ${index + 1}
-        </strong>
-        <button type="button" class="btn-tlm btn-sm-tlm remove-period" style="background:rgba(220,38,38,0.08);color:var(--error);border:none;padding:3px 8px;">
-          <i class="fas fa-times"></i> <span class="lang-label-sw">Ondoa</span><span class="lang-label-en">Remove</span>
-        </button>
-      </div>
-      
-      <!-- Row 1: Subject, Class, Period, Activity Type -->
-      <div class="row g-2 mb-2">
-        <div class="col-12 col-sm-4">
-          <label class="lang-label lang-label-sw">${tSw('subject')}</label>
-          <label class="lang-label lang-label-en">${tEn('subject')}</label>
-          <select class="form-control form-control-sm period-subject" style="font-size:12px;">
-            <option value="">${t('selectSubj')}</option>
-            ${subjects.map(s => `<option value="${s}"${autoSubject && s === autoSubject ? ' selected' : ''}>${s}</option>`).join('')}
-          </select>
-        </div>
-        <div class="col-6 col-sm-2">
-          <label class="lang-label lang-label-sw">${tSw('class')}</label>
-          <label class="lang-label lang-label-en">${tEn('class')}</label>
-          <input class="form-control form-control-sm period-class" placeholder="e.g. Form 2A" style="font-size:12px;">
-        </div>
-        <div class="col-3 col-sm-2">
-          <label class="lang-label lang-label-sw">${tSw('periodNo')}</label>
-          <label class="lang-label lang-label-en">${tEn('periodNo')}</label>
-          <input class="form-control form-control-sm period-num" type="number" min="1" value="${index + 1}" style="font-size:12px;">
-        </div>
-        <div class="col-3 col-sm-4">
-          <label class="lang-label lang-label-sw">${tSw('type')}</label>
-          <label class="lang-label lang-label-en">${tEn('type')}</label>
-          <select class="form-control form-control-sm period-activity" style="font-size:12px;">
-            <option value="theory">${t('theory')}</option>
-            <option value="practical">${t('practical')}</option>
-            <option value="revision">${t('revision')}</option>
-            <option value="assessment">${t('assessment')}</option>
-          </select>
-        </div>
-      </div>
-      
-      <!-- Row 2: Topic & Subtopic -->
-      <div class="row g-2 mb-2">
-        <div class="col-6">
-          <label class="lang-label lang-label-sw">${tSw('topic')}</label>
-          <label class="lang-label lang-label-en">${tEn('topic')}</label>
-          <input class="form-control form-control-sm period-topic" placeholder="${t('topic')}" style="font-size:12px;">
-        </div>
-        <div class="col-6">
-          <label class="lang-label lang-label-sw">${tSw('subtopic')}</label>
-          <label class="lang-label lang-label-en">${tEn('subtopic')}</label>
-          <input class="form-control form-control-sm period-subtopic" placeholder="${t('subtopic')}" style="font-size:12px;">
-        </div>
-      </div>
-      
-      <!-- Row 3: Enrolled & Present (Boys/Girls) -->
-      <div class="row g-2 mb-2">
-        <div class="col-3">
-          <label class="lang-label lang-label-sw">${tSw('enrolledBoys')}</label>
-          <label class="lang-label lang-label-en">${tEn('enrolledBoys')}</label>
-          <input class="form-control form-control-sm period-enrolled-boys" type="number" min="0" style="font-size:12px;">
-        </div>
-        <div class="col-3">
-          <label class="lang-label lang-label-sw">${tSw('enrolledGirls')}</label>
-          <label class="lang-label lang-label-en">${tEn('enrolledGirls')}</label>
-          <input class="form-control form-control-sm period-enrolled-girls" type="number" min="0" style="font-size:12px;">
-        </div>
-        <div class="col-3">
-          <label class="lang-label lang-label-sw">${tSw('presentBoys')}</label>
-          <label class="lang-label lang-label-en">${tEn('presentBoys')}</label>
-          <input class="form-control form-control-sm period-present-boys" type="number" min="0" style="font-size:12px;">
-        </div>
-        <div class="col-3">
-          <label class="lang-label lang-label-sw">${tSw('presentGirls')}</label>
-          <label class="lang-label lang-label-en">${tEn('presentGirls')}</label>
-          <input class="form-control form-control-sm period-present-girls" type="number" min="0" style="font-size:12px;">
-        </div>
-      </div>
-      
-      <!-- Row 4: Methods & Aids -->
-      <div class="row g-2 mb-2">
-        <div class="col-6">
-          <label class="lang-label lang-label-sw">${tSw('methods')}</label>
-          <label class="lang-label lang-label-en">${tEn('methods')}</label>
-          <input class="form-control form-control-sm period-methods" placeholder="e.g. Discussion, Q&A, Demonstration" style="font-size:12px;">
-        </div>
-        <div class="col-6">
-          <label class="lang-label lang-label-sw">${tSw('aids')}</label>
-          <label class="lang-label lang-label-en">${tEn('aids')}</label>
-          <input class="form-control form-control-sm period-aids" placeholder="e.g. Charts, Textbooks, Cards" style="font-size:12px;">
-        </div>
-      </div>
-      
-      <!-- Row 5: Achievements & Challenges -->
-      <div class="row g-2">
-        <div class="col-6">
-          <label class="lang-label lang-label-sw">${tSw('achievements')}</label>
-          <label class="lang-label lang-label-en">${tEn('achievements')}</label>
-          <textarea class="form-control form-control-sm period-achievements" rows="2" style="font-size:11px;resize:vertical;" placeholder="${t('achievements')}"></textarea>
-        </div>
-        <div class="col-6">
-          <label class="lang-label lang-label-sw">${tSw('challenges')}</label>
-          <label class="lang-label lang-label-en">${tEn('challenges')}</label>
-          <textarea class="form-control form-control-sm period-challenges" rows="2" style="font-size:11px;resize:vertical;" placeholder="${t('challenges')}"></textarea>
-        </div>
-      </div>
-    </div>`;
-  };
-
-  document.getElementById('addPeriodBtn').addEventListener('click', function() {
-    const container = document.getElementById('periodsContainer');
-    container.insertAdjacentHTML('beforeend', periodTemplate(periodCount));
-    periodCount++;
-    updateLessonsData();
+  // Preview only. TERM_START comes from the view (first school day of each term, e.g. {"1":"2026-01-12","2":"2026-07-06"})
+  const TERM_START = {{ term_starts_json|default:'{}'|safe }};
+  f.date_ended.addEventListener('change', () => {
+    const d = new Date(f.date_ended.value + 'T00:00');
+    if (isNaN(d)) return;
+    const term = d.getMonth() < 6 ? 'I' : 'II';
+    const ts = new Date((TERM_START[term === 'I' ? '1' : '2'] || d.toISOString().slice(0, 10)) + 'T00:00');
+    document.getElementById('a-term').textContent = term;
+    document.getElementById('a-month').textContent = MONTHS[d.getMonth()];
+    document.getElementById('a-week').textContent = Math.max(1, Math.floor((d - ts) / 6048e5) + 1);
   });
 
-  document.getElementById('periodsContainer').addEventListener('click', function(e) {
-    if (e.target.closest('.remove-period')) {
-      e.target.closest('.period-card').remove();
-      updateLessonsData();
-    }
-  });
-
-  document.getElementById('periodsContainer').addEventListener('change', updateLessonsData);
-  document.getElementById('periodsContainer').addEventListener('input', updateLessonsData);
-
-  function updateLessonsData() {
-    const data = [];
-    document.querySelectorAll('.period-card').forEach(function(card) {
-      data.push({
-        period: card.querySelector('.period-num')?.value || '',
-        subject: card.querySelector('.period-subject')?.value || '',
-        class: card.querySelector('.period-class')?.value || '',
-        activity_type: card.querySelector('.period-activity')?.value || '',
-        main_topic: card.querySelector('.period-topic')?.value || '',
-        subtopic: card.querySelector('.period-subtopic')?.value || '',
-        enrolled_boys: card.querySelector('.period-enrolled-boys')?.value || '',
-        enrolled_girls: card.querySelector('.period-enrolled-girls')?.value || '',
-        present_boys: card.querySelector('.period-present-boys')?.value || '',
-        present_girls: card.querySelector('.period-present-girls')?.value || '',
-        methods: card.querySelector('.period-methods')?.value || '',
-        teaching_aids: card.querySelector('.period-aids')?.value || '',
-        achievements: card.querySelector('.period-achievements')?.value || '',
-        challenges: card.querySelector('.period-challenges')?.value || '',
-      });
-    });
-    document.getElementById('lessons_data').value = JSON.stringify(data);
-  }
-
-  // ── Language Toggle ──
-  window.toggleLogbookLang = function(lang) {
-    const body = document.body;
-    const swBtn = document.getElementById('langSwBtn');
-    const enBtn = document.getElementById('langEnBtn');
-    
-    if (lang === 'en') {
-      body.classList.add('lang-en');
-      swBtn.style.background = 'rgba(31,122,61,0.08)';
-      swBtn.style.color = 'var(--green-500)';
-      enBtn.style.background = 'var(--green-500)';
-      enBtn.style.color = 'white';
-    } else {
-      body.classList.remove('lang-en');
-      swBtn.style.background = 'var(--green-500)';
-      swBtn.style.color = 'white';
-      enBtn.style.background = 'rgba(31,122,61,0.08)';
-      enBtn.style.color = 'var(--green-500)';
-    }
-    
-    // Save preference to localStorage (works for all user types)
-    localStorage.setItem('logbook-lang', lang);
-    
-    // Also try to save to server (silent fail if not TLM user)
-    fetch('{% url "curriculum:update_teacher_profile" %}', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
-      body: JSON.stringify({ preferred_language: lang === 'en' ? 'english' : 'auto' }),
-    }).catch(() => {});
+  // Download by month: choose month in an F3 picker, then open the PDF
+  document.getElementById('by-month').onclick = async () => {
+    const v = await TLM.pick({ title: 'Chagua Mwezi', options: MONTHS.map((m, i) => ({ value: String(i + 1), label: m })), value: String(new Date().getMonth() + 1) });
+    if (v) TLM.openPdf("{% url 'curriculum:logbook_download' %}?month=" + v);
   };
-  
-  // Restore language preference from localStorage
-  (function() {
-    const savedLang = localStorage.getItem('logbook-lang');
-    if (savedLang === 'en') {
-      document.body.classList.add('lang-en');
-      const swBtn = document.getElementById('langSwBtn');
-      const enBtn = document.getElementById('langEnBtn');
-      if (swBtn && enBtn) {
-        swBtn.style.background = 'rgba(31,122,61,0.08)';
-        swBtn.style.color = 'var(--green-500)';
-        enBtn.style.background = 'var(--green-500)';
-        enBtn.style.color = 'white';
-      }
-    }
-  })();
-
-  // Location is auto-verified (GPS removed per user request)
 });
 </script>
 {% endblock %}

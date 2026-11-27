@@ -1,0 +1,54 @@
+{% extends "curriculum/base.html" %}
+{% block title %}Hariri Scheme of Work{% endblock %}
+{% block content %}
+{% comment %}
+doc.months = [{name:'Januari', weeks:[{idx, week, periods, main_competence, specific_competence, main_activity, specific_activity, methods, resources, assessment, references, remarks}]}]
+{% endcomment %}
+<form method="post" action="{% url 'curriculum:edit_doc' 'scheme' doc.id %}" class="page has-ab-bar" id="ed">
+  {% csrf_token %}
+  <div class="ed-head"><a href="{% url 'curriculum:library' %}?tab=scheme" class="sq" aria-label="Rudi"><svg class="ic"><use href="#i-chevron-left"/></svg></a></div>
+  <h1 style="font-size:23px;margin-top:12px">{{ doc.subject }} · Scheme of Work</h1>
+  <div class="ed-meta"><b>{{ doc.class_label }}</b> · <b>{{ doc.created|date:"j M Y" }}</b></div>
+
+  <div class="kb"><div class="stt">Taarifa</div>
+    <div class="f r2"><div><div class="lb">Muhula</div><select name="term" data-picker data-title="Chagua Muhula">
+      <option value="full" {% if doc.term == 'full' %}selected{% endif %}>Mwaka wote</option>
+      <option value="1" {% if doc.term == '1' %}selected{% endif %}>Muhula wa Kwanza</option>
+      <option value="2" {% if doc.term == '2' %}selected{% endif %}>Muhula wa Pili</option>
+    </select></div>
+      <div><div class="lb">Mwaka</div><input class="tlm-input" name="year" value="{{ doc.year }}"></div></div>
+    <div class="f r2"><div><div class="lb">Jumla ya wiki</div><input class="tlm-input" name="weeks" value="{{ doc.weeks }}"></div>
+      <div><div class="lb">Vipindi kwa wiki</div><input class="tlm-input" name="periods" value="{{ doc.periods }}"></div></div>
+  </div>
+
+  <div class="kb"><div class="stt-row"><span class="stt">Wiki kwa wiki</span>
+      <button type="button" class="btn-tlm sm" style="height:30px;padding:0 9px;font-size:12.5px;border-color:var(--blue-200)" data-open-all>Fungua zote</button></div>
+    <div class="hint"><svg class="ic ic-sm"><use href="#i-info"/></svg>Gusa wiki yoyote kuifungua na kuihariri.</div>
+    {% for m in doc.months %}
+    <div class="mo2">{{ m.name }}<span>wiki {{ m.weeks|length }}</span></div>
+    {% for w in m.weeks %}
+    <details class="wk">
+      <summary><span class="w">Wiki {{ w.week }}</span><span class="t">{{ w.specific_activity }}</span><span class="sqb"><svg class="ic ic-sm"><use href="#i-chevron-down"/></svg></span></summary>
+      <div class="b">
+        <div class="f r2"><div><div class="lb">Wiki</div><input class="tlm-input" name="w{{ w.idx }}_week" value="{{ w.week }}"></div>
+          <div><div class="lb">Vipindi</div><input class="tlm-input" name="w{{ w.idx }}_periods" value="{{ w.periods }}"></div></div>
+        <div class="sl">Umahiri mkuu</div><textarea class="tlm-input" name="w{{ w.idx }}_main_competence">{{ w.main_competence }}</textarea>
+        <div class="sl">Umahiri mahususi</div><textarea class="tlm-input" name="w{{ w.idx }}_specific_competence">{{ w.specific_competence }}</textarea>
+        <div class="sl">Shughuli kuu</div><textarea class="tlm-input" name="w{{ w.idx }}_main_activity">{{ w.main_activity }}</textarea>
+        <div class="sl">Shughuli ndogo</div><textarea class="tlm-input" name="w{{ w.idx }}_specific_activity">{{ w.specific_activity }}</textarea>
+        <div class="sl">Mbinu za ufundishaji</div><textarea class="tlm-input" name="w{{ w.idx }}_methods">{{ w.methods }}</textarea>
+        <div class="sl">Zana za kufundishia</div><textarea class="tlm-input" name="w{{ w.idx }}_resources">{{ w.resources }}</textarea>
+        <div class="sl">Zana za upimaji</div><textarea class="tlm-input" name="w{{ w.idx }}_assessment">{{ w.assessment }}</textarea>
+        <div class="sl">Rejea</div><textarea class="tlm-input" name="w{{ w.idx }}_references">{{ w.references }}</textarea>
+        <div class="sl">Maoni</div><textarea class="tlm-input" name="w{{ w.idx }}_remarks">{{ w.remarks }}</textarea>
+      </div>
+    </details>
+    {% endfor %}
+    {% endfor %}
+  </div>
+</form>
+<div class="ab-bar">
+  <button form="ed" class="btn-tlm sm"><svg class="ic ic-sm"><use href="#i-save"/></svg>Hifadhi</button>
+  <a class="btn-tlm grey sm" href="{% url 'curriculum:doc_pdf' 'scheme' doc.id %}"><svg class="ic ic-sm"><use href="#i-download"/></svg>Pakua PDF</a>
+</div>
+{% endblock %}

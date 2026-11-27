@@ -7,7 +7,7 @@ import os
 import re
 import threading
 from io import BytesIO
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from functools import wraps
 
@@ -737,21 +737,70 @@ def _cached_topic_subtopics(topic_id):
 
 @never_cache
 def landing(request):
-    """Public landing page — shows tools. If teacher is registered, greet them."""
+    """Public home / landing — new blue UI. If a teacher is registered, greet them."""
     teacher = get_tlm_teacher(request)
-    
-    # Cached DB statistics + testimonials (10-min TTL)
+
+    # Cached DB statistics (10-min TTL)
     stats = _cached_landing_stats()
-    
-    return render(request, 'curriculum/landing.html', {
-        'teacher': teacher,
-        'total_teachers': stats['total_teachers'],
-        'total_schemes': stats['total_schemes'],
-        'total_lesson_plans': stats['total_lesson_plans'],
-        'total_logbooks': stats['total_logbooks'],
-        'total_notes': stats['total_notes'],
-        'testimonials': stats['testimonials'],
+    lessons = stats['total_lesson_plans']
+    if lessons >= 1000:
+        lessons_k = '%g<small>K</small>' % (round(lessons / 100) / 10)
+    else:
+        lessons_k = str(lessons)
+
+    return render(request, 'curriculum/dashboard.html', {
+        'tlm_teacher': teacher,
+        'stats': {
+            'teachers': stats['total_teachers'],
+            'lesson_plans_k': lessons_k,
+            'schemes': stats['total_schemes'],
+            'logbooks': stats['total_logbooks'],
+        },
     })
+
+
+def about_view(request):
+    """Kuhusu Sisi page (new UI)."""
+    from django.conf import settings
+
+    about_blocks = [
+        ('Changamoto',
+         'Mwalimu hutumia saa nyingi kuandaa Scheme of Work, Lesson Plan na Logbook kwa mkono. '
+         'Kila muhula anatakiwa kufuata muundo ule ule wa TIE, jambo linalopunguza muda wa kufundisha.'),
+        ('Suluhisho Letu',
+         'TLM Tanzania inamsaidia mwalimu kuzalisha nyaraka hizo kwa muundo rasmi kwa dakika chache, '
+         'kisha kuzihifadhi na kuzipakua kama PDF tayari kuchapishwa.'),
+        ('Lengo Letu',
+         'Kila mwalimu Tanzania apate nyenzo bora za kufundishia bila gharama, kwa kutumia simu yake.'),
+    ]
+
+    return render(request, 'curriculum/about.html', {
+        'tlm_teacher': get_tlm_teacher(request),
+        'about_blocks': about_blocks,
+        'team': [],
+        'contact_email': (getattr(settings, 'SUPPORT_EMAIL', '')
+                          or getattr(settings, 'EMAIL_HOST_USER', '') or ''),
+    })
+
+
+def login_view(request):
+    """Ingia kwa namba ya simu tu (hakuna password)."""
+    if get_tlm_teacher(request):
+        return redirect('curriculum:landing')
+
+    form = {}
+    if request.method == 'POST':
+        phone = (request.POST.get('phone') or '').strip()
+        digits = re.sub(r'\D', '', phone)
+        teacher = TLMTeacher.objects.filter(phone_number=phone).first() if phone else None
+        if teacher is None and len(digits) >= 9:
+            teacher = TLMTeacher.objects.filter(phone_number__endswith=digits[-9:]).first()
+        if teacher:
+            request.session['tlm_teacher_id'] = teacher.id
+            return redirect('curriculum:landing')
+        form = {'errors': True}
+
+    return render(request, 'curriculum/login.html', {'form': form, 'tlm_teacher': None})
 
 
 # =============================================================================
@@ -869,7 +918,7 @@ def teacher_register(request):
     """
     # Check if already registered
     teacher = get_tlm_teacher(request)
-    if teacher:
+    if teacher and request.method == 'GET':
         # Already registered — redirect where they were going
         next_url = request.GET.get('next', 'curriculum:landing')
         return redirect(next_url)
@@ -886,14 +935,91 @@ def teacher_register(request):
         lvl.id: _subjects_for_level(lvl.name)
         for lvl in education_levels
     }
-    
-    return render(request, 'curriculum/teacher_register.html', {
+
+    context = {
         'regions': regions,
         'subjects': subjects,
         'education_levels': education_levels,
         'classes_by_level_json': _json.dumps(classes_by_level),
         'subjects_by_level_json': _json.dumps(subjects_by_level),
-    })
+    }
+
+    # The new 5-step wizard submits ONE form at the end (Hati 1 §3):
+    # full_name, phone, level, region_id, district_id, school_id (or
+    # school_name when typed), class_name, stream, subject, boys, girls.
+    if request.method != 'POST':
+        if request.GET.get('next'):
+            request.session['tlm_next'] = request.GET['next']
+        return render(request, 'curriculum/teacher_register.html', context)
+
+    p = request.POST
+    full_name = (p.get('full_name') or '').strip()
+    phone = (p.get('phone') or '').strip()
+    digits = re.sub(r'\D', '', phone)
+
+    if len(full_name) < 3 or len(digits) < 9:
+        messages.error(request, 'Jaza jina kamili na namba sahihi ya simu.')
+        return render(request, 'curriculum/teacher_register.html', context)
+
+    existing = TLMTeacher.objects.filter(phone_number=phone).first()
+    if existing is None:
+        existing = TLMTeacher.objects.filter(phone_number__endswith=digits[-9:]).first()
+    if existing:
+        messages.error(request, 'Namba hii imetumika. Ingia badala yake.')
+        return render(request, 'curriculum/teacher_register.html', context)
+
+    region = Region.objects.filter(pk=p.get('region_id')).first() if p.get('region_id') else None
+    district = District.objects.filter(pk=p.get('district_id')).first() if p.get('district_id') else None
+    school = School.objects.filter(pk=p.get('school_id')).first() if p.get('school_id') else None
+
+    # A school typed by hand is accepted (contract: school_id OR school_name).
+    typed_school = (p.get('school_name') or '').strip()
+    if school is None and typed_school and district is not None:
+        school = School.objects.filter(name__iexact=typed_school, district=district).first()
+        if school is None:
+            school = School.objects.create(
+                name=typed_school,
+                district=district,
+                level={'primary': 'Primary', 'alevel': 'Secondary'}.get(
+                    p.get('level'), 'Secondary'),
+            )
+    if school is None:
+        messages.error(request, 'Chagua shule yako (au andika jina la shule).')
+        return render(request, 'curriculum/teacher_register.html', context)
+
+    subject = Subject.objects.filter(
+        name__iexact=(p.get('subject') or '').strip()).first()
+
+    def _num(value):
+        try:
+            return max(0, int(float(value)))
+        except (TypeError, ValueError):
+            return 0
+
+    try:
+        teacher = TLMTeacher.objects.create(
+            full_name=full_name,
+            phone_number=phone,
+            region=region,
+            district=district,
+            school=school,
+            class_name=(p.get('class_name') or '').strip(),
+            stream=(p.get('stream') or '').strip(),
+            subject=subject,
+            total_boys=_num(p.get('boys')),
+            total_girls=_num(p.get('girls')),
+        )
+    except IntegrityError:
+        messages.error(request, 'Namba hii imetumika. Ingia badala yake.')
+        return render(request, 'curriculum/teacher_register.html', context)
+
+    request.session['tlm_teacher_id'] = teacher.id
+    cache.delete('curriculum_landing_stats')
+
+    next_url = request.session.pop('tlm_next', '') or ''
+    if next_url.startswith('/') and not next_url.startswith('//'):
+        return redirect(next_url)
+    return redirect('curriculum:dashboard')
 
 
 def ajax_get_districts(request):
@@ -1027,7 +1153,7 @@ def dashboard(request):
     recent_lessons = LessonPlan.objects.filter(student=student).select_related('subject').order_by('-created_at')[:3]
     recent_logbooks = LogbookEntry.objects.filter(student=student).select_related('subject_taught').order_by('-date')[:5]
 
-    return render(request, 'curriculum/dashboard.html', {
+    return render(request, 'curriculum/dashboard_legacy.html', {
         'student': student,
         'school': school,
         'schemes_count': schemes_count,
@@ -1268,25 +1394,9 @@ def _expand_scheme_rows(rows, target_multiplier=3, advanced=False):
         else:
             expanded.append(row)
     
-    # If still too small, duplicate with varied weeks
-    if len(expanded) < 30 and target_multiplier > 1:
-        extra_rows = []
-        for i, row in enumerate(expanded):
-            if len(expanded) + len(extra_rows) >= 30 * target_multiplier:
-                break
-            if i % 2 == 0:  # Duplicate every other row with "2nd & 3rd" style
-                new_row = dict(row)
-                w = row.get('Week', '')
-                if w and (w in ('1st', '2nd', '3rd', '4th') or w.isdigit()):
-                    # For Kiswahili week format (just numbers), use "1&2" style
-                    if w.isdigit():
-                        next_w = str(int(w) + 1)
-                        new_row['Week'] = f"{w}&{next_w}"
-                    else:
-                        next_w = {'1st': '2nd', '2nd': '3rd', '3rd': '4th', '4th': '5th'}.get(w, w)
-                        new_row['Week'] = f"{w} & {next_w}"
-                    extra_rows.append(new_row)
-        expanded.extend(extra_rows)
+    # NOTE: hapa zamani kulikuwa na uongezaji wa mistari ya nakala ("1st & 2nd")
+    # ili kuongeza ukubwa wa waraka. Ulikuwa unaingiza wiki zinazorudiwa
+    # (wiki moja ikionekana mara mbili) kwenye Scheme of Work, hivyo umeondolewa.
     
     # Sort by month order for proper presentation
     # Advanced (A-Level): mwaka wa masomo Julai → Juni mwakani, hivyo JULY=1
@@ -1853,39 +1963,13 @@ RULES:
                 present_months.add(mth)
         missing_months = expected_months - present_months
         if missing_months:
-            _is_sw = _is_kiswahili_mode(_scheme_language, subject, _school_level)
-            for mm in sorted(missing_months):
-                mth_sw = SWAHILI_MONTHS.get(mm, mm) if _is_sw else mm
-                if _is_sw:
-                    all_scheme_data.append({
-                        "UMAHIRI MKUU": "Endelea na mada ya silabasi",
-                        "UMAHIRI MAHUSUSI": "Endelea na mada ndogo",
-                        "SHUGHULI KUU ZA UJIFUNZAJI": f"Shughuli za {mth_sw}",
-                        "SHUGHULI NDOGO ZA UJIFUNZAJI": "Endelea na ujifunzaji",
-                        "MWEZI": mth_sw,
-                        "WIKI": "1-4",
-                        "VIPINDI": str(max(3, periods_per_week // 2)),
-                        "MBINU ZA UJIFUNZAJI NA UFUNDISHAJI": "Mbinu mbalimbali za CBC",
-                        "ZANA ZA UJIFUNZAJI NA UFUNDISHAJI": "Vitabu vya TIE, Chati",
-                        "ZANA ZA UPIMAJI": "Mazoezi, Maswali",
-                        "REJEA": "Vitabu vya TIE",
-                        "MAONI": "Endelea na silabasi"
-                    })
-                else:
-                    all_scheme_data.append({
-                        "Main Competence": "Continue with syllabus topics",
-                        "Specific Competences": "Continue with subtopics",
-                        "Main Learning Activities": f"Learning activities for {mm}",
-                        "Specific Learning Activities": "Continue with learning",
-                        "Month": mm,
-                        "Week": "1st - 4th",
-                        "Number of Periods": str(max(3, periods_per_week // 2)),
-                        "Teaching and Learning Methods": "Various CBC methods",
-                        "Teaching and Learning Resources": "TIE textbook, Charts",
-                        "Assessment Tools": "Exercises, Questions",
-                        "References": "TIE textbooks",
-                        "Remarks": "Proceed with syllabus"
-                    })
+            # Hakuna mistari ya kujaza (filler). Zamani hapa kulikuwa na
+            # "Endelea na mada ya silabasi" + "WIKI: 1-4" ambayo ilifika kwenye
+            # PDF kama mada halisi. Sasa tunaacha nafasi tupu na kuandika log.
+            logger.warning(
+                "[Scheme] AI missed months, left empty instead of filler: %s",
+                sorted(missing_months),
+            )
 
         # ── Save to DB ──
         saved_id = None
@@ -2020,6 +2104,33 @@ def _pdf_profile_seed(teacher, subject='', class_name=''):
         class_name or '',
     ])
     return int(hashlib.md5(parts.encode('utf-8')).hexdigest()[:8], 16)
+
+
+# Official PDFs use ONE standard: black & white, serif (handover §1 / §7).
+# The legacy colour themes stay in the code so old documents keep rendering,
+# but every palette is forced to greyscale before it is used.
+_BW_PALETTE = {
+    'primary': '#000000',
+    'accent': '#000000',
+    'accent_dark': '#000000',
+    'stripe': '#EDEDED',
+    'border': '#000000',
+    'light_bg': '#FFFFFF',
+    'cover_bg': '#FFFFFF',
+    'header_bg': '#E8E8E8',
+    'text': '#000000',
+}
+
+
+def _force_bw(palette):
+    """Force a PDF colour palette to black & white (no gradients, no gold)."""
+    for key, hexv in _BW_PALETTE.items():
+        if key in palette:
+            try:
+                palette[key] = colors.HexColor(hexv)
+            except Exception:
+                palette[key] = hexv
+    return palette
 
 
 def _pdf_visual_profile(teacher, subject='', class_name=''):
@@ -2234,6 +2345,7 @@ def download_scheme_pdf(request):
         },
     }
     T = THEMES.get(theme_name, THEMES['classic'])
+    _force_bw(T)  # official documents: black & white only
 
     # ── Mwonekano wa kudumu wa mwalimu (PDF zionekane kama za watu tofauti) ──
     # Mwalimu aliye na theme maalum anaheshimiwa; aliye kwenye classic (default)
@@ -2245,6 +2357,7 @@ def download_scheme_pdf(request):
         _fs = _prof['font_size']
     else:
         _fs = T.get('font_size', 8.5)
+    _force_bw(T)  # the per-teacher palette must stay black & white too
     NAVY = T['primary']
     GOLD = T['accent']
     DARK_GOLD = T['accent_dark']
@@ -2385,6 +2498,9 @@ def download_scheme_pdf(request):
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4),
                             rightMargin=18, leftMargin=18, topMargin=40, bottomMargin=25)
     elements = []
+    _emblem = _coat_of_arms_flowable()
+    if _emblem is not None:
+        elements.append(_emblem)
 
     # ── Cover page: decorative top lines ──
     elements.append(HRFlowable(width="100%", thickness=3, color=GOLD, spaceAfter=2))
@@ -2437,7 +2553,7 @@ def download_scheme_pdf(request):
         elements.append(Spacer(1, 4))
         elements.append(Paragraph(_pm,
             ParagraphStyle('MH1d', fontName=_HEAD_FONT, fontSize=13, alignment=1,
-                           textColor=NAVY, spaceAfter=0, backColor=(colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#F0F4FF')))))
+                           textColor=NAVY, spaceAfter=0, backColor=(colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#EDEDED')))))
         elements.append(Paragraph(_ralg,
             ParagraphStyle('MH2d', fontName=_HEAD_FONT, fontSize=10, alignment=1,
                            textColor=GOLD, spaceAfter=2)))
@@ -2506,8 +2622,8 @@ def download_scheme_pdf(request):
     info_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (0, -1), (colors.white if handwritten and _HANDWRITING_AVAILABLE else NAVY)),
         ('TEXTCOLOR', (0, 0), (0, -1), (_hdr_text if handwritten and _HANDWRITING_AVAILABLE else colors.white)),
-        ('BACKGROUND', (1, 0), (1, -1), (colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#FAFBFD'))),
-        ('ROWBACKGROUNDS', (1, 0), (1, -1), [(colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#FAFBFD')), STRIPE]),
+        ('BACKGROUND', (1, 0), (1, -1), (colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#FFFFFF'))),
+        ('ROWBACKGROUNDS', (1, 0), (1, -1), [(colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#FFFFFF')), STRIPE]),
         ('GRID', (0, 0), (-1, -1), 0.5, BORDER),
         ('BOX', (0, 0), (-1, -1), 2, GOLD),
         ('LINEBELOW', (0, 0), (-1, 0), 1.2, GOLD),
@@ -2553,7 +2669,7 @@ def download_scheme_pdf(request):
         WIDTH_MAP = {
             'Main Competence': 76, 'Specific Competences': 76,
             'Main Learning Activities': 70, 'Specific Learning Activities': 78,
-            'Month': 40, 'Week': 36, 'Number of Periods': 34,
+            'Month': 52, 'Week': 34, 'Number of Periods': 48,
             'Teaching and Learning Methods': 66,
             'Teaching and Learning Resources': 66,
             'Assessment Tools': 56, 'References': 66, 'Remarks': 70,
@@ -2604,7 +2720,7 @@ def download_scheme_pdf(request):
 
     if handwritten and _HANDWRITING_AVAILABLE:
         _hw_vary_elements(elements, teacher)
-    doc.build(elements, onFirstPage=_scheme_cover, onLaterPages=_scheme_header)
+    _build_with_page_numbers(doc, elements, _scheme_cover, _scheme_header)
     buffer.seek(0)
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="Scheme_of_Work_{subject}_{class_name}.pdf"'
@@ -3074,11 +3190,13 @@ def ajax_generate_lessonplan(request):
 
         full_class = f"{class_name}{stream}" if stream else class_name
 
-        # Calculate IDDR time allocation
-        intro_time = max(5, int(duration * 0.15))
-        dev_time = max(10, int(duration * 0.40))
-        design_time = max(8, int(duration * 0.30))
-        real_time = max(5, int(duration * 0.15))
+        # Calculate IDDR time allocation (15% / 40% / 30% / 15%)
+        # Jumla LAZIMA iwe sawa na muda wa kipindi (duration). Zamani max()
+        # ilifanya vipindi vifupi (mf. dakika 15) vitoe jumla ya dakika 28.
+        intro_time = max(1, round(duration * 0.15))
+        dev_time = max(1, round(duration * 0.40))
+        design_time = max(1, round(duration * 0.30))
+        real_time = max(0, duration - intro_time - dev_time - design_time)
 
         # ── Language: manual selection (english/kiswahili) or auto-detect ──
         _lp_tlm = get_tlm_teacher(request)
@@ -3304,6 +3422,41 @@ All text values must be plain strings. Use REAL Tanzanian content. Return ONLY t
         return JsonResponse({'success': False, 'error': msg}, status=500)
 
 
+def _fill_iddr_times(ld, duration):
+    """Hakikisha kila hatua ya IDDR ina dakika, na jumla = muda wa somo.
+
+    AI mara nyingine hairudishi `time`; zamani safu ya Muda ilikuwa tupu na
+    dakika hazikuwa zikijumlishwa kwa muda wa kipindi. Hapa tunajaza
+    dakika kwa mgawanyo 15% / 40% / 30% / 15% wa `duration`.
+    """
+    try:
+        duration = int(float(duration or 40))
+    except (TypeError, ValueError):
+        duration = 40
+    shares = (0.15, 0.40, 0.30, 0.15)
+    stages = list(ld or [])
+    out = []
+    assigned = 0
+    for i, stage in enumerate(stages):
+        st = dict(stage)
+        raw = str(st.get('time', '') or '').strip()
+        if raw:
+            try:
+                assigned += int(float(raw))
+            except (TypeError, ValueError):
+                pass
+        elif i < len(shares):
+            # Hatua ya mwisho inachukua kilichobaki ili jumla = muda wa somo
+            if i == len(stages) - 1:
+                mins = max(0, duration - assigned)
+            else:
+                mins = max(1, round(duration * shares[i]))
+            st['time'] = str(mins)
+            assigned += mins
+        out.append(st)
+    return out
+
+
 def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
     """Build ONE lesson-plan PDF (TAMISEMI format) into a BytesIO buffer.
 
@@ -3428,7 +3581,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
             'light': colors.HexColor('#EEF1F6'),
             'stripe': colors.HexColor('#F4F7FF'),
             'border': colors.HexColor('#9BAAC4'),
-            'light_bg': colors.HexColor('#FAFBFD'),
+            'light_bg': colors.HexColor('#FFFFFF'),
             'font_size': 8.5,
             'border_width': 2.5,
         },
@@ -3544,6 +3697,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
         },
     }
     T = THEMES.get(theme_name, THEMES['classic'])
+    _force_bw(T)  # official documents: black & white only
 
     # ── Mwonekano wa kudumu wa mwalimu (PDF zionekane kama za watu tofauti) ──
     _prof = _pdf_visual_profile(teacher, form.get('subject', ''), form.get('class_name', ''))
@@ -3552,6 +3706,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
         _lp_fs = _prof['font_size']
     else:
         _lp_fs = T.get('font_size', 8.5)
+    _force_bw(T)  # the per-teacher palette must stay black & white too
     NAVY = T['primary']
     GOLD = T['accent']
     DARK_GOLD = T['accent_dark']
@@ -3566,7 +3721,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
     _is_veta = _is_veta_level(teacher, form.get('education_level', ''), form.get('format', ''))
 
     # Handwritten mode → tumia font ya mkono, wino wa bluu, karatasi plain
-    _ink = colors.HexColor('#1e3a8a')
+    _ink = colors.HexColor('#000000')
     _hdr_text = colors.white
     _body_text = colors.black
     _hdr_bg = NAVY
@@ -3609,6 +3764,9 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
     doc = SimpleDocTemplate(buffer, pagesize=A4,
                             rightMargin=36, leftMargin=36, topMargin=40, bottomMargin=30)
     elements = []
+    _emblem = _coat_of_arms_flowable()
+    if _emblem is not None:
+        elements.append(_emblem)
     _lp_hw_indent = ((_handwriting_seed(teacher) % 3) if (handwritten and _HANDWRITING_AVAILABLE) else 0)
     _lp_hw_lead = ((_handwriting_seed(teacher) // 5) % 2 if (handwritten and _HANDWRITING_AVAILABLE) else 0)
     normal = ParagraphStyle('LP_N', fontName=_BODY_FONT, fontSize=_lp_fs + 0.5, leading=_lp_fs + 4.5 + _lp_hw_lead, textColor=_body_text, leftIndent=_lp_hw_indent, wordWrap='LTR', spaceAfter=3)
@@ -3640,7 +3798,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
                            textColor=NAVY, spaceAfter=2)))
         elements.append(Paragraph("(Format to be used in E-Logbook. Type against each item)",
             ParagraphStyle('LP_SUB_NB', fontName=_BODY_FONT, fontSize=9, alignment=1,
-                           textColor=(_ink if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#C00000')), spaceAfter=10)))
+                           textColor=(_ink if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#000000')), spaceAfter=10)))
 
         # ── Info block (hati ya E-Logbook — bila jedwali) ──
         def _dotted(value):
@@ -3650,7 +3808,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
         info_items = [
             (_tl("Teacher's Name", _lp_sw), _dotted(form.get('teacher_name', ''))),
             ('Subject Name', _dotted(form.get('subject', ''))),
-            ('Date', _dotted(str(timezone.now().date()))),
+            ('Date', _dotted(_fmt_dmy(form.get('lesson_date')))),
             ('Class/Stream', _dotted(f"{str(form.get('class_name') or '')}{' ' + str(form.get('stream') or '') if form.get('stream') else ''}")),
             ('Period', _dotted(form.get('period', ''))),
             ('Time', _dotted(form.get('time', ''))),
@@ -3686,7 +3844,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
 
         if handwritten and _HANDWRITING_AVAILABLE:
             _hw_vary_elements(elements, teacher)
-        doc.build(elements, onFirstPage=_lp_cover, onLaterPages=_lp_header)
+        _build_with_page_numbers(doc, elements, _lp_cover, _lp_header)
         buffer.seek(0)
         return buffer
 
@@ -3727,7 +3885,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
         # Navy with decorative border
         elements.append(Paragraph(_pm,
             ParagraphStyle('MH1d', fontName=_HEAD_FONT, fontSize=13, alignment=1,
-                           textColor=NAVY, spaceAfter=0, backColor=(colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#F0F4FF')))))
+                           textColor=NAVY, spaceAfter=0, backColor=(colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#EDEDED')))))
         elements.append(Paragraph(_ralg,
             ParagraphStyle('MH2d', fontName=_HEAD_FONT, fontSize=10, alignment=1,
                            textColor=GOLD, spaceAfter=2)))
@@ -3795,8 +3953,8 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
     info_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (0, -1), (colors.white if handwritten and _HANDWRITING_AVAILABLE else NAVY)),
         ('TEXTCOLOR', (0, 0), (0, -1), (_hdr_text if handwritten and _HANDWRITING_AVAILABLE else colors.white)),
-        ('BACKGROUND', (1, 0), (1, -1), (colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#FAFBFD'))),
-        ('ROWBACKGROUNDS', (1, 0), (1, -1), [(colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#FAFBFD')), STRIPE]),
+        ('BACKGROUND', (1, 0), (1, -1), (colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#FFFFFF'))),
+        ('ROWBACKGROUNDS', (1, 0), (1, -1), [(colors.white if handwritten and _HANDWRITING_AVAILABLE else colors.HexColor('#FFFFFF')), STRIPE]),
         ('GRID', (0, 0), (-1, -1), 0.5, BORDER),
         ('BOX', (0, 0), (-1, -1), 2, GOLD),
         ('LINEBELOW', (0, 0), (-1, 0), 1.2, GOLD),
@@ -3817,9 +3975,9 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
     tb = str(form.get('total_boys', '') or '—')
     tg = str(form.get('total_girls', '') or '—')
     ts = str(form.get('total_students', '') or '—')
-    pb = str(form.get('present_boys', '') or '—')
-    pg = str(form.get('present_girls', '') or '—')
-    ps = str(form.get('present_students', '') or '—')
+    pb = str(form.get('present_boys', '') or '0')
+    pg = str(form.get('present_girls', '') or '0')
+    ps = str(form.get('present_students', '') or '0')
     ab = str(form.get('absent_boys', '') or '—')
     ag = str(form.get('absent_girls', '') or '—')
     a_stud = str(form.get('absent_students', '') or '—')
@@ -3874,7 +4032,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
         [P(_tl('Topic', _lp_sw), label_s), P(form.get('topic', '')),
          P(_tl('Subtopic', _lp_sw), label_s), P(form.get('subtopic', ''))],
         [P(_tl('Duration', _lp_sw), label_s), P(f"{form.get('duration','')} min"),
-         P(_tl('Date', _lp_sw), label_s), P(str(timezone.now().date()))],
+         P(_tl('Date', _lp_sw), label_s), P(_fmt_dmy(form.get('lesson_date')))],
         [P(_tl('Students', _lp_sw), label_s),
          stat_inner, P(''), P('')],
     ]
@@ -3918,7 +4076,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
         elements.append(Paragraph(_tl('References', _lp_sw), section_hdr))
         elements.append(Paragraph(f"{ref}", normal))
 
-    ld = lesson.get('lesson_development', [])
+    ld = _fill_iddr_times(lesson.get('lesson_development', []), (form or {}).get('duration'))
     if ld:
         elements.append(Paragraph(_tl('Lesson Development (IDDR Model)', _lp_sw), section_hdr))
         ld_headers = [_tl('Stage', _lp_sw), _tl('Time', _lp_sw), _tl('Teaching Activities', _lp_sw), _tl('Learning Activities', _lp_sw), _tl('Assessment Criteria', _lp_sw)]
@@ -3931,6 +4089,20 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
                 Paragraph(str(stage.get('teaching_activities', stage.get('teacher_activities', '')) or ''), cell_s),
                 Paragraph(str(stage.get('learning_activities', stage.get('student_activities', '')) or ''), cell_s),
                 Paragraph(str(stage.get('assessment_criteria', '') or ''), cell_s),
+            ])
+        # Jumla ya dakika — lazima ilingane na muda wa somo
+        _mins = []
+        for row in ld_data[1:]:
+            try:
+                _mins.append(int(float(row[1].text)))
+            except (TypeError, ValueError):
+                pass
+        if _mins and len(_mins) == len(ld) and sum(_mins) > 0:
+            _unit = 'dakika' if _lp_sw else 'min'
+            ld_data.append([
+                Paragraph(_tl('Total', _lp_sw), cell_s),
+                Paragraph(f"{sum(_mins)} {_unit}", cell_s),
+                Paragraph('', cell_s), Paragraph('', cell_s), Paragraph('', cell_s),
             ])
         ld_tbl = Table(ld_data, colWidths=[72, 38, 118, 118, 105], repeatRows=1)
         ld_ts = [
@@ -3959,7 +4131,7 @@ def _build_lp_pdf(lesson, form, teacher=None, handwritten=False):
 
     if handwritten and _HANDWRITING_AVAILABLE:
         _hw_vary_elements(elements, teacher)
-    doc.build(elements, onFirstPage=_lp_cover, onLaterPages=_lp_header)
+    _build_with_page_numbers(doc, elements, _lp_cover, _lp_header)
     buffer.seek(0)
     return buffer
 
@@ -3980,6 +4152,78 @@ def download_lesson_plan_pdf(request):
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{safe_name}.pdf"'
     return response
+
+
+def _coat_of_arms_flowable(width=52):
+    """Coat of arms for the cover of the official PDFs (Hati 1 §1)."""
+    import os
+    from django.conf import settings
+    from reportlab.platypus import Image
+    from reportlab.lib.utils import ImageReader
+
+    path = os.path.join(str(getattr(settings, 'BASE_DIR', '') or ''),
+                        'field_app', 'static', 'images', 'tz_coat_of_arms.png')
+    if not os.path.exists(path):
+        return None
+    try:
+        iw, ih = ImageReader(path).getSize()
+    except Exception:
+        return None
+    img = Image(path, width=width, height=width * (ih / float(iw or 1)))
+    img.hAlign = 'CENTER'
+    return img
+
+
+def _build_with_page_numbers(doc, elements, on_first=None, on_later=None):
+    """Build an official PDF with the footer "Ukurasa X kati ya Y" (Hati 1 §1).
+
+    A quick first pass counts the pages, the real pass then prints the total.
+    """
+    import copy
+
+    props = dict(pagesize=doc.pagesize, leftMargin=doc.leftMargin,
+                 rightMargin=doc.rightMargin, topMargin=doc.topMargin,
+                 bottomMargin=doc.bottomMargin)
+    total = [0]
+
+    def footer(canvas, doc_):
+        canvas.saveState()
+        canvas.setFont('Times-Roman', 8)
+        canvas.drawCentredString(doc_.pagesize[0] / 2.0, 12,
+                                 'Ukurasa %d kati ya %d' % (doc_.page, total[0]))
+        canvas.restoreState()
+
+    probe = SimpleDocTemplate(BytesIO(), **props)
+    probe.build(copy.deepcopy(elements), onFirstPage=footer, onLaterPages=footer)
+    total[0] = probe.page
+
+    def first(canvas, doc_):
+        if on_first:
+            on_first(canvas, doc_)
+        footer(canvas, doc_)
+
+    def later(canvas, doc_):
+        if on_later:
+            on_later(canvas, doc_)
+        footer(canvas, doc_)
+
+    doc.build(elements, onFirstPage=first, onLaterPages=later)
+    return doc
+
+
+def _fmt_dmy(value):
+    """Print official dates as dd/mm/yyyy (Hati 1 §4.5)."""
+    if isinstance(value, datetime):
+        value = value.date()
+    if isinstance(value, date):
+        return value.strftime('%d/%m/%Y')
+    text = str(value or '').strip()
+    if not text:
+        return timezone.now().date().strftime('%d/%m/%Y')
+    try:
+        return date.fromisoformat(text[:10]).strftime('%d/%m/%Y')
+    except ValueError:
+        return text
 
 
 def _lp_to_dicts(lp):
@@ -4017,8 +4261,9 @@ def _lp_to_dicts(lp):
         'subtopic': lp.subtopic or '', 'teacher_name': lp.teacher_name,
         'duration': str(lp.duration),  # Must be string for PDF generator
         'school_name': lp.school.name if lp.school else '',
-        'total_students': lp.total_students or '',
-        'present_students': lp.present_students or '',
+        'lesson_date': lp.date.isoformat() if lp.date else '',
+        'total_students': lp.total_students or ((lp.total_boys or 0) + (lp.total_girls or 0)),
+        'present_students': lp.present_students or ((lp.present_boys or 0) + (lp.present_girls or 0)),
         'total_boys': lp.total_boys or '',
         'total_girls': lp.total_girls or '',
         'present_boys': lp.present_boys or '',
@@ -4248,7 +4493,7 @@ def download_lesson_plan_word(request):
         p.add_run('References: ').bold = True
         p.add_run(str(ref))
 
-    ld = lesson.get('lesson_development', [])
+    ld = _fill_iddr_times(lesson.get('lesson_development', []), (form or {}).get('duration'))
     if ld:
         doc.add_heading('Lesson Development (IDDR Model)', level=2)
         ld_table = doc.add_table(rows=1, cols=5)
@@ -4795,15 +5040,17 @@ def _build_subject_logbook_pdf(entries, teacher, period_label, today, single_ent
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import cm
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
+                                    TableStyle, HRFlowable, PageBreak)
     from reportlab.lib import colors
 
     school = teacher.school
     entries = list(entries)
 
-    NAVY = colors.HexColor('#0A2B5E')
-    GOLD = colors.HexColor('#C8900A')
-    LIGHT = colors.HexColor('#F3F5F9')
+    # Hati 1 §1: one standard for every official PDF — black & white only.
+    NAVY = colors.black
+    GOLD = colors.HexColor('#000000')
+    LIGHT = colors.HexColor('#F2F2F2')
     WHITE = colors.white
 
     buffer = BytesIO()
@@ -4811,15 +5058,15 @@ def _build_subject_logbook_pdf(entries, teacher, period_label, today, single_ent
                             rightMargin=1.1 * cm, topMargin=1.1 * cm, bottomMargin=1.1 * cm)
 
     styles = getSampleStyleSheet()
-    s_rep = ParagraphStyle('rep', fontName='Helvetica-Bold', fontSize=10.5, textColor=NAVY, alignment=1, spaceAfter=1)
-    s_rep2 = ParagraphStyle('rep2', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#4A5568'), alignment=1, spaceAfter=1)
-    s_title = ParagraphStyle('title', fontName='Helvetica-Bold', fontSize=13, textColor=NAVY, alignment=1, spaceAfter=3)
-    s_sub = ParagraphStyle('sub', fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#4A5568'), spaceAfter=2)
-    s_head = ParagraphStyle('head', fontName='Helvetica-Bold', fontSize=7.5, textColor=WHITE, leading=9)
-    s_cell = ParagraphStyle('cell', fontName='Helvetica', fontSize=7.5, textColor=colors.HexColor('#1A1A2E'), leading=9.5)
-    s_cellb = ParagraphStyle('cellb', fontName='Helvetica-Bold', fontSize=7.5, textColor=NAVY, leading=9.5)
-    s_label = ParagraphStyle('label', fontName='Helvetica-Bold', fontSize=8, textColor=NAVY)
-    s_body = ParagraphStyle('body', fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#1A1A2E'), leading=10)
+    s_rep = ParagraphStyle('rep', fontName='Times-Bold', fontSize=12, textColor=NAVY, alignment=1, spaceAfter=2)
+    s_rep2 = ParagraphStyle('rep2', fontName='Times-Roman', fontSize=9.5, textColor=colors.black, alignment=1, spaceAfter=1)
+    s_title = ParagraphStyle('title', fontName='Times-Bold', fontSize=16, textColor=NAVY, alignment=1, spaceBefore=6, spaceAfter=2)
+    s_sub = ParagraphStyle('sub', fontName='Times-Italic', fontSize=9.5, textColor=colors.black, alignment=1, spaceAfter=2)
+    s_head = ParagraphStyle('head', fontName='Times-Bold', fontSize=7.5, textColor=colors.black, leading=9, alignment=1)
+    s_cell = ParagraphStyle('cell', fontName='Times-Roman', fontSize=7.8, textColor=colors.black, leading=9.8)
+    s_cellb = ParagraphStyle('cellb', fontName='Times-Bold', fontSize=7.8, textColor=colors.black, leading=9.8)
+    s_label = ParagraphStyle('label', fontName='Times-Bold', fontSize=8.5, textColor=colors.black)
+    s_body = ParagraphStyle('body', fontName='Times-Roman', fontSize=8.5, textColor=colors.black, leading=10.5)
 
     school_name = school.name if school else '—'
     district_name = (school.district.name if school and school.district else '—')
@@ -4829,7 +5076,10 @@ def _build_subject_logbook_pdf(entries, teacher, period_label, today, single_ent
     class_name = teacher.class_name or '—'
 
     story = []
-    # ── Official header ──
+    # ── Official cover (page 1 only): coat of arms + ministry header ──
+    coat = _coat_of_arms_flowable(58)
+    if coat is not None:
+        story.append(coat)
     story.append(Paragraph("JAMHURI YA MUUNGANO WA TANZANIA", s_rep))
     story.append(Paragraph("OFISI YA RAIS — TAWALA ZA MIKOA NA SERIKALI ZA MITAA (TAMISEMI)", s_rep2))
     story.append(HRFlowable(width="100%", thickness=2, color=GOLD, spaceBefore=2, spaceAfter=3))
@@ -4844,7 +5094,7 @@ def _build_subject_logbook_pdf(entries, teacher, period_label, today, single_ent
          Paragraph('<b>Darasa:</b>', s_label), Paragraph(class_name, s_body)],
         [Paragraph('<b>Wilaya:</b>', s_label), Paragraph(district_name, s_body),
          Paragraph('<b>Mwaka wa Masomo:</b>', s_label), Paragraph(year_label, s_body)],
-        [Paragraph('<b>Tarehe ya Chapisha:</b>', s_label), Paragraph(str(today), s_body),
+        [Paragraph('<b>Tarehe ya Chapisha:</b>', s_label), Paragraph(_fmt_dmy(today), s_body),
          Paragraph('<b>Idadi ya Topics:</b>', s_label), Paragraph(str(len(entries)), s_body)],
     ]
     info_tbl = Table(info_rows, colWidths=[3.3 * cm, 6.3 * cm, 3.6 * cm, 6.3 * cm])
@@ -4856,7 +5106,7 @@ def _build_subject_logbook_pdf(entries, teacher, period_label, today, single_ent
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
     ]))
     story.append(info_tbl)
-    story.append(Spacer(1, 8))
+    story.append(PageBreak())
 
     # ── Official 11-column subject log-book table ──
     headers = ['S/N', 'TERM', 'MONTH', 'WEEK', 'MAIN TOPIC', 'SUBTOPIC',
@@ -4876,8 +5126,8 @@ def _build_subject_logbook_pdf(entries, teacher, period_label, today, single_ent
             Paragraph(e.week or '—', s_cell),
             Paragraph(e.main_topic or '—', s_cellb),
             Paragraph(e.subtopic or '—', s_cell),
-            Paragraph(str(e.date_started) if e.date_started else '—', s_cell),
-            Paragraph(str(e.date_ended) if e.date_ended else '—', s_cell),
+            Paragraph(e.date_started.strftime('%d/%m/%Y') if e.date_started else '—', s_cell),
+            Paragraph(e.date_ended.strftime('%d/%m/%Y') if e.date_ended else '—', s_cell),
             Paragraph(teacher_sign, s_cell),
             Paragraph(hod_sign, s_cell),
             Paragraph(head_sign, s_cell),
@@ -4890,7 +5140,7 @@ def _build_subject_logbook_pdf(entries, teacher, period_label, today, single_ent
                   2.0 * cm, 2.0 * cm, 3.6 * cm, 2.8 * cm, 3.0 * cm]
     main_tbl = Table(data, colWidths=col_widths, repeatRows=1)
     main_tbl.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+        ('BACKGROUND', (0, 0), (-1, 0), LIGHT),
         ('BOX', (0, 0), (-1, -1), 0.6, NAVY),
         ('INNERGRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#B8C2D0')),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
@@ -4907,7 +5157,7 @@ def _build_subject_logbook_pdf(entries, teacher, period_label, today, single_ent
         sig_rows = [
             [Paragraph('<b>Sahihi ya Mwalimu wa Somo:</b>', s_label), '', '', ''],
             [Paragraph('<b>Jina:</b>', s_label), Paragraph(single_entry.teacher_name or '', s_body),
-             Paragraph('<b>Tarehe:</b>', s_label), Paragraph(str(single_entry.date_ended or ''), s_body)],
+             Paragraph('<b>Tarehe:</b>', s_label), Paragraph(single_entry.date_ended.strftime('%d/%m/%Y') if single_entry.date_ended else '', s_body)],
         ]
         sig_tbl = Table(sig_rows, colWidths=[4.5 * cm, 4.5 * cm, 2.5 * cm, 4.0 * cm])
         sig_tbl.setStyle(TableStyle([
@@ -4919,7 +5169,15 @@ def _build_subject_logbook_pdf(entries, teacher, period_label, today, single_ent
         ]))
         story.append(sig_tbl)
 
-    doc.build(story)
+    def _cover_frame(canvas, doc_):
+        """Thin black frame on the cover page, like the official documents."""
+        canvas.saveState()
+        canvas.setLineWidth(1.2)
+        canvas.rect(1.0 * cm, 1.0 * cm, doc_.pagesize[0] - 2.0 * cm,
+                    doc_.pagesize[1] - 2.0 * cm)
+        canvas.restoreState()
+
+    _build_with_page_numbers(doc, story, on_first=_cover_frame)
     buffer.seek(0)
     response = HttpResponse(buffer, content_type='application/pdf')
     return response
@@ -5047,7 +5305,7 @@ def download_logbook_pdf(request, period_type=None):
          Paragraph('<b>Shule:</b>', s_label), Paragraph(school_name, s_body)],
         [Paragraph('<b>Wilaya:</b>', s_label), Paragraph(district_name, s_body),
          Paragraph('<b>Mwaka wa Masomo:</b>', s_label), Paragraph(year_label, s_body)],
-        [Paragraph('<b>Tarehe ya Chapisha:</b>', s_label), Paragraph(str(today), s_body),
+        [Paragraph('<b>Tarehe ya Chapisha:</b>', s_label), Paragraph(_fmt_dmy(today), s_body),
          Paragraph('<b>Idadi ya Siku:</b>', s_label), Paragraph(str(entries.count()), s_body)],
     ]
     info_tbl = Table(info_data, colWidths=[3.5 * cm, 5.5 * cm, 3.5 * cm, 5.5 * cm])
@@ -5197,7 +5455,7 @@ def download_logbook_pdf(request, period_type=None):
     story.append(Paragraph("© Wizara ya Elimu, Sayansi na Teknolojia — IMS v2.1.0",
                            ParagraphStyle('footer', fontName='Helvetica', fontSize=7, textColor=colors.HexColor('#4A5568'), alignment=1)))
 
-    doc.build(story)
+    _build_with_page_numbers(doc, story)
     buffer.seek(0)
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -6347,10 +6605,11 @@ def ajax_generate_all_lessons(request):
             topics = [MockTopic(t) for t in topic_names]
         
         full_class = f"{class_name}{stream}" if stream else class_name
-        intro_time = max(5, int(duration * 0.15))
-        dev_time = max(10, int(duration * 0.40))
-        design_time = max(8, int(duration * 0.30))
-        real_time = max(5, int(duration * 0.15))
+        # IDDR time allocation (15% / 40% / 30% / 15%), jumla = duration
+        intro_time = max(1, round(duration * 0.15))
+        dev_time = max(1, round(duration * 0.40))
+        design_time = max(1, round(duration * 0.30))
+        real_time = max(0, duration - intro_time - dev_time - design_time)
 
         # Handle missing school
         school_obj = teacher.school
@@ -6555,10 +6814,11 @@ def ajax_generate_one_lesson(request):
             return JsonResponse({'success': False, 'error': 'Topic inahitajika'}, status=400)
 
         full_class = f"{class_name}{stream}" if stream else class_name
-        intro_time = max(5, int(duration * 0.15))
-        dev_time = max(10, int(duration * 0.40))
-        design_time = max(8, int(duration * 0.30))
-        real_time = max(5, int(duration * 0.15))
+        # IDDR time allocation (15% / 40% / 30% / 15%), jumla = duration
+        intro_time = max(1, round(duration * 0.15))
+        dev_time = max(1, round(duration * 0.40))
+        design_time = max(1, round(duration * 0.30))
+        real_time = max(0, duration - intro_time - dev_time - design_time)
 
         # Handle missing school (match ajax_generate_lessonplan leniency)
         school_obj = teacher.school

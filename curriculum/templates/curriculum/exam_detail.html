@@ -1,4 +1,4 @@
-{% extends 'curriculum/base.html' %}
+{% extends 'curriculum/base_tool.html' %}
 {% block title %}{{ exam.title }}{% endblock %}
 {% block extra_css %}
 <style>
@@ -35,14 +35,14 @@
     transition: background 0.15s;
   }
   .question-row:last-child { border-bottom: none; }
-  .question-row:hover { background: rgba(31,122,61,0.03); }
+  .question-row:hover { background: rgba(30,64,175,0.03); }
   .q-text { font-size: var(--font-size-sm); color: var(--text-primary); line-height: 1.55; white-space: pre-line; }
   .q-marks { font-weight: 700; color: var(--gold-400); font-size: var(--font-size-xs); white-space: nowrap; }
   .q-answer {
     display: none;
     margin-top: 0.5rem;
     padding: 0.6rem 0.8rem;
-    background: rgba(31,122,61,0.06);
+    background: rgba(30,64,175,0.06);
     border-left: 3px solid var(--green-500);
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     font-size: var(--font-size-xs);
@@ -108,7 +108,7 @@
 
     {% if exam.instructions %}
     <div style="padding:0 1.25rem 0.75rem;">
-      <div style="background:rgba(217,164,65,0.07);border:1px solid rgba(217,164,65,0.2);border-radius:var(--radius-sm);padding:0.75rem 1rem;font-size:var(--font-size-xs);color:var(--text-secondary);">
+      <div style="background:rgba(30,64,175,0.07);border:1px solid rgba(30,64,175,0.2);border-radius:var(--radius-sm);padding:0.75rem 1rem;font-size:var(--font-size-xs);color:var(--text-secondary);">
         <strong style="color:var(--gold-400);"><i class="fas fa-bullhorn me-1"></i>INSTRUCTIONS:</strong> {{ exam.instructions }}
       </div>
     </div>

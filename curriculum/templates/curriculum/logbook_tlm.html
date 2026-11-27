@@ -1,4 +1,4 @@
-{% extends 'curriculum/base.html' %}
+{% extends 'curriculum/base_tool.html' %}
 {% block title %}Subject Log-Book{% endblock %}
 {% block content %}
 <style>
@@ -11,7 +11,7 @@
     animation: fadeUp 250ms var(--ease-out);
     transition: box-shadow 0.2s;
   }
-  .period-card:hover { box-shadow: var(--shadow-sm); border-color: rgba(31,122,61,0.2); }
+  .period-card:hover { box-shadow: var(--shadow-sm); border-color: rgba(30,64,175,0.2); }
   .lang-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; display: block; margin-bottom: 2px; }
   .lang-label-sw { color: var(--green-500); }
   .lang-label-en { color: var(--info); display: none; }
@@ -25,7 +25,7 @@
     font-size: 9.5px; letter-spacing: 0.02em; text-transform: uppercase; white-space: nowrap;
   }
   .lb-table td { padding: 8px 6px; border-bottom: 1px solid var(--border-color); vertical-align: top; }
-  .lb-table tr:hover td { background: rgba(31,122,61,0.04); }
+  .lb-table tr:hover td { background: rgba(30,64,175,0.04); }
   .auto-chip { background: rgba(200,144,10,0.1); color: #9a6d00; border: 1px dashed rgba(200,144,10,0.5); font-size: 9px; padding: 1px 7px; border-radius: 10px; }
   .sig-dots { font-size: 10px; letter-spacing: 1px; color: var(--text-muted); }
   .lb-term-row td {
@@ -59,8 +59,8 @@
       </div>
       <!-- Language toggle -->
       <div style="display:flex;align-items:center;gap:4px;">
-        <button class="btn-tlm btn-sm-tlm" onclick="toggleLogbookLang('sw')" id="langSwBtn" style="{% if preferred_language != 'english' %}background:var(--green-500);color:white;{% else %}background:rgba(31,122,61,0.08);color:var(--green-500);{% endif %}font-size:9px;padding:2px 8px;border-radius:4px;">🇹🇿 SW</button>
-        <button class="btn-tlm btn-sm-tlm" onclick="toggleLogbookLang('en')" id="langEnBtn" style="{% if preferred_language == 'english' %}background:var(--green-500);color:white;{% else %}background:rgba(31,122,61,0.08);color:var(--green-500);{% endif %}font-size:9px;padding:2px 8px;border-radius:4px;">🇬🇧 EN</button>
+        <button class="btn-tlm btn-sm-tlm" onclick="toggleLogbookLang('sw')" id="langSwBtn" style="{% if preferred_language != 'english' %}background:var(--green-500);color:white;{% else %}background:rgba(30,64,175,0.08);color:var(--green-500);{% endif %}font-size:9px;padding:2px 8px;border-radius:4px;">🇹🇿 SW</button>
+        <button class="btn-tlm btn-sm-tlm" onclick="toggleLogbookLang('en')" id="langEnBtn" style="{% if preferred_language == 'english' %}background:var(--green-500);color:white;{% else %}background:rgba(30,64,175,0.08);color:var(--green-500);{% endif %}font-size:9px;padding:2px 8px;border-radius:4px;">🇬🇧 EN</button>
       </div>
     </div>
   </div>
@@ -451,12 +451,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const enBtn = document.getElementById('langEnBtn');
     if (lang === 'en') {
       body.classList.add('lang-en');
-      swBtn.style.background = 'rgba(31,122,61,0.08)'; swBtn.style.color = 'var(--green-500)';
+      swBtn.style.background = 'rgba(30,64,175,0.08)'; swBtn.style.color = 'var(--green-500)';
       enBtn.style.background = 'var(--green-500)'; enBtn.style.color = 'white';
     } else {
       body.classList.remove('lang-en');
       swBtn.style.background = 'var(--green-500)'; swBtn.style.color = 'white';
-      enBtn.style.background = 'rgba(31,122,61,0.08)'; enBtn.style.color = 'var(--green-500)';
+      enBtn.style.background = 'rgba(30,64,175,0.08)'; enBtn.style.color = 'var(--green-500)';
     }
     localStorage.setItem('logbook-lang', lang);
     fetch('{% url "curriculum:update_teacher_profile" %}', {
@@ -471,7 +471,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const swBtn = document.getElementById('langSwBtn');
       const enBtn = document.getElementById('langEnBtn');
       if (swBtn && enBtn) {
-        swBtn.style.background = 'rgba(31,122,61,0.08)'; swBtn.style.color = 'var(--green-500)';
+        swBtn.style.background = 'rgba(30,64,175,0.08)'; swBtn.style.color = 'var(--green-500)';
         enBtn.style.background = 'var(--green-500)'; enBtn.style.color = 'white';
       }
     }

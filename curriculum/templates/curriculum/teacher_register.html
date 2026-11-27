@@ -1,960 +1,207 @@
-{% extends 'curriculum/base.html' %}
-{% block title %}Register — TLM Tanzania{% endblock %}
+{% extends "curriculum/base.html" %}
+{% block title %}Jisajili · TLM Tanzania{% endblock %}
+{% block bottomnav %}{% endblock %}
 {% block content %}
-<style>
-  .register-card {
-    border: 2.5px solid var(--green-500);
-    border-top: 4px solid var(--gold-400);
-    border-radius: var(--radius-md);
-    box-shadow: 0 3px 12px rgba(31,122,61,0.08);
-    position: relative;
-    max-width: 520px;
-    margin: 0 auto;
-  }
-  .register-badge {
-    position: absolute; top: -10px; left: 12px;
-    background: var(--gold-400); color: white;
-    font-size: 9px; font-weight: 700;
-    padding: 2px 10px; border-radius: var(--radius-full);
-    text-transform: uppercase; letter-spacing: 0.06em;
-  }
-  .lang-btn {
-    background: none; border: 1.5px solid var(--border-color);
-    border-radius: var(--radius-full);
-    padding: 3px 10px; font-size: 10px; font-weight: 700;
-    cursor: pointer; color: var(--text-muted);
-    transition: all var(--duration-fast);
-  }
-  .lang-btn.active {
-    background: var(--green-500); color: white;
-    border-color: var(--green-500);
-  }
-  .lang-btn:hover { border-color: var(--gold-400); }
+{% comment %}
+5-step wizard, ONE form, submitted once at the end.
+Steps are shown/hidden client-side. Backend endpoints used (adapt names):
+  - GET {% url 'curriculum:api_check_phone' %}?phone=07..  -> {"exists": true|false}
+  - GET {% url 'curriculum:api_locations' %}?kind=region   -> [{"id":1,"name":"Arusha"},…]
+  - GET {% url 'curriculum:api_locations' %}?kind=district&parent=ID
+  - GET {% url 'curriculum:api_locations' %}?kind=school&parent=ID
+  - GET {% url 'curriculum:api_subjects' %}?level=primary|olevel|alevel -> ["Biology",…]
+{% endcomment %}
+<form method="post" action="{% url 'curriculum:teacher_register' %}" id="reg" class="page wz-center" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="level"><input type="hidden" name="region_id"><input type="hidden" name="district_id">
+  <input type="hidden" name="school_id"><input type="hidden" name="school_name"><input type="hidden" name="class_name">
+  <input type="hidden" name="stream"><input type="hidden" name="subject">
 
-  .top-actions {
-    display: flex; align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1rem; gap: 8px;
-  }
-
-  .form-field {
-    margin-bottom: 1rem;
-  }
-  .form-field label {
-    display: block;
-    font-size: var(--font-size-xs);
-    font-weight: 700;
-    color: var(--green-500);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-bottom: 4px;
-  }
-  .form-field select, .form-field input {
-    width: 100%;
-    padding: 0.65rem 0.8rem;
-    border: 1.5px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    background: var(--bg-card-solid);
-    color: var(--text-primary);
-    font-size: var(--font-size-base);
-    transition: all var(--duration-fast);
-    -webkit-appearance: none;
-    appearance: none;
-  }
-  .form-field select:focus, .form-field input:focus {
-    border-color: var(--gold-400);
-    box-shadow: 0 0 0 3px rgba(217,164,65,0.15);
-    outline: none;
-  }
-  .form-field select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    padding-right: 32px;
-  }
-
-  .reg-divider {
-    height: 1px;
-    background: var(--border-color);
-    margin: 1.25rem 0;
-  }
-
-  .success-icon {
-    width: 72px; height: 72px; border-radius: 50%;
-    background: var(--success);
-    display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 1rem;
-    animation: popIn 400ms var(--ease-out);
-  }
-  @keyframes popIn {
-    0% { transform: scale(0); }
-    70% { transform: scale(1.15); }
-    100% { transform: scale(1); }
-  }
-  .success-icon i { font-size: 2rem; color: white; }
-
-  [data-lang="en"] [data-lang-sw] { display: none; }
-  [data-lang="sw"] [data-lang-en] { display: none; }
-
-  .cascade-loading {
-    display: inline-block;
-    width: 14px; height: 14px;
-    border: 2px solid var(--border-color);
-    border-top-color: var(--green-500);
-    border-radius: 50%;
-    animation: spin 0.5s linear infinite;
-    margin-left: 6px;
-    vertical-align: middle;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .lookup-box {
-    background: rgba(31,122,61,0.04);
-    border: 1px solid rgba(31,122,61,0.1);
-    border-radius: var(--radius-md);
-    padding: 1rem;
-    margin-bottom: 1.25rem;
-  }
-
-  /* ── School search autocomplete ── */
-  .school-search-wrap {
-    position: relative;
-  }
-  .school-search-input {
-    width: 100%;
-    padding: 0.65rem 0.8rem;
-    padding-left: 2.2rem;
-    border: 1.5px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    background: var(--bg-card-solid);
-    color: var(--text-primary);
-    font-size: var(--font-size-base);
-    transition: all var(--duration-fast);
-  }
-  .school-search-input:focus {
-    border-color: var(--gold-400);
-    box-shadow: 0 0 0 3px rgba(217,164,65,0.15);
-    outline: none;
-  }
-  .school-search-icon {
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-muted);
-    pointer-events: none;
-    font-size: 0.85rem;
-  }
-  .school-results-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    z-index: 50;
-    max-height: 220px;
-    overflow-y: auto;
-    background: var(--bg-card-solid);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-lg);
-    display: none;
-    margin-top: 2px;
-  }
-  .school-results-dropdown.open {
-    display: block;
-  }
-  .school-result-item {
-    padding: 0.55rem 0.8rem;
-    cursor: pointer;
-    font-size: var(--font-size-sm);
-    transition: background var(--duration-fast);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-    border-bottom: 1px solid var(--border-color);
-  }
-  .school-result-item:last-child {
-    border-bottom: none;
-  }
-  .school-result-item:hover {
-    background: rgba(31,122,61,0.06);
-  }
-  .school-result-item.active {
-    background: rgba(217,164,65,0.12);
-  }
-  .school-result-item .school-name {
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-  .school-result-item .school-meta {
-    font-size: 0.65rem;
-    color: var(--text-muted);
-    white-space: nowrap;
-  }
-  .school-search-noresults {
-    padding: 0.8rem;
-    text-align: center;
-    color: var(--text-muted);
-    font-size: var(--font-size-sm);
-  }
-  .school-search-loading {
-    display: none;
-    padding: 0.8rem;
-    text-align: center;
-  }
-  .school-search-loading.active {
-    display: block;
-  }
-  .school-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(31,122,61,0.1);
-    border: 1px solid rgba(31,122,61,0.2);
-    border-radius: var(--radius-sm);
-    padding: 0.35rem 0.65rem;
-    font-size: var(--font-size-sm);
-    color: var(--green-500);
-    margin-top: 6px;
-  }
-  .school-tag i {
-    cursor: pointer;
-    transition: color var(--duration-fast);
-  }
-  .school-tag i:hover {
-    color: var(--error);
-  }
-  .school-level-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: rgba(217,164,65,0.1);
-    border: 1px solid rgba(217,164,65,0.2);
-    border-radius: var(--radius-sm);
-    padding: 2px 8px;
-    font-size: 9px;
-    font-weight: 700;
-    color: var(--gold-400);
-    margin-top: 4px;
-  }
-
-  /* ── Student stats inline ── */
-  .student-stat-input {
-    padding: 0.45rem 0.55rem !important;
-    font-size: var(--font-size-sm) !important;
-    text-align: center;
-  }
-  .student-stat-label {
-    font-size: 9px;
-    color: var(--text-muted);
-    font-weight: 600;
-    display: block;
-    margin-bottom: 2px;
-  }
-</style>
-
-<div class="row justify-content-center" style="min-height:calc(100vh - 300px);">
-  <div class="col-md-8 col-lg-6 col-xl-5">
-
-    <!-- TOP ACTIONS: Toka + Language Toggle -->
-    <div class="top-actions">
-      <a href="/" class="btn-tlm btn-outline-tlm btn-sm-tlm" data-lang-sw="Rudi IMS" data-lang-en="Back to IMS">
-        <i class="fas fa-external-link-alt me-1"></i> <span data-lang-sw>Rudi IMS</span><span data-lang-en>Back to IMS</span>
-      </a>
-      <div style="display:flex;gap:4px;">
-        <button class="lang-btn active" id="langSw" onclick="setLang('sw')">KIS</button>
-        <button class="lang-btn" id="langEn" onclick="setLang('en')">EN</button>
-      </div>
-    </div>
-
-    <!-- REGISTER FORM -->
-    <div class="c-card register-card" id="registerForm">
-      <div class="register-badge"><i class="fas fa-user-plus me-1"></i> <span data-lang-sw>USAJILI</span><span data-lang-en>REGISTER</span></div>
-      <div class="c-card-body px-4 py-4" style="margin-top:6px;">
-
-        <!-- 🔍 Lookup returning teacher -->
-        <div class="lookup-box">
-          <p style="font-size:var(--font-size-sm);font-weight:600;margin-bottom:8px;color:var(--text-primary);">
-            <i class="fas fa-phone" style="color:var(--green-500);"></i>
-            <span data-lang-sw>Tayari umesajiliwa? Ingiza namba yako:</span>
-            <span data-lang-en>Already registered? Enter your phone:</span>
-          </p>
-          <div style="display:flex;gap:6px;">
-            <input type="tel" id="lookupPhone" class="form-control" placeholder="0712 345 678" style="font-size:14px;flex:1;" list="savedPhones" autocomplete="tel">
-            <button class="btn-tlm btn-primary-tlm btn-sm-tlm" id="lookupBtn" type="button" style="white-space:nowrap;">
-              <i class="fas fa-sign-in-alt"></i> <span data-lang-sw>Ingia</span><span data-lang-en>Login</span>
-            </button>
-          </div>
-          <datalist id="savedPhones"></datalist>
-          <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;cursor:pointer;color:var(--text-secondary);">
-            <input type="checkbox" id="rememberMe" checked style="accent-color:var(--green-500);width:16px;height:16px;">
-            <span data-lang-sw="Nikumbuke kwenye kifaa hiki (siku 30)" data-lang-en="Remember me on this device (30 days)"></span>
-          </label>
-          <div id="lookupResult" style="display:none;margin-top:8px;font-size:var(--font-size-sm);"></div>
-          <div style="border-top:1px dashed var(--border-color);padding-top:12px;margin-top:8px;">
-            <button type="button" class="btn-tlm btn-primary-tlm w-100 py-2" 
-                    onclick="document.getElementById('registerForm').scrollIntoView({behavior:'smooth',block:'start'});document.getElementById('fullName').focus();"
-                    style="border-radius:var(--radius-md);font-weight:700;font-size:var(--font-size-sm);">
-              <i class="fas fa-user-plus me-2"></i>
-              <span data-lang-sw>Jisajili Sasa</span>
-              <span data-lang-en>Register Now</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- 👤 Personal Info -->
-        <div class="form-field">
-          <label><span data-lang-sw>Jina Kamili</span><span data-lang-en>Full Name</span> <span style="color:var(--error);">*</span></label>
-          <input type="text" id="fullName" placeholder="e.g. Juma Mohamed" required>
-        </div>
-        <div class="form-field">
-          <label><span data-lang-sw>Namba ya Simu</span><span data-lang-en>Phone Number</span> <span style="color:var(--error);">*</span></label>
-          <input type="tel" id="phoneNumber" placeholder="e.g. 0712 345 678" required>
-          <small style="font-size:var(--font-size-xs);color:var(--text-muted);">
-            <span data-lang-sw>Itatumika kukutambua ukirudi tena</span>
-            <span data-lang-en>Used to identify you when you return</span>
-          </small>
-        </div>
-
-        <div class="reg-divider"></div>
-
-        <!-- 📍 Location / School -->
-        <p style="font-size:var(--font-size-sm);font-weight:600;margin-bottom:10px;color:var(--text-primary);">
-          <i class="fas fa-map-marker-alt text-gold me-1"></i>
-          <span data-lang-sw>Mahali / Shule</span>
-          <span data-lang-en>Location / School</span>
-        </p>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div class="form-field" style="margin-bottom:0;">
-            <label><span data-lang-sw>Mkoa</span><span data-lang-en>Region</span> <span style="color:var(--error);">*</span></label>
-            <select id="region" required>
-              <option value="" data-lang-sw="— Chagua —" data-lang-en="— Select —"></option>
-              {% for r in regions %}
-              <option value="{{ r.id }}">{{ r.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="form-field" style="margin-bottom:0;">
-            <label><span data-lang-sw>Wilaya</span><span data-lang-en>District</span> <span style="color:var(--error);">*</span></label>
-            <select id="district" required>
-              <option value="" data-lang-sw="— Chagua kwanza Mkoa —" data-lang-en="— Select Region first —"></option>
-            </select>
-            <span id="districtLoading" style="display:none;" class="cascade-loading"></span>
-          </div>
-        </div>
-        <div class="form-field" style="margin-top:10px;">
-          <label><span data-lang-sw>Shule</span><span data-lang-en>School</span> <span style="color:var(--error);">*</span></label>
-          <div class="school-search-wrap">
-            <i class="fas fa-search school-search-icon"></i>
-            <input type="text" id="schoolSearch" class="school-search-input" 
-                   placeholder="Anza kuandika jina la shule..."
-                   autocomplete="off" required>
-            <input type="hidden" id="school" value="">
-            <div class="school-results-dropdown" id="schoolResults"></div>
-            <div class="school-search-loading" id="schoolSearchLoading">
-              <span class="spinner-tlm" style="width:14px;height:14px;"></span>
-            </div>
-          </div>
-          <div id="selectedSchoolTag"></div>
-          <!-- Auto-detected level badge -->
-          <div id="schoolLevelBadge" class="school-level-badge" style="display:none;">
-            <i class="fas fa-graduation-cap"></i>
-            <span id="schoolLevelText"></span>
-          </div>
-          <span id="schoolLoading" style="display:none;" class="cascade-loading"></span>
-        </div>
-
-        <div class="reg-divider"></div>
-
-        <!-- 🎓 Class & Subject -->
-        <p style="font-size:var(--font-size-sm);font-weight:600;margin-bottom:10px;color:var(--text-primary);">
-          <i class="fas fa-chalkboard text-gold me-1"></i>
-          <span data-lang-sw>Darasa / Somo / Wanafunzi</span>
-          <span data-lang-en>Class / Subject / Students</span>
-        </p>
-
-        <!-- Education Level (auto-detected from school) -->
-        <div class="form-field" id="eduLevelField" style="display:none;">
-          <label>
-            <span data-lang-sw>Ngazi ya Elimu</span>
-            <span data-lang-en>Education Level</span>
-            <span style="color:var(--error);">*</span>
-            <span style="font-weight:400;font-size:9px;color:var(--text-muted);">(imegunduliwa moja kwa moja kutoka shule)</span>
-          </label>
-          <select id="education_level">
-            {% for level in education_levels %}
-            <option value="{{ level.id }}" data-level-name="{{ level.name }}">{{ level.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <!-- Class + Stream -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div class="form-field" style="margin-bottom:0;display:none;" id="classField">
-            <label><span data-lang-sw>Darasa</span><span data-lang-en>Class</span> <span style="color:var(--error);">*</span></label>
-            <select id="class_name">
-              <option value="" data-lang-sw="— Chagua Darasa —" data-lang-en="— Select Class —"></option>
-            </select>
-          </div>
-          <div class="form-field" style="margin-bottom:0;">
-            <label><span data-lang-sw>Stream/Section</span><span data-lang-en>Stream/Section</span></label>
-            <select id="stream">
-              <option value="">—</option>
-              <option value="A">A</option>
-              <option value="B">B</option>
-              <option value="C">C</option>
-              <option value="D">D</option>
-              <option value="E">E</option>
-              <option value="F">F</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Subject -->
-        <div class="form-field" style="margin-top:10px;">
-          <label><span data-lang-sw>Somo</span><span data-lang-en>Subject</span> <span style="color:var(--error);">*</span></label>
-          <select id="subject" required>
-            <option value="" data-lang-sw="— Chagua —" data-lang-en="— Select —"></option>
-            {% for s in subjects %}
-            <option value="{{ s.id }}">{{ s.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <!-- Registered Students (Boys / Girls) -->
-        <div class="mb-2" style="border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:0.6rem;margin-top:10px;">
-          <label style="font-weight:700;font-size:var(--font-size-xs);color:var(--green-500);margin-bottom:6px;display:flex;align-items:center;gap:5px;">
-            <i class="fas fa-user-graduate"></i>
-            <span data-lang-sw>Wanafunzi Waliojisajili</span>
-            <span data-lang-en>Registered Students</span>
-          </label>
-          <div class="row g-1">
-            <div class="col-4">
-              <span class="student-stat-label"><span data-lang-sw>Wavulana</span><span data-lang-en>Boys</span></span>
-              <input class="form-control student-stat-input" id="total_boys" type="number" min="0" max="200" placeholder="0">
-            </div>
-            <div class="col-4">
-              <span class="student-stat-label"><span data-lang-sw>Wasichana</span><span data-lang-en>Girls</span></span>
-              <input class="form-control student-stat-input" id="total_girls" type="number" min="0" max="200" placeholder="0">
-            </div>
-            <div class="col-4">
-              <span class="student-stat-label"><span data-lang-sw>Jumla</span><span data-lang-en>Total</span></span>
-              <input class="form-control student-stat-input" id="total_students" type="number" readonly style="background:var(--bg-glass);cursor:default;font-weight:700;" placeholder="0">
-            </div>
-          </div>
-        </div>
-
-        <div class="reg-divider"></div>
-
-        <!-- Submit -->
-        <div id="loadingIndicator" style="display:none;text-align:center;margin:1rem 0;">
-          <div class="spinner-tlm" style="width:24px;height:24px;"></div>
-          <p style="color:var(--text-secondary);font-size:var(--font-size-sm);margin-top:6px;">
-            <span data-lang-sw>Inahifadhi taarifa zako...</span>
-            <span data-lang-en>Saving your info...</span>
-          </p>
-        </div>
-
-        <button class="btn-tlm btn-gold-tlm w-100 py-3" id="submitBtn" style="font-size:var(--font-size-lg);border-radius:var(--radius-md);">
-          <i class="fas fa-check-circle me-2"></i>
-          <span data-lang-sw>Maliza Usajili</span>
-          <span data-lang-en>Complete Registration</span>
-        </button>
-        <p class="text-center mt-2" style="font-size:var(--font-size-xs);color:var(--text-muted);">
-          <i class="fas fa-lock me-1" style="color:var(--green-500);"></i>
-          <span data-lang-sw>Taarifa zako ni salama. Hakuna password inayohitajika.</span>
-          <span data-lang-en>Your info is safe. No password needed.</span>
-        </p>
-      </div>
-    </div>
-
-    <!-- ✅ SUCCESS STATE -->
-    <div id="stepSuccess" class="c-card register-card" style="display:none;">
-      <div class="register-badge"><i class="fas fa-check-circle me-1"></i> <span data-lang-sw>IMEFANIKIWA</span><span data-lang-en>SUCCESS</span></div>
-      <div class="c-card-body px-4 py-4 text-center" style="margin-top:6px;">
-        <div class="success-icon"><i class="fas fa-check"></i></div>
-        <h4 style="font-family:var(--font-display);font-weight:800;color:var(--text-primary);margin-bottom:0.5rem;">
-          <span data-lang-sw>Umefanikiwa!</span>
-          <span data-lang-en>Success!</span>
-        </h4>
-        <p style="color:var(--text-secondary);margin-bottom:1.5rem;" id="successMsg">
-          <span data-lang-sw>Usajili wako umekamilika!</span>
-          <span data-lang-en>Your registration is complete!</span>
-        </p>
-        <div style="background:rgba(31,122,61,0.04);border-radius:var(--radius-md);padding:1rem;border:1px solid rgba(31,122,61,0.1);margin-bottom:1.5rem;">
-          <div style="font-size:var(--font-size-sm);font-weight:600;color:var(--text-primary);" id="successName"></div>
-          <div style="font-size:var(--font-size-xs);color:var(--text-secondary);" id="successSchool"></div>
-          <div style="font-size:var(--font-size-xs);color:var(--text-secondary);" id="successClass"></div>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <a href="{% url 'curriculum:landing' %}" class="btn-tlm btn-primary-tlm flex-fill btn-shimmer" style="padding:0.85rem;">
-            <i class="fas fa-arrow-right me-1"></i>
-            <span data-lang-sw>Endelea kwenye TLM</span>
-            <span data-lang-en>Continue to TLM</span>
-          </a>
-          <a href="/" class="btn-tlm btn-outline-tlm" style="padding:0.85rem;">
-            <i class="fas fa-external-link-alt me-1"></i>
-            <span data-lang-sw>IMS Portal</span>
-            <span data-lang-en>IMS Portal</span>
-          </a>
-        </div>
-      </div>
-    </div>
-
-    <p class="text-center mt-3" style="font-size:0.65rem;color:var(--text-muted);">
-      <i class="fas fa-shield-alt me-1" style="color:var(--green-500);"></i>
-      Teaching &amp; Learning Materials &bull; Tanzania<br>
-      Wizara ya Elimu, Sayansi na Teknolojia
-    </p>
+  <div id="reg-head" style="text-align:center"><h1 style="font-size:21px">Jisajili</h1><p class="page-sub">Jaza taarifa chache tu ili ujisajili.</p></div>
+  <div class="stepper" id="stepper">
+    <div class="st"><i>1</i>Utambulisho</div><div class="st"><i>2</i>Ngazi</div><div class="st"><i>3</i>Shule</div><div class="st"><i>4</i>Darasa</div><div class="st"><i>5</i>Wanafunzi</div>
   </div>
-</div>
 
-<script>
-const CLASSES_BY_LEVEL = {{ classes_by_level_json|safe }};
-const SUBJECTS_BY_LEVEL = {{ subjects_by_level_json|safe }};
-</script>
+  <!-- STEP 1: Utambulisho -->
+  <section data-step="1">
+    <div class="ht"><em>Hatua ya Kwanza:</em> Utambulisho Wako</div>
+    <div class="f"><div class="lb" style="display:flex;gap:8px;align-items:center"><svg class="ic" style="color:var(--blue)"><use href="#i-user"/></svg>Jina Kamili</div>
+      <input class="tlm-input" name="full_name" placeholder="Mfano: Juma Mohamed" autocomplete="name" required></div>
+    <div class="f"><div class="lb" style="display:flex;gap:8px;align-items:center"><svg class="ic" style="color:var(--blue)"><use href="#i-phone"/></svg>Namba ya Simu</div>
+      <input class="tlm-input" name="phone" inputmode="tel" placeholder="0712 345 678" required>
+      <div class="err-text tlm-hidden" id="phone-err">Namba hii imetumika</div></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px;padding:6px 6px 6px 12px;border:1px solid var(--line);border-radius:8px;background:#F8FAFC">
+      <span style="font-size:13px;color:var(--ink-2)">Una akaunti tayari?</span>
+      <a href="{% url 'curriculum:login' %}" class="btn-tlm sm" style="height:30px;padding:0 12px"><svg class="ic ic-sm"><use href="#i-log-in"/></svg>Ingia</a></div>
+  </section>
+
+  <!-- STEP 2: Ngazi -->
+  <section data-step="2" class="tlm-hidden">
+    <div class="ht"><em>Hatua ya Pili:</em> Ngazi ya Shule</div>
+    <p class="page-sub">Unafundisha ngazi gani?</p>
+    <div class="lst" data-list="level">
+      <button type="button" data-v="primary"><b>Shule ya Msingi</b><span class="page-sub" style="margin:0 0 0 auto">Darasa la 1–7</span></button>
+      <button type="button" data-v="olevel"><b>Sekondari · O-Level</b><span class="page-sub" style="margin:0 0 0 auto">Form 1–4</span></button>
+      <button type="button" data-v="alevel"><b>Sekondari · A-Level</b><span class="page-sub" style="margin:0 0 0 auto">Form 5–6</span></button>
+    </div>
+  </section>
+
+  <!-- STEP 3: Mkoa → Wilaya → Shule -->
+  <section data-step="3" class="tlm-hidden">
+    <div class="ht"><em>Hatua ya Tatu:</em> Mahali na Shule</div>
+    <h2 class="h1" style="font-size:20px;margin-top:12px">Unafundisha wapi?</h2>
+    <div class="loc-crumb" style="margin-top:10px">
+      <div class="p">Mkoa<b id="c-region">—</b></div><div class="p">Wilaya<b id="c-district">—</b></div><div class="p">Shule<b id="c-school">—</b></div>
+    </div>
+    <div class="f"><input class="tlm-input" id="loc-search" type="search" placeholder="Tafuta mkoa…"></div>
+    <div class="page-sub" id="loc-title" style="margin-top:14px;font-weight:600;letter-spacing:.05em">MIKOA</div>
+    <div class="lst" id="loc-list"></div>
+  </section>
+
+  <!-- STEP 4: Darasa, Stream, Somo -->
+  <section data-step="4" class="tlm-hidden">
+    <div class="ht"><em>Hatua ya Nne:</em> Darasa na Somo</div>
+    <div class="f"><div class="lb">Darasa <span id="lvl-label" style="color:var(--muted)"></span></div><div class="chips" id="class-chips"></div></div>
+    <div class="f"><div class="lb">Stream</div><div class="chips" style="grid-template-columns:repeat(6,1fr)" id="stream-chips">
+      {% for s in "ABCDEF" %}<button type="button" data-v="{{ s }}" aria-pressed="false">{{ s }}</button>{% endfor %}</div></div>
+    <div class="f"><div class="lb">Somo</div><input class="tlm-input" id="subj-search" type="search" placeholder="Tafuta somo…"><div class="lst" id="subj-list"></div></div>
+  </section>
+
+  <!-- STEP 5: Wanafunzi -->
+  <section data-step="5" class="tlm-hidden">
+    <div class="ht"><em>Hatua ya Tano:</em> Wanafunzi</div>
+    <p class="page-sub">Idadi ya wanafunzi waliosajiliwa darasani</p>
+    <div class="lst" data-students>
+      <div class="lib-row"><span>Wavulana</span><input class="tlm-input" style="width:90px;margin-left:auto;text-align:center" name="boys" inputmode="numeric" data-reg-b></div>
+      <div class="lib-row"><span>Wasichana</span><input class="tlm-input" style="width:90px;margin-left:auto;text-align:center" name="girls" inputmode="numeric" data-reg-g></div>
+      <div class="lib-row"><span>Jumla</span><span class="tlm-input" style="width:90px;margin-left:auto;justify-content:center" data-out="regT">0</span></div>
+    </div>
+    <p class="page-sub" style="display:flex;gap:8px;align-items:center;margin-top:14px"><svg class="ic ic-sm"><use href="#i-lock"/></svg>Taarifa zako ni salama. Hakuna password.</p>
+  </section>
+
+  <div class="wz-foot">
+    <button type="button" class="nb" id="btn-back"><svg class="ic ic-sm"><use href="#i-chevron-left"/></svg>Rudi</button>
+    <button type="button" class="nb off" id="btn-next">Endelea<svg class="ic ic-sm"><use href="#i-chevron-right"/></svg></button>
+  </div>
+</form>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
 <script>
-// ── Language Toggle ──
-function setLang(lang) {
-  document.documentElement.setAttribute('data-lang', lang);
-  document.getElementById('langSw').classList.toggle('active', lang === 'sw');
-  document.getElementById('langEn').classList.toggle('active', lang === 'en');
-  localStorage.setItem('tlm-lang', lang);
-  
-  document.querySelectorAll('option[data-lang-sw][data-lang-en]').forEach(function(opt) {
-    opt.textContent = opt.getAttribute('data-lang-' + lang) || opt.textContent;
-  });
-}
-
-(function() {
-  const saved = localStorage.getItem('tlm-lang');
-  setLang(saved || 'sw');
-})();
-
-document.addEventListener('DOMContentLoaded', function() {
-  // ── Saved phone suggestions (NO auto-login: user picks a number, then presses Login) ──
-  const lookupPhone = document.getElementById('lookupPhone');
-  const savedPhonesDl = document.getElementById('savedPhones');
-
-  function getSavedPhones() {
-    try { return JSON.parse(localStorage.getItem('tlm-phones')) || []; } catch (e) { return []; }
-  }
-
-  function rememberPhone(phone) {
-    const phones = getSavedPhones().filter(p => p !== phone);
-    phones.unshift(phone);
-    localStorage.setItem('tlm-phones', JSON.stringify(phones.slice(0, 5)));
-    localStorage.setItem('tlm-phone', phone);
-    renderSavedPhones();
-  }
-
-  function renderSavedPhones() {
-    savedPhonesDl.innerHTML = '';
-    getSavedPhones().forEach(function(p) {
-      const opt = document.createElement('option');
-      opt.value = p;
-      savedPhonesDl.appendChild(opt);
-    });
-  }
-
-  renderSavedPhones();
-
-  // Pre-fill the last used number only — the user must press Login to enter
-  const savedPhone = localStorage.getItem('tlm-phone');
-  if (savedPhone) {
-    lookupPhone.value = savedPhone;
-  }
-
-  // ── DOM refs ──
-  const regionSelect = document.getElementById('region');
-  const districtSelect = document.getElementById('district');
-  const schoolSearch = document.getElementById('schoolSearch');
-  const schoolHidden = document.getElementById('school');
-  const schoolResults = document.getElementById('schoolResults');
-  const selectedSchoolTag = document.getElementById('selectedSchoolTag');
-  const schoolLevelBadge = document.getElementById('schoolLevelBadge');
-  const schoolLevelText = document.getElementById('schoolLevelText');
-  const schoolSearchLoading = document.getElementById('schoolSearchLoading');
-  const eduLevelSelect = document.getElementById('education_level');
-  const classSelect = document.getElementById('class_name');
-  const streamSelect = document.getElementById('stream');
-  const subjectSelect = document.getElementById('subject');
-  const fullName = document.getElementById('fullName');
-  const phoneNumber = document.getElementById('phoneNumber');
-  const submitBtn = document.getElementById('submitBtn');
-  const loading = document.getElementById('loadingIndicator');
-  const districtLoading = document.getElementById('districtLoading');
-  const totalBoys = document.getElementById('total_boys');
-  const totalGirls = document.getElementById('total_girls');
-  const totalStudents = document.getElementById('total_students');
-
-  // ── Auto-calc total students ──
-  function calcTotalStudents() {
-    const b = parseInt(totalBoys.value) || 0;
-    const g = parseInt(totalGirls.value) || 0;
-    totalStudents.value = b + g > 0 ? b + g : '';
-  }
-  totalBoys.addEventListener('input', calcTotalStudents);
-  totalGirls.addEventListener('input', calcTotalStudents);
-
-  // ── Lang text ──
-  function langText(sw, en) {
-    const lang = document.documentElement.getAttribute('data-lang') || 'sw';
-    return lang === 'en' ? en : sw;
-  }
-  function makeOpt(val, sw, en) {
-    return `<option value="${val}">${en ? langText(sw, en) : sw}</option>`;
-  }
-  function showOpt(sel, val, text) {
-    const opt = document.createElement('option');
-    opt.value = val;
-    opt.textContent = text;
-    sel.appendChild(opt);
-  }
-
-  // ── Education Level lookup by school level ──
-  function findEduLevelId(schoolLevel) {
-    for (let opt of eduLevelSelect.options) {
-      const name = (opt.getAttribute('data-level-name') || opt.textContent || '').toLowerCase();
-      if (schoolLevel === 'Primary' && name.includes('primary')) return opt.value;
-      if (schoolLevel === 'Secondary' && (name.includes('ordinary') || name.includes('secondary'))) return opt.value;
-      if ((schoolLevel === 'Technical' || schoolLevel === 'VETA') && (name.includes('technical') || name.includes('veta'))) return opt.value;
-    }
-    // Fallback: first option
-    return eduLevelSelect.options.length > 0 ? eduLevelSelect.options[0].value : '';
-  }
-
-  function populateClasses(eduLevelId) {
-    classSelect.innerHTML = '<option value="">— Chagua Darasa —</option>';
-    if (eduLevelId && CLASSES_BY_LEVEL[eduLevelId]) {
-      CLASSES_BY_LEVEL[eduLevelId].forEach(function(cls) {
-        classSelect.innerHTML += `<option value="${cls.name}">${cls.name}</option>`;
-      });
-    }
-  }
-
-  // ── Filter subjects by education level (VETA → technical subjects) ──
-  function populateSubjects(eduLevelId) {
-    const prev = subjectSelect.value;
-    subjectSelect.innerHTML = '<option value="">— Chagua —</option>';
-    const list = (eduLevelId && SUBJECTS_BY_LEVEL[eduLevelId]) || [];
-    list.forEach(function(s) {
-      const opt = document.createElement('option');
-      opt.value = s.id;
-      opt.textContent = s.name;
-      subjectSelect.appendChild(opt);
-    });
-    if (prev) subjectSelect.value = prev;
-  }
-
-  // ── Auto-detect education level when school selected ──
-  function onSchoolSelected(id, name, level) {
-    schoolHidden.value = id;
-    schoolSearch.value = name;
-    selectedSchoolData = { id, name, level };
-    schoolResults.classList.remove('open');
-    
-    // Show school tag
-    const isTech = level === 'Technical' || level === 'VETA';
-    const levelLabel = level === 'Primary' ? 'Msingi' : (isTech ? 'VETA/Technical' : 'Sekondari');
-    selectedSchoolTag.innerHTML = `<span class="school-tag">
-      <i class="fas fa-school"></i> ${name} <span style="color:var(--text-muted);font-size:0.65rem;">(${levelLabel})</span>
-      <i class="fas fa-times" onclick="clearSchool()"></i>
-    </span>`;
-
-    // Auto-detect education level
-    const eduLevelId = findEduLevelId(level);
-    if (eduLevelId) {
-      eduLevelSelect.value = eduLevelId;
-      document.getElementById('eduLevelField').style.display = 'block';
-      // Auto-detected but teacher can change (e.g. Secondary→Advanced)
-      eduLevelSelect.disabled = false;
-      // Repopulate classes + subjects when education level changes
-      eduLevelSelect.onchange = function() {
-        populateClasses(this.value);
-        populateSubjects(this.value);
-      };
-      
-      // Show level badge
-      schoolLevelBadge.style.display = 'inline-flex';
-      schoolLevelText.textContent = level === 'Primary' ? 'Shule ya Msingi' : (isTech ? 'Chuo cha VETA / Technical' : 'Shule ya Sekondari');
-      
-      // Populate classes + subjects
-      populateClasses(eduLevelId);
-      populateSubjects(eduLevelId);
-      document.getElementById('classField').style.display = 'block';
-    }
-  }
-
-  // ── SCHOOL SEARCH AUTOCOMPLETE ──
-  let searchTimeout = null;
-  let selectedSchoolData = null;
-  let activeResultIndex = -1;
-
-  function searchSchools(query, districtId) {
-    const params = new URLSearchParams();
-    if (query && query.length >= 2) params.set('q', query);
-    if (districtId) params.set('district_id', districtId);
-    if (!params.has('q') && !params.has('district_id')) {
-      schoolResults.classList.remove('open');
-      return;
-    }
-    schoolSearchLoading.classList.add('active');
-    fetch(`{% url 'curriculum:search_schools' %}?${params.toString()}`)
-      .then(r => r.json())
-      .then(data => {
-        schoolSearchLoading.classList.remove('active');
-        renderSchoolResults(data);
-      })
-      .catch(() => {
-        schoolSearchLoading.classList.remove('active');
-        schoolResults.innerHTML = '<div class="school-search-noresults"><i class="fas fa-exclamation-circle"></i> Hitilafu. Jaribu tena.</div>';
-        schoolResults.classList.add('open');
-      });
-  }
-
-  function renderSchoolResults(data) {
-    if (!data || data.length === 0) {
-      schoolResults.innerHTML = '<div class="school-search-noresults"><i class="fas fa-search me-1"></i> Hakuna shule inayolingana</div>';
-      schoolResults.classList.add('open');
-      return;
-    }
-    let html = '';
-    data.forEach(function(s) {
-      const isTech = s.level === 'Technical' || s.level === 'VETA';
-      const levelLabel = s.level === 'Primary' ? 'Msingi' : (isTech ? 'VETA' : 'Sekondari');
-      html += `<div class="school-result-item" data-id="${s.id}" data-name="${s.name}" data-level="${s.level}">
-        <span class="school-name">${s.name}</span>
-        <span class="school-meta">${levelLabel} &middot; ${s.district_name || ''}</span>
-      </div>`;
-    });
-    schoolResults.innerHTML = html;
-    schoolResults.classList.add('open');
-    activeResultIndex = -1;
-    schoolResults.querySelectorAll('.school-result-item').forEach(function(item) {
-      item.addEventListener('click', function() {
-        onSchoolSelected(this.dataset.id, this.dataset.name, this.dataset.level);
-      });
-    });
-  }
-
-  window.clearSchool = function() {
-    schoolHidden.value = '';
-    schoolSearch.value = '';
-    selectedSchoolData = null;
-    selectedSchoolTag.innerHTML = '';
-    schoolLevelBadge.style.display = 'none';
-    document.getElementById('eduLevelField').style.display = 'none';
-    document.getElementById('classField').style.display = 'none';
-    classSelect.innerHTML = '<option value="">— Chagua Darasa —</option>';
-    schoolSearch.focus();
+document.addEventListener('DOMContentLoaded', () => {
+  const f = document.getElementById('reg'), $ = s => f.querySelector(s);
+  const URLS = {
+    phone: "{% url 'curriculum:api_check_phone' %}",
+    loc:   "{% url 'curriculum:api_locations' %}",
+    subj:  "{% url 'curriculum:api_subjects' %}"
   };
+  const CLASSES = { primary: [1,2,3,4,5,6,7].map(n => 'Darasa la ' + n), olevel: ['Form 1','Form 2','Form 3','Form 4'], alevel: ['Form 5','Form 6'] };
+  const LVL = { primary: '· Msingi', olevel: '· O-Level', alevel: '· A-Level (Advanced)' };
+  let step = 1, loc = 'region', locData = [], subjects = [];
 
-  schoolSearch.addEventListener('input', function() {
-    const districtId = districtSelect.value;
-    const query = this.value.trim();
-    if (!query) {
-      schoolHidden.value = '';
-      selectedSchoolData = null;
-      selectedSchoolTag.innerHTML = '';
-      schoolLevelBadge.style.display = 'none';
-      document.getElementById('eduLevelField').style.display = 'none';
-      document.getElementById('classField').style.display = 'none';
-      classSelect.innerHTML = '<option value="">— Chagua Darasa —</option>';
-      if (districtId) {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => searchSchools('', districtId), 100);
-      } else {
-        schoolResults.classList.remove('open');
-      }
-      return;
-    }
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => searchSchools(query, districtId), 200);
-  });
+  const valid = () => ({
+    1: f.full_name.value.trim().length > 2 && f.phone.value.replace(/\D/g, '').length >= 10 && $('#phone-err').classList.contains('tlm-hidden'),
+    2: !!f.level.value,
+    3: !!(f.school_id.value || f.school_name.value),
+    4: !!(f.class_name.value && f.stream.value && f.subject.value),
+    5: +f.boys.value >= 0 && f.boys.value !== '' && f.girls.value !== ''
+  })[step];
 
-  schoolSearch.addEventListener('keydown', function(e) {
-    const items = schoolResults.querySelectorAll('.school-result-item');
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      activeResultIndex = Math.min(activeResultIndex + 1, items.length - 1);
-      items.forEach((item, i) => item.classList.toggle('active', i === activeResultIndex));
-      if (items[activeResultIndex]) items[activeResultIndex].scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      activeResultIndex = Math.max(activeResultIndex - 1, 0);
-      items.forEach((item, i) => item.classList.toggle('active', i === activeResultIndex));
-    } else if (e.key === 'Enter' && activeResultIndex >= 0 && items[activeResultIndex]) {
-      e.preventDefault();
-      items[activeResultIndex].click();
-    } else if (e.key === 'Escape') {
-      schoolResults.classList.remove('open');
-    }
-  });
-
-  document.addEventListener('click', function(e) {
-    if (!e.target.closest('.school-search-wrap')) {
-      schoolResults.classList.remove('open');
-    }
-  });
-
-  schoolSearch.addEventListener('focus', function() {
-    if (schoolResults.children.length > 0) schoolResults.classList.add('open');
-  });
-
-  // ── Region → District ──
-  regionSelect.addEventListener('change', function() {
-    const regionId = this.value;
-    districtSelect.innerHTML = makeOpt('', '— Chagua Wilaya —', '— Select District —');
-    schoolHidden.value = '';
-    selectedSchoolData = null;
-    selectedSchoolTag.innerHTML = '';
-    schoolSearch.value = '';
-    schoolResults.classList.remove('open');
-    schoolLevelBadge.style.display = 'none';
-    document.getElementById('eduLevelField').style.display = 'none';
-    document.getElementById('classField').style.display = 'none';
-    classSelect.innerHTML = '<option value="">— Chagua Darasa —</option>';
-    if (!regionId) return;
-    districtLoading.style.display = 'inline-block';
-    fetch(`{% url 'curriculum:get_districts' %}?region_id=${regionId}`)
-      .then(r => r.json())
-      .then(data => {
-        districtLoading.style.display = 'none';
-        districtSelect.innerHTML = makeOpt('', '— Chagua Wilaya —', '— Select District —');
-        data.forEach(function(d) { showOpt(districtSelect, d.id, d.name); });
-      })
-      .catch(() => {
-        districtLoading.style.display = 'none';
-        showToast(langText('Hitilafu kupakia wilaya.', 'Error loading districts.'), 'error');
-      });
-  });
-
-  // ── District → School search ──
-  districtSelect.addEventListener('change', function() {
-    const districtId = this.value;
-    schoolHidden.value = '';
-    selectedSchoolData = null;
-    selectedSchoolTag.innerHTML = '';
-    schoolSearch.value = '';
-    schoolResults.classList.remove('open');
-    schoolLevelBadge.style.display = 'none';
-    document.getElementById('eduLevelField').style.display = 'none';
-    document.getElementById('classField').style.display = 'none';
-    classSelect.innerHTML = '<option value="">— Chagua Darasa —</option>';
-    if (districtId) searchSchools('', districtId);
-  });
-
-  // ── Lookup returning teacher ──
-  document.getElementById('lookupBtn').addEventListener('click', function() {
-    const phone = document.getElementById('lookupPhone').value.trim();
-    const resultDiv = document.getElementById('lookupResult');
-    if (!phone) {
-      resultDiv.style.display = 'block';
-      resultDiv.innerHTML = '<span style="color:var(--error);"><i class="fas fa-exclamation-circle"></i> Weka namba ya simu</span>';
-      return;
-    }
-    resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<span><span class="spinner-tlm" style="width:14px;height:14px;"></span> Inatafuta...</span>';
-    const remember = document.getElementById('rememberMe').checked ? '1' : '0';
-    fetch(`{% url 'curriculum:lookup_teacher' %}?phone=${encodeURIComponent(phone)}&remember=${remember}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.found) {
-          rememberPhone(phone);
-          setTimeout(function() {
-            window.location.href = '{% url "curriculum:landing" %}';
-            }, 800);
-            resultDiv.innerHTML = `
-            <div style="background:rgba(31,122,61,0.08);padding:12px;border-radius:var(--radius-sm);">
-              <span style="color:var(--green-500);font-weight:700;"><i class="fas fa-check-circle"></i> Umepatikana! Unaelekezwa...</span><br>
-              <span style="font-size:var(--font-size-sm);"><b>${data.full_name}</b> — ${data.school_name || ''}</span>
-            </div>`;
-        } else {
-          resultDiv.innerHTML = `
-            <div style="background:rgba(220,38,38,0.06);padding:12px;border-radius:var(--radius-sm);">
-              <span style="color:var(--error);"><i class="fas fa-exclamation-circle"></i> Hajapatikana. Jaza fomu hapa chini.</span>
-            </div>`;
-        }
-      })
-      .catch(() => { resultDiv.innerHTML = '<span style="color:var(--error);">Hitilafu ya mtandao.</span>'; });
-  });
-
-  // ── Submit registration ──
-  submitBtn.addEventListener('click', function() {
-    const btn = this;
-    const data = {
-      full_name: fullName.value.trim(),
-      phone_number: phoneNumber.value.trim(),
-      region_id: regionSelect.value,
-      district_id: districtSelect.value,
-      school_id: schoolHidden.value,
-      class_name: classSelect.value,
-      stream: streamSelect.value,
-      subject_id: subjectSelect.value,
-      total_boys: totalBoys.value,
-      total_girls: totalGirls.value,
-    };
-
-    if (!data.full_name) { showToast('Tafadhali weka jina lako', 'warning'); fullName.focus(); return; }
-    if (!data.phone_number || data.phone_number.length < 9) { showToast('Tafadhali weka namba sahihi ya simu', 'warning'); phoneNumber.focus(); return; }
-    if (!data.region_id) { showToast('Chagua mkoa', 'warning'); regionSelect.focus(); return; }
-    if (!data.district_id) { showToast('Chagua wilaya', 'warning'); districtSelect.focus(); return; }
-    if (!data.school_id) { showToast('Chagua shule', 'warning'); schoolSearch.focus(); return; }
-    if (!data.class_name) { showToast('Chagua darasa', 'warning'); classSelect.focus(); return; }
-    if (!data.subject_id) { showToast('Chagua somo', 'warning'); subjectSelect.focus(); return; }
-
-    btn.disabled = true;
-    loading.style.display = 'block';
-    btn.innerHTML = '<div class="spinner-tlm" style="width:20px;height:20px;border-width:2px;"></div> Inahifadhi...';
-
-    fetch('{% url "curriculum:save_teacher" %}', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
-      body: JSON.stringify(data),
-    })
-    .then(r => r.json())
-    .then(data => {
-      loading.style.display = 'none';
-      btn.disabled = false;
-      if (data.success) {
-        // Save phone to localStorage so they're remembered next visit
-        rememberPhone(phoneNumber.value.trim());
-        document.getElementById('successName').textContent = fullName.value;
-        document.getElementById('successSchool').textContent = selectedSchoolData ? selectedSchoolData.name : schoolSearch.value || '';
-        document.getElementById('successClass').textContent = (classSelect.value || '') + (streamSelect.value ? ' ' + streamSelect.value : '');
-        document.getElementById('registerForm').style.display = 'none';
-        document.getElementById('stepSuccess').style.display = 'block';
-        showToast(data.is_new ? 'Umefanikiwa kujisajili!' : 'Taarifa zimesasishwa!', 'success');
-      } else {
-        btn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Maliza Usajili';
-        showToast(data.error || 'Hitilafu. Jaribu tena.', 'error');
-      }
-    })
-    .catch(err => {
-      loading.style.display = 'none';
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Maliza Usajili';
-      showToast('Network error: ' + err.message, 'error');
+  function paint() {
+    f.querySelectorAll('[data-step]').forEach(s => s.classList.toggle('tlm-hidden', +s.dataset.step !== step));
+    f.querySelectorAll('#stepper .st').forEach((s, i) => {
+      s.className = 'st' + (i + 1 < step ? ' done' : i + 1 === step ? ' cur' : '');
+      s.querySelector('i').textContent = i + 1;
     });
+    $('#reg-head').classList.toggle('tlm-hidden', step !== 1); // title only on step 1
+    $('#btn-back').style.visibility = step === 1 ? 'hidden' : 'visible';
+    const nb = $('#btn-next'), ok = valid();
+    if (step === 5) { nb.className = 'nb final'; nb.innerHTML = 'Jisajili'; nb.disabled = !ok; }
+    else { nb.className = 'nb ' + (ok ? 'on' : 'off'); nb.innerHTML = 'Endelea<svg class="ic ic-sm"><use href="#i-chevron-right"/></svg>'; }
+  }
+  f.addEventListener('input', paint);
+
+  // Step 1: phone already used?
+  f.phone.addEventListener('blur', async () => {
+    const r = await fetch(URLS.phone + '?phone=' + encodeURIComponent(f.phone.value));
+    const j = await r.json();
+    $('#phone-err').classList.toggle('tlm-hidden', !j.exists);
+    f.phone.classList.toggle('is-error', j.exists);
+    paint();
   });
 
-  // ── Enter key ──
-  document.querySelectorAll('#registerForm input, #registerForm select').forEach(function(el) {
-    el.addEventListener('keydown', function(e) {
-      // Enter in the phone login box → Login; elsewhere → submit registration
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (el.id === 'lookupPhone') { document.getElementById('lookupBtn').click(); }
-        else { submitBtn.click(); }
-      }
-    });
+  // Step 2: level
+  $('[data-list="level"]').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    f.level.value = b.dataset.v;
+    b.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-selected', x === b));
+    paint();
   });
+
+  // Step 3: region → district → school (typed school allowed)
+  async function loadLoc(kind, parent) {
+    loc = kind;
+    const r = await fetch(`${URLS.loc}?kind=${kind}${parent ? '&parent=' + parent : ''}`);
+    locData = await r.json();
+    $('#loc-search').value = '';
+    $('#loc-search').placeholder = { region: 'Tafuta mkoa…', district: 'Tafuta wilaya…', school: 'Tafuta shule…' }[kind];
+    $('#loc-title').textContent = { region: 'MIKOA', district: 'WILAYA · ' + $('#c-region').textContent.toUpperCase(), school: 'SHULE · ' + $('#c-district').textContent.toUpperCase() }[kind];
+    drawLoc('');
+  }
+  function drawLoc(q) {
+    const list = locData.filter(x => x.name.toLowerCase().includes(q.toLowerCase()));
+    const pin = loc === 'school' ? '' : '<svg class="ic" style="color:var(--blue)"><use href="#i-map-pin"/></svg>';
+    $('#loc-list').className = 'lst' + (loc === 'school' ? ' schools' : '');
+    $('#loc-list').innerHTML = list.map(x => `<button type="button" data-id="${x.id}" aria-selected="${loc === 'school' && String(x.id) === f.school_id.value}">${pin}${x.name}</button>`).join('');
+    if (loc === 'school' && q && !list.length) { f.school_id.value = ''; f.school_name.value = q; $('#c-school').textContent = q; } // typed school goes straight in
+    paint();
+  }
+  $('#loc-search').addEventListener('input', e => drawLoc(e.target.value));
+  $('#loc-list').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const name = b.textContent.trim();
+    if (loc === 'region') { f.region_id.value = b.dataset.id; $('#c-region').textContent = name; loadLoc('district', b.dataset.id); }
+    else if (loc === 'district') { f.district_id.value = b.dataset.id; $('#c-district').textContent = name; loadLoc('school', b.dataset.id); }
+    else { f.school_id.value = b.dataset.id; f.school_name.value = name; $('#c-school').textContent = name; drawLoc($('#loc-search').value); }
+  });
+
+  // Step 4: classes depend on level; subjects from API
+  async function prepStep4() {
+    $('#lvl-label').textContent = LVL[f.level.value] || '';
+    $('#class-chips').style.gridTemplateColumns = f.level.value === 'olevel' ? 'repeat(4,1fr)' : f.level.value === 'alevel' ? 'repeat(2,1fr)' : 'repeat(3,1fr)';
+    $('#class-chips').innerHTML = CLASSES[f.level.value].map(c => `<button type="button" data-v="${c}" aria-pressed="${c === f.class_name.value}">${c}</button>`).join('');
+    subjects = await (await fetch(URLS.subj + '?level=' + f.level.value)).json();
+    drawSubj('');
+  }
+  const drawSubj = q => {
+    $('#subj-list').innerHTML = subjects.filter(s => s.toLowerCase().includes(q.toLowerCase()))
+      .map(s => `<button type="button" class="opt" style="border-top:1px solid #F1F3F5" aria-selected="${s === f.subject.value}" data-v="${s}"><span>${s}</span><span class="rd"></span></button>`).join('');
+  };
+  $('#subj-search').addEventListener('input', e => drawSubj(e.target.value));
+
+  f.addEventListener('click', e => {
+    const c = e.target.closest('#class-chips button, #stream-chips button');
+    if (c) {
+      const g = c.parentElement;
+      g.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === c));
+      (g.id === 'class-chips' ? f.class_name : f.stream).value = c.dataset.v;
+      paint();
+    }
+    const s = e.target.closest('#subj-list .opt');
+    if (s) { f.subject.value = s.dataset.v; drawSubj($('#subj-search').value); paint(); }
+  });
+
+  $('#btn-back').onclick = () => { if (step > 1) { step--; paint(); window.scrollTo(0, 0); } };
+  $('#btn-next').onclick = async () => {
+    if (!valid()) return;
+    if (step === 5) return f.submit();
+    step++;
+    if (step === 3 && !locData.length) await loadLoc('region');
+    if (step === 4) await prepStep4();
+    paint();
+    window.scrollTo(0, 0);
+  };
+  paint();
 });
 </script>
 {% endblock %}

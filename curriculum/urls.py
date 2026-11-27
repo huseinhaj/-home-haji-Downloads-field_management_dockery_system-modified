@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import redesign, views
 
 app_name = 'curriculum'
 
@@ -9,13 +9,29 @@ urlpatterns = [
     path('sw.js', views.pwa_service_worker, name='pwa_service_worker'),
 
     # Landing page (public, School Results login style)
-    path('', views.landing, name='landing'),
+    path('', redesign.home, name='landing'),
 
-    # Dashboard (login required)
-    path('dashboard/', views.dashboard, name='dashboard'),
+    # Nyumbani (also the guest landing for the new shell)
+    path('dashboard/', redesign.home, name='dashboard'),
+
+    # New UI pages: Kuhusu Sisi, Ingia, Hariri
+    path('kuhusu/', views.about_view, name='about'),
+    path('ingia/', views.login_view, name='login'),
+    path('toka/', views.tlm_logout, name='logout'),
+    path('hariri/', redesign.hariri, name='library'),
+    path('hariri/<str:kind>/<int:pk>/', redesign.edit_doc, name='edit_doc'),
+    path('hati/<str:kind>/<int:pk>/pdf/', redesign.doc_pdf, name='doc_pdf'),
+
+    # Backend contract for the new screens (handover Hati 1, section 3)
+    path('api/check-phone/', redesign.api_check_phone, name='api_check_phone'),
+    path('api/locations/', redesign.api_locations, name='api_locations'),
+    path('api/subjects/', redesign.api_subjects, name='api_subjects'),
+    path('api/subtopics/', redesign.api_subtopics, name='api_subtopics'),
+    path('api/generate-scheme/', redesign.api_generate_scheme, name='api_generate_scheme'),
+    path('api/generate-lesson/', redesign.api_generate_lesson, name='api_generate_lesson'),
 
     # Scheme of Work
-    path('scheme/', views.generate_scheme_view, name='generate_scheme'),
+    path('scheme/', redesign.scheme_page, name='generate_scheme'),
     path('scheme/ajax-generate/', views.ajax_generate_scheme, name='ajax_generate_scheme'),
     path('scheme/ajax-load-saved/', views.ajax_load_saved_scheme, name='ajax_load_saved_scheme'),
     path('scheme/ajax-load-by-id/<int:scheme_id>/', views.ajax_load_scheme_by_id, name='ajax_load_scheme_by_id'),
@@ -23,7 +39,7 @@ urlpatterns = [
     path('scheme/download-word/', views.download_scheme_word, name='download_scheme_word'),
 
     # Lesson Plan
-    path('lesson-plan/', views.lesson_plan_view, name='lesson_plan'),
+    path('lesson-plan/', redesign.lesson_page, name='lesson_plan'),
     path('lesson-plan/ajax-generate/', views.ajax_generate_lessonplan, name='ajax_generate_lessonplan'),
     path('lesson-plan/ajax-load-saved/', views.ajax_load_saved_lessonplan, name='ajax_load_saved_lessonplan'),
     path('lesson-plan/ajax-load-by-id/<int:lesson_id>/', views.ajax_load_lesson_by_id, name='ajax_load_lesson_by_id'),
@@ -33,7 +49,9 @@ urlpatterns = [
 
 
     # Logbook
-    path('logbook/', views.submit_logbook, name='submit_logbook'),
+    path('logbook/', redesign.logbook_page, name='logbook'),
+    path('logbook/pdf/', redesign.logbook_download, name='logbook_download'),
+    path('logbook/andika/', views.submit_logbook, name='submit_logbook'),
     path('logbook/history/', views.logbook_history, name='logbook_history'),
     path('logbook/download/<str:period_type>/', views.download_logbook_pdf, name='download_logbook_pdf'),
     path('logbook/download-topic/<int:entry_id>/', views.download_topic_logbook_pdf, name='download_topic_logbook_pdf'),

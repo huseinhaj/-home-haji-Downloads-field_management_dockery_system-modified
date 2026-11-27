@@ -1,0 +1,60 @@
+{% extends "curriculum/base.html" %}
+{% block title %}Hariri Lesson Plan{% endblock %}
+{% block content %}
+{# doc = saved lesson plan (JSON fields). stages = list of {name, minutes, teaching, learning, assessment} (IDDR). #}
+<form method="post" action="{% url 'curriculum:edit_doc' 'lesson' doc.id %}" class="page has-ab-bar" id="ed">
+  {% csrf_token %}
+  <div class="ed-head"><a href="{% url 'curriculum:library' %}?tab=lesson" class="sq" aria-label="Rudi"><svg class="ic"><use href="#i-chevron-left"/></svg></a></div>
+  <h1 style="font-size:23px;margin-top:12px">{{ doc.subject }} · Lesson Plan</h1>
+  <div class="ed-meta"><b>{{ doc.class_label }}</b> · <b>{{ doc.lesson_date|date:"j M Y" }}</b></div>
+
+  <div class="kb"><div class="stt">Taarifa za somo</div>
+    <div class="f r2"><div><div class="lb">Mada</div><input class="tlm-input" name="topic" value="{{ doc.topic }}"></div>
+      <div><div class="lb">Mada ndogo</div><input class="tlm-input" name="subtopic" value="{{ doc.subtopic }}"></div></div>
+    <div class="f r2"><div><div class="lb">Tarehe</div><input type="hidden" name="lesson_date" value="{{ doc.lesson_date|date:'Y-m-d' }}" data-date data-title="Tarehe"></div>
+      <div><div class="lb">Dakika</div><input class="tlm-input" name="duration" value="{{ doc.duration }}"></div></div>
+  </div>
+
+  <div class="kb" data-students><div class="stt">Wanafunzi</div>
+    <span class="tlm-hidden" data-reg-b>{{ doc.boys }}</span><span class="tlm-hidden" data-reg-g>{{ doc.girls }}</span>
+    <div class="gh">Waliohudhuria</div>
+    <div class="g3"><div><div class="gl">Wavulana</div><input class="tlm-input" name="present_boys" value="{{ doc.present_boys }}" data-att-b></div>
+      <div><div class="gl">Wasichana</div><input class="tlm-input" name="present_girls" value="{{ doc.present_girls }}" data-att-g></div>
+      <div><div class="gl">Jumla</div><div class="ip" style="background:var(--soft);border-color:var(--soft)" data-out="attT"></div></div></div>
+  </div>
+
+  <div class="kb"><div class="stt">Umahiri na shughuli</div>
+    <div class="sl">Umahiri mkuu</div><textarea class="tlm-input" name="main_competence">{{ doc.main_competence }}</textarea>
+    <div class="sl">Umahiri mahususi</div><textarea class="tlm-input" name="specific_competence">{{ doc.specific_competence }}</textarea>
+    <div class="sl">Shughuli kuu</div><textarea class="tlm-input" name="main_activity">{{ doc.main_activity }}</textarea>
+    <div class="sl">Shughuli mahususi</div><textarea class="tlm-input" name="specific_activity" rows="5">{{ doc.specific_activity }}</textarea>
+  </div>
+
+  <div class="kb"><div class="stt">Zana na marejeo</div>
+    <div class="sl">Zana za ufundishaji na ujifunzaji</div><textarea class="tlm-input" name="resources">{{ doc.resources }}</textarea>
+    <div class="sl">Marejeo</div><textarea class="tlm-input" name="references">{{ doc.references }}</textarea>
+  </div>
+
+  <div class="kb"><div class="stt-row"><span class="stt">Ukuzaji wa somo (IDDR)</span><span class="page-sub" style="margin:0">Jumla: dakika <b id="mins-total">{{ doc.duration }}</b></span></div>
+    {% for s in doc.stages %}
+    <div class="stg"><div class="h">{{ s.name }}<span>Muda: dakika <input name="stage_{{ forloop.counter0 }}_minutes" value="{{ s.minutes }}" data-min style="width:30px;border:0;font:inherit;text-align:center;background:none"></span></div>
+      <div class="b"><input type="hidden" name="stage_{{ forloop.counter0 }}_name" value="{{ s.name }}">
+        <div class="sl">Shughuli za ufundishaji</div><textarea class="tlm-input" name="stage_{{ forloop.counter0 }}_teaching">{{ s.teaching }}</textarea>
+        <div class="sl">Shughuli za ujifunzaji</div><textarea class="tlm-input" name="stage_{{ forloop.counter0 }}_learning">{{ s.learning }}</textarea>
+        <div class="sl">Vigezo vya upimaji</div><textarea class="tlm-input" name="stage_{{ forloop.counter0 }}_assessment">{{ s.assessment }}</textarea></div></div>
+    {% endfor %}
+  </div>
+
+  <div class="kb"><div class="stt">Maoni</div><div class="f"><textarea class="tlm-input" name="remarks">{{ doc.remarks }}</textarea></div></div>
+</form>
+<div class="ab-bar">
+  <button form="ed" class="btn-tlm sm"><svg class="ic ic-sm"><use href="#i-save"/></svg>Hifadhi</button>
+  <a class="btn-tlm grey sm" href="{% url 'curriculum:doc_pdf' 'lesson' doc.id %}"><svg class="ic ic-sm"><use href="#i-download"/></svg>Pakua PDF</a>
+</div>
+{% endblock %}
+{% block scripts %}<script>
+document.addEventListener('input', e => {
+  if (!e.target.matches('[data-min]')) return;
+  document.getElementById('mins-total').textContent = [...document.querySelectorAll('[data-min]')].reduce((a, x) => a + (+x.value || 0), 0);
+});
+</script>{% endblock %}

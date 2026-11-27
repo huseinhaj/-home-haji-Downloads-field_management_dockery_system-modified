@@ -1,0 +1,20 @@
+{% extends "curriculum/pdf/_pdf_base.html" %}
+{% block css %}
+  .cover{min-height:265mm}
+  .mo{font-weight:700;font-size:11.5pt;letter-spacing:.8pt;background:#EDEDED;border-top:1pt solid #000;border-bottom:1pt solid #000;padding:1.6mm 2.5mm;margin:6mm 0 0;page-break-after:avoid}
+  .ct{margin:3mm 0 2mm;border:.6pt solid #000;background:#F7F7F7;padding:2.5mm 3.5mm;line-height:1.5;page-break-after:avoid}
+  .wk{border-bottom:.5pt solid #BBB;padding:2.5mm 0 3mm;page-break-inside:avoid}.wh{font-weight:700;margin-bottom:1.2mm}.wh span{font-weight:400}
+  .ln{font-size:9.8pt;line-height:1.45;padding-left:4mm}
+{% endblock %}
+{% block body %}
+{% include "curriculum/pdf/_cover.html" with doc_title="AZIMIO LA KAZI" doc_sub="Scheme of Work" %}
+{# months = [{name, weeks:[…]}]. Show the competence box only when it CHANGES (regroup in the view: w.show_competence). #}
+{% for m in months %}<div class="mo">{{ m.name|upper }}</div>
+  {% for w in m.weeks %}
+  {% if w.show_competence %}<div class="ct"><b>Umahiri mkuu:</b> {{ w.main_competence }}<br><b>Umahiri mahususi:</b> {{ w.specific_competence }}<br><b>Shughuli kuu:</b> {{ w.main_activity }}</div>{% endif %}
+  <div class="wk"><div class="wh">Wiki {{ w.week }} <span>(vipindi {{ w.periods }})</span> — {{ w.specific_activity }}</div>
+    <div class="ln"><b>Mbinu za ufundishaji:</b> {{ w.methods }}</div><div class="ln"><b>Zana za kufundishia:</b> {{ w.resources }}</div>
+    <div class="ln"><b>Zana za upimaji:</b> {{ w.assessment }}</div><div class="ln"><b>Rejea:</b> {{ w.references }}</div><div class="ln"><b>Maoni:</b> {{ w.remarks }}</div></div>
+  {% endfor %}
+{% endfor %}
+{% endblock %}

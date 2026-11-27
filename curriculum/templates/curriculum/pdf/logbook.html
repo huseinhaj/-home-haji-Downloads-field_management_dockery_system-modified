@@ -1,0 +1,36 @@
+{% extends "curriculum/pdf/_pdf_base.html" %}
+{% block pagesize %}A4 landscape{% endblock %}
+{% block css %}.t th{font-size:8.3pt;padding:2mm 1mm}.t td{font-size:8.8pt;height:16mm}.c{text-align:center}{% endblock %}
+{% block body %}
+{% include "curriculum/pdf/_cover.html" with doc_title="DAFTARI LA SOMO" doc_sub="Subject Log-Book" %}
+<table class="t" style="table-layout:fixed">
+  <colgroup>
+    <col style="width:5%">
+    <col style="width:6.5%">
+    <col style="width:5%">
+    <col style="width:10%">
+    <col style="width:12%">
+    <col style="width:7.5%">
+    <col style="width:7.5%">
+    <col style="width:15%">
+    <col style="width:8%">
+    <col style="width:8%">
+    <col style="width:15.5%">
+  </colgroup>
+  <thead><tr>
+    <th>Muhula</th>
+    <th>Mwezi</th>
+    <th>Wiki</th>
+    <th>Mada Kuu</th>
+    <th>Mada Ndogo</th>
+    <th>Tarehe ya Kuanza</th>
+    <th>Tarehe ya Kumaliza</th>
+    <th>Maoni ya Mwalimu</th>
+    <th>Sahihi ya Mwalimu</th>
+    <th>Sahihi ya Mkuu wa Idara</th>
+    <th>Maoni na Sahihi ya Mkuu wa Shule</th>
+  </tr></thead>
+  {% for e in entries %}<tr><td class="c">{{ e.term_roman }}</td><td>{{ e.month_name }}</td><td class="c">{{ e.week }}</td><td>{{ e.topic }}</td><td>{{ e.subtopic }}</td>
+    <td class="c">{{ e.date_started|date:"d/m/Y" }}</td><td class="c">{{ e.date_ended|date:"d/m/Y" }}</td><td>{{ e.teacher_comment }}</td><td></td><td></td><td>{{ e.head_remarks }}</td></tr>{% endfor %}
+</table>
+{% endblock %}

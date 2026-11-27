@@ -1,4 +1,4 @@
-{% extends 'curriculum/base.html' %}
+{% extends 'curriculum/base_tool.html' %}
 {% block title %}Pakua Logbook{% endblock %}
 {% block content %}
 <div class="container-fluid px-0">
@@ -24,7 +24,7 @@
     <!-- Today -->
     <a href="{% url 'curriculum:download_logbook_pdf' 'today' %}" class="stat-card stat-card-gold text-decoration-none d-block">
       <div class="text-center">
-        <div style="width:48px;height:48px;background:rgba(217,164,65,0.1);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;">
+        <div style="width:48px;height:48px;background:rgba(30,64,175,0.1);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;">
           <i class="fas fa-calendar-day" style="font-size:1.3rem;color:var(--gold-400);"></i>
         </div>
         <h6 style="color:var(--text-primary);font-weight:800;margin-bottom:4px;">Leo</h6>
@@ -38,7 +38,7 @@
     <!-- This Week -->
     <a href="{% url 'curriculum:download_logbook_pdf' 'week' %}" class="stat-card stat-card-green text-decoration-none d-block">
       <div class="text-center">
-        <div style="width:48px;height:48px;background:rgba(31,122,61,0.1);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;">
+        <div style="width:48px;height:48px;background:rgba(30,64,175,0.1);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;">
           <i class="fas fa-calendar-week" style="font-size:1.3rem;color:var(--green-500);"></i>
         </div>
         <h6 style="color:var(--text-primary);font-weight:800;margin-bottom:4px;">Wiki Hii</h6>

@@ -1,4 +1,4 @@
-{% extends 'curriculum/base.html' %}
+{% extends 'curriculum/base_tool.html' %}
 {% block title %}Logbook History{% endblock %}
 {% block content %}
 <div class="container-fluid px-0">
@@ -118,7 +118,7 @@
       {% endif %}
 
       {% if entry.supervisor_remarks %}
-      <div class="mt-2 p-2" style="background:rgba(217,164,65,0.06);border-radius:var(--radius-sm);border-left:3px solid var(--gold-400);">
+      <div class="mt-2 p-2" style="background:rgba(30,64,175,0.06);border-radius:var(--radius-sm);border-left:3px solid var(--gold-400);">
         <strong style="font-size:var(--font-size-xs);color:var(--text-primary);"><i class="fas fa-user-check me-1"></i>Maoni ya Msimamizi:</strong>
         <p style="font-size:var(--font-size-sm);color:var(--text-secondary);margin:4px 0 0;">{{ entry.supervisor_remarks }}</p>
       </div>

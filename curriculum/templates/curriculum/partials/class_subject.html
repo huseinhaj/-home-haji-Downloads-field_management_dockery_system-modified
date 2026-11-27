@@ -1,0 +1,19 @@
+{% comment %}
+Shared block for Scheme / Lesson Plan / Logbook.
+Values default from the teacher's registration.
+level_choices, class_choices, subject_choices come from the view (subjects filtered by level).
+{% endcomment %}
+<div class="f"><div class="lb">Ngazi</div>
+  <select name="level" data-picker data-title="Chagua Ngazi">
+    {% for v,l in level_choices %}<option value="{{ v }}" {% if v == tlm_teacher.level %}selected{% endif %}>{{ l }}</option>{% endfor %}
+  </select></div>
+<div class="f r2">
+  <div><div class="lb">Darasa</div><select name="class_name" data-picker data-title="Chagua Darasa">
+    {% for c in class_choices %}<option {% if c == tlm_teacher.class_name %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></div>
+  <div><div class="lb">Stream</div><select name="stream" data-picker data-title="Chagua Stream">
+    {% for s in "ABCDEF" %}<option {% if s == tlm_teacher.stream %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+</div>
+<div class="f"><div class="lb">Somo</div><select name="subject" data-picker data-title="Chagua Somo" data-search="Tafuta somo…">
+  {% for s in subject_choices %}<option {% if s == tlm_teacher.subject %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+<div class="f"><div class="lb">Lugha</div><select name="language" data-picker data-title="Chagua Lugha">
+  <option value="auto" selected>Auto (kulingana na somo)</option><option value="en">Kiingereza</option><option value="sw">Kiswahili</option></select></div>

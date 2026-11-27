@@ -1,0 +1,17 @@
+{% extends "curriculum/base.html" %}
+{% load static %}
+{# Shell for the tool pages (Scheme, Lesson Plan, Logbook, Hariri, Exams…).
+   Uses the new blue & white chrome (top bar, drawer, bottom nav, toast) and
+   loads tlm-tools.css, which carries over the styles those pages rely on. #}
+
+{% block body_class %}tool{% endblock %}
+
+{% block head %}{{ block.super }}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="{% static 'curriculum/tlm-tools.css' %}" rel="stylesheet">
+{% block extra_css %}{% endblock %}
+{% endblock %}
+
+{% block scripts %}{{ block.super }}
+{% block extra_js %}{% endblock %}
+{% endblock %}

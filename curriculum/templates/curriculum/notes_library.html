@@ -1,4 +1,4 @@
-{% extends 'curriculum/base.html' %}
+{% extends 'curriculum/base_tool.html' %}
 {% block title %}Maktaba — Vitabu, Notes, Past Papers & Marking Schemes{% endblock %}
 {% block content %}
 {{ level_classes|json_script:"level-classes-data" }}
@@ -6,21 +6,21 @@
 <style>
   /* ═══════════════ MAKTABA v2 — Browse Categories ═══════════════ */
   .lib-hero {
-    background: linear-gradient(135deg, #0A2B5E 0%, #0D4F2B 55%, #1F7A3D 100%);
+    background: linear-gradient(135deg, #0A2B5E 0%, #1E3A8A 55%, #1E40AF 100%);
     border-radius: var(--radius-xl);
     padding: 1.75rem 1.5rem;
     color: #fff;
     position: relative;
     overflow: hidden;
     margin-bottom: 1rem;
-    border: 1px solid rgba(217,164,65,0.35);
+    border: 1px solid rgba(30,64,175,0.35);
     box-shadow: var(--shadow-lg);
   }
   .lib-hero::before {
     content: '';
     position: absolute; top: -60%; right: -10%;
     width: 420px; height: 420px;
-    background: radial-gradient(circle, rgba(217,164,65,0.18), transparent 70%);
+    background: radial-gradient(circle, rgba(30,64,175,0.18), transparent 70%);
     border-radius: 50%;
   }
   .lib-hero h3 { font-family: var(--font-display); font-weight: 800; margin: 0; font-size: 1.35rem; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -52,10 +52,10 @@
   }
   .lib-cat-nav button i { font-size: 1.05rem; margin-bottom: 1px; }
   .lib-cat-nav button span { font-size: 9px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-  .lib-cat-nav button:hover { background: rgba(31,122,61,0.06); color: var(--green-500); }
+  .lib-cat-nav button:hover { background: rgba(30,64,175,0.06); color: var(--green-500); }
   .lib-cat-nav button.active {
     background: linear-gradient(135deg, var(--green-500), var(--green-600));
-    color: #fff; box-shadow: 0 4px 14px rgba(31,122,61,0.3);
+    color: #fff; box-shadow: 0 4px 14px rgba(30,64,175,0.3);
   }
   .lib-cat-nav button.active span { color: rgba(255,255,255,0.75); }
 
@@ -94,7 +94,7 @@
     background: var(--bg-card-solid); border: 2px solid var(--border-color); font-size: 11px; color: var(--text-muted); transition: all 200ms var(--ease-out);
   }
   .wiz-prog-step.active { color: var(--green-500); }
-  .wiz-prog-step.active .dot { background: linear-gradient(135deg, var(--green-500), var(--green-600)); border-color: var(--green-500); color: #fff; box-shadow: 0 3px 10px rgba(31,122,61,0.3); }
+  .wiz-prog-step.active .dot { background: linear-gradient(135deg, var(--green-500), var(--green-600)); border-color: var(--green-500); color: #fff; box-shadow: 0 3px 10px rgba(30,64,175,0.3); }
   .wiz-prog-line { flex: 1; height: 2px; background: var(--border-color); border-radius: 2px; min-width: 14px; }
   .wiz-prog-line.done { background: linear-gradient(90deg, var(--green-500), var(--gold-400)); }
 
@@ -138,16 +138,16 @@
   }
   .wiz-card:hover .wiz-arrow { opacity: 1; color: var(--green-500); }
   .wiz-card.selected {
-    border-color: var(--green-500); box-shadow: 0 6px 18px rgba(31,122,61,0.2);
+    border-color: var(--green-500); box-shadow: 0 6px 18px rgba(30,64,175,0.2);
   }
   .wiz-card.selected::before { transform: scaleX(1); }
 
   /* Level cards — gradient covers */
-  .wiz-card.lv-primary .wiz-icon { background: linear-gradient(135deg, #1F7A3D, #2E9E56); color: #fff; box-shadow: 0 4px 12px rgba(31,122,61,0.3); }
+  .wiz-card.lv-primary .wiz-icon { background: linear-gradient(135deg, #1E40AF, #2E9E56); color: #fff; box-shadow: 0 4px 12px rgba(30,64,175,0.3); }
   .wiz-card.lv-ordinary .wiz-icon { background: linear-gradient(135deg, #2563EB, #3B82F6); color: #fff; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
   .wiz-card.lv-advanced .wiz-icon { background: linear-gradient(135deg, #7C3AED, #A78BFA); color: #fff; box-shadow: 0 4px 12px rgba(124,58,237,0.3); }
   .wiz-card.lv-technical .wiz-icon { background: linear-gradient(135deg, #D97706, #F59E0B); color: #fff; box-shadow: 0 4px 12px rgba(217,119,6,0.3); }
-  .wiz-card.selected.lv-primary { border-color: #1F7A3D; }
+  .wiz-card.selected.lv-primary { border-color: #1E40AF; }
   .wiz-card.selected.lv-ordinary { border-color: #2563EB; }
   .wiz-card.selected.lv-advanced { border-color: #7C3AED; }
   .wiz-card.selected.lv-technical { border-color: #D97706; }
@@ -160,7 +160,7 @@
   /* Subject cards */
   .wiz-card.subj-card .wiz-icon { background: linear-gradient(135deg, #7C3AED, #A78BFA); color: #fff; }
   .wiz-card.subj-card:nth-child(4n+1) .wiz-icon { background: linear-gradient(135deg, #DC2626, #EF4444); }
-  .wiz-card.subj-card:nth-child(4n+2) .wiz-icon { background: linear-gradient(135deg, #1F7A3D, #2E9E56); }
+  .wiz-card.subj-card:nth-child(4n+2) .wiz-icon { background: linear-gradient(135deg, #1E40AF, #2E9E56); }
   .wiz-card.subj-card:nth-child(4n+3) .wiz-icon { background: linear-gradient(135deg, #D97706, #F59E0B); }
   .wiz-card.subj-card:nth-child(4n+4) .wiz-icon { background: linear-gradient(135deg, #2563EB, #3B82F6); }
 
@@ -170,7 +170,7 @@
   .lib-breadcrumb {
     display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
     font-size: var(--font-size-xs); font-weight: 700; color: var(--text-secondary);
-    background: rgba(31,122,61,0.06); border: 1px solid rgba(31,122,61,0.12);
+    background: rgba(30,64,175,0.06); border: 1px solid rgba(30,64,175,0.12);
     border-radius: var(--radius-full); padding: 0.35rem 0.8rem; margin-bottom: 0.85rem;
   }
   .lib-breadcrumb .sep { color: var(--gold-400); }
@@ -198,15 +198,15 @@
   .lib-item .lib-item-meta { font-size: 10px; color: var(--text-muted); margin-top: 3px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 
   .ms-marks {
-    display: inline-block; background: rgba(217,164,65,0.12); color: var(--gold-500);
+    display: inline-block; background: rgba(30,64,175,0.12); color: var(--gold-500);
     font-size: 9px; font-weight: 800; padding: 1px 8px; border-radius: var(--radius-full);
-    border: 1px solid rgba(217,164,65,0.25); vertical-align: middle;
+    border: 1px solid rgba(30,64,175,0.25); vertical-align: middle;
   }
 
   /* ── Notebook (notes) ── */
   .notebook-page { background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius-md);
     padding: 1.5rem 1.75rem; font-family: Georgia, serif; line-height: 1.8; color: #222;
-    box-shadow: inset 0 0 0 1px rgba(217,164,65,0.08), 0 2px 10px rgba(0,0,0,0.04); }
+    box-shadow: inset 0 0 0 1px rgba(30,64,175,0.08), 0 2px 10px rgba(0,0,0,0.04); }
   [data-theme="dark"] .notebook-page { background: var(--bg-card-solid); color: var(--text-primary); }
   .notebook-page h2 { border-bottom: 3px double var(--gold-400); padding-bottom: 6px;
     color: var(--green-600); font-weight: 800; font-size: 1.25rem; margin: 0 0 0.5rem; }
@@ -215,11 +215,11 @@
   .notebook-page p { margin: 0 0 0.75rem; font-size: 0.95rem; }
   .kt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; margin: 8px 0; }
   .kt-card { background: #f7f9f4; border: 1px solid #dce8dc; border-radius: 8px; padding: 8px 12px; }
-  [data-theme="dark"] .kt-card { background: rgba(31,122,61,0.08); border-color: rgba(31,122,61,0.25); }
+  [data-theme="dark"] .kt-card { background: rgba(30,64,175,0.08); border-color: rgba(30,64,175,0.25); }
   .kt-card b { color: var(--green-600); }
   .exam-tip { background: #fff8e6; border-left: 4px solid var(--gold-400); padding: 8px 12px;
     border-radius: 0 8px 8px 0; margin-bottom: 6px; font-size: 0.9rem; }
-  [data-theme="dark"] .exam-tip { background: rgba(217,164,65,0.1); }
+  [data-theme="dark"] .exam-tip { background: rgba(30,64,175,0.1); }
   .pq-item { border: 1px solid #dde7dd; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; }
   [data-theme="dark"] .pq-item { border-color: rgba(148,163,184,0.2); }
   .pq-item .q { font-weight: 700; color: var(--green-600); }
@@ -256,7 +256,7 @@
   .lib-cat-card p { font-size: var(--font-size-xs); color: var(--text-secondary); margin: 0; line-height: 1.45; padding-right: 8px; }
   .lib-cat-count {
     position: absolute; top: 12px; right: 14px; font-size: 9px; font-weight: 800;
-    background: rgba(31,122,61,0.08); color: var(--green-500); border: 1px solid rgba(31,122,61,0.15);
+    background: rgba(30,64,175,0.08); color: var(--green-500); border: 1px solid rgba(30,64,175,0.15);
     padding: 2px 8px; border-radius: var(--radius-full);
   }
 
@@ -293,7 +293,7 @@
   <div id="libHome">
     <div class="lib-cat-grid">
       <button class="lib-cat-card" onclick="enterCategory('books', 'Vitabu')">
-        <div class="lib-cat-icon" style="background:rgba(31,122,61,0.12);color:var(--green-500);"><i class="fas fa-book"></i></div>
+        <div class="lib-cat-icon" style="background:rgba(30,64,175,0.12);color:var(--green-500);"><i class="fas fa-book"></i></div>
         <h5>Vitabu</h5>
         <p>Vitabu halisi vya TIE, TETEA na uploads za walimu — fungua au pakua PDF kwa darasa lako.</p>
         <span class="lib-cat-count">{{ lib_counts.books }} vitabu</span>
@@ -311,7 +311,7 @@
         <span class="lib-cat-count">{{ lib_counts.notes }} notes</span>
       </button>
       <button class="lib-cat-card" onclick="enterCategory('papers', 'Past Papers')">
-        <div class="lib-cat-icon" style="background:rgba(217,164,65,0.15);color:var(--gold-400);"><i class="fas fa-file-alt"></i></div>
+        <div class="lib-cat-icon" style="background:rgba(30,64,175,0.15);color:var(--gold-400);"><i class="fas fa-file-alt"></i></div>
         <h5>Past Papers</h5>
         <p>Mitihani halisi ya NECTA (PSLE · CSEE · FTNA · ACSEE) kwa kila darasa.</p>
         <span class="lib-cat-count">{{ lib_counts.papers }} papers</span>
@@ -728,7 +728,7 @@ function renderBooks(data, s, res) {
       const isScraped = !!b.scraped;
       h += `<div class="lib-item">
         <div style="display:flex;gap:10px;min-width:0;">
-          <div class="lib-item-icon" style="background:rgba(31,122,61,0.1);color:var(--green-500);"><i class="fas fa-book"></i></div>
+          <div class="lib-item-icon" style="background:rgba(30,64,175,0.1);color:var(--green-500);"><i class="fas fa-book"></i></div>
           <div style="min-width:0;">
             <h6>${isScraped ? '<i class="fas fa-cloud-download-alt" style="font-size:10px;color:var(--success);" title="Imechotwa automatic"></i> ' : ''}${esc(b.title)}</h6>
             <div class="lib-item-meta">
@@ -979,7 +979,7 @@ function renderSavedNotes(s) {
           </div>
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0;">
-          <button class="btn-tlm btn-sm-tlm" style="background:rgba(31,122,61,0.08);color:var(--green-500);padding:2px 8px;font-size:9px;" onclick="event.stopPropagation(); downloadNotePdf(${n.id})" title="Pakua PDF"><i class="fas fa-file-pdf"></i></button>
+          <button class="btn-tlm btn-sm-tlm" style="background:rgba(30,64,175,0.08);color:var(--green-500);padding:2px 8px;font-size:9px;" onclick="event.stopPropagation(); downloadNotePdf(${n.id})" title="Pakua PDF"><i class="fas fa-file-pdf"></i></button>
           <button class="btn-tlm btn-sm-tlm" style="background:rgba(220,38,38,0.06);color:var(--error);padding:2px 8px;font-size:9px;" onclick="event.stopPropagation(); deleteNote(${n.id})" title="Futa"><i class="fas fa-trash-alt"></i></button>
         </div>
       </div>`).join('') + `</div>`;

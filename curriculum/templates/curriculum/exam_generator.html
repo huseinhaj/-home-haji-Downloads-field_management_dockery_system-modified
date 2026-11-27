@@ -1,4 +1,4 @@
-{% extends 'curriculum/base.html' %}
+{% extends 'curriculum/base_tool.html' %}
 {% block title %}Mtihani Generator (NECTA){% endblock %}
 {% block extra_css %}
 <style>
@@ -17,7 +17,7 @@
     content: '';
     position: absolute; top: -50%; right: -30%;
     width: 220px; height: 220px;
-    background: radial-gradient(circle, rgba(31,122,61,0.05) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(30,64,175,0.05) 0%, transparent 70%);
     border-radius: 50%;
   }
   .exam-gen-card select, .exam-gen-card input {
@@ -33,7 +33,7 @@
   .exam-gen-card select:focus, .exam-gen-card input:focus {
     border-color: var(--green-500);
     outline: none;
-    box-shadow: 0 0 0 3px rgba(31,122,61,0.1);
+    box-shadow: 0 0 0 3px rgba(30,64,175,0.1);
   }
   .exam-exam-card {
     background: var(--bg-card);
@@ -55,9 +55,9 @@
   }
   .gen-status { font-size: var(--font-size-xs); padding: 0.5rem 0.85rem; border-radius: var(--radius-sm); margin-top: 0.6rem; display: none; }
   .gen-status.show { display: block; }
-  .gen-status.info { background: rgba(31,122,61,0.06); color: var(--green-500); }
+  .gen-status.info { background: rgba(30,64,175,0.06); color: var(--green-500); }
   .gen-status.error { background: rgba(220,38,38,0.06); color: var(--error); }
-  .gen-status.success { background: rgba(31,122,61,0.08); color: var(--green-500); }
+  .gen-status.success { background: rgba(30,64,175,0.08); color: var(--green-500); }
 </style>
 {% endblock %}
 
@@ -89,7 +89,7 @@
       <div class="exam-gen-card">
         <div style="position:relative;z-index:1;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:0.9rem;">
-            <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green-500),#166534);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(31,122,61,0.2);">
+            <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green-500),#1E3A8A);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(30,64,175,0.2);">
               <i class="fas fa-wand-magic-sparkles" style="color:#fff;font-size:1.1rem;"></i>
             </div>
             <div>
@@ -191,7 +191,7 @@
               </div>
             </div>
 
-            <button type="submit" class="btn-tlm btn-generate mt-3" id="genBtn" style="background:linear-gradient(135deg,var(--green-500),#166534);color:#fff;border:none;padding:0.75rem 1.5rem;font-weight:700;border-radius:var(--radius-sm);width:100%;justify-content:center;display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
+            <button type="submit" class="btn-tlm btn-generate mt-3" id="genBtn" style="background:linear-gradient(135deg,var(--green-500),#1E3A8A);color:#fff;border:none;padding:0.75rem 1.5rem;font-weight:700;border-radius:var(--radius-sm);width:100%;justify-content:center;display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
               <i class="fas fa-wand-magic-sparkles"></i> Generate Mtihani
             </button>
             <div id="genStatus" class="gen-status"></div>
@@ -203,7 +203,7 @@
       <div class="c-card mt-3" id="formatPreviewCard" style="border-top:3px solid var(--green-500);">
         <div class="c-card-body" style="padding:0.9rem 1rem;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <div style="width:34px;height:34px;border-radius:50%;background:rgba(31,122,61,0.08);display:flex;align-items:center;justify-content:center;">
+            <div style="width:34px;height:34px;border-radius:50%;background:rgba(30,64,175,0.08);display:flex;align-items:center;justify-content:center;">
               <i class="fas fa-certificate" style="color:var(--green-500);"></i>
             </div>
             <div style="flex:1;">
@@ -273,7 +273,7 @@
           </div>
           {% else %}
           <div class="text-center py-5">
-            <div style="width:56px;height:56px;background:rgba(31,122,61,0.06);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 0.6rem;">
+            <div style="width:56px;height:56px;background:rgba(30,64,175,0.06);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 0.6rem;">
               <i class="fas fa-file-alt" style="font-size:1.3rem;color:var(--text-muted);"></i>
             </div>
             <p style="font-size:var(--font-size-sm);color:var(--text-muted);margin:0;">

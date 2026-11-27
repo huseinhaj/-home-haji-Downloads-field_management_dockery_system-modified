@@ -33,6 +33,20 @@ class TLMTeacher(models.Model):
     stream = models.CharField(max_length=10, blank=True, default='', verbose_name="Stream/Section")
     total_boys = models.PositiveIntegerField(default=0, verbose_name="Wavulana (Registered)")
     total_girls = models.PositiveIntegerField(default=0, verbose_name="Wasichana (Registered)")
+
+    @property
+    def initials(self):
+        """Two-letter initials for the new UI avatar (e.g. 'JM')."""
+        parts = [p for p in (self.full_name or '').split() if p]
+        return ''.join(p[0] for p in parts[:2]).upper() or '?'
+
+    @property
+    def school_name(self):
+        return self.school.name if self.school_id else ''
+
+    @property
+    def level(self):
+        return self.school.level if self.school_id else ''
     
     preferred_language = models.CharField(
         max_length=10,

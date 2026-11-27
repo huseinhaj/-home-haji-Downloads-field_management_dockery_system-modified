@@ -1,0 +1,34 @@
+{% extends "curriculum/pdf/_pdf_base.html" %}
+{% block body %}
+<div class="head"><img src="{{ coat_of_arms_url }}" alt="" style="width:18mm"><div class="l1" style="font-size:11.5pt">JAMHURI YA MUUNGANO WA TANZANIA</div>
+  <div class="l2" style="font-size:10.5pt">OFISI YA WAZIRI MKUU – TAWALA ZA MIKOA NA SERIKALI ZA MITAA</div>
+  <div class="ttl" style="font-size:15pt;letter-spacing:1pt;margin-top:3.5mm">MPANGO WA SOMO LA MWALIMU</div><div class="sub">(Lesson Plan)</div></div>
+
+<table style="margin-top:5mm">
+  <tr><td class="lb" style="width:30mm">Shule</td><td colspan="3">{{ doc.school_name }}</td></tr>
+  <tr><td class="lb">Mwalimu</td><td>{{ doc.teacher_name }}</td><td class="lb" style="width:30mm">Somo</td><td>{{ doc.subject }}</td></tr>
+  <tr><td class="lb">Darasa</td><td>{{ doc.class_label }}</td><td class="lb">Muhula / Mwaka</td><td>Muhula {{ doc.term_roman }}, {{ doc.year }}</td></tr>
+  <tr><td class="lb">Tarehe</td><td>{{ doc.lesson_date|date:"d/m/Y" }}</td><td class="lb">Muda</td><td>Dakika {{ doc.duration }}</td></tr>
+  <tr><td class="lb">Mada</td><td>{{ doc.topic|default:"……………………" }}</td><td class="lb">Mada Ndogo</td><td>{{ doc.subtopic|default:"……………………" }}</td></tr></table>
+
+<h3>Idadi ya Wanafunzi</h3>
+<table style="text-align:center"><tr><th></th><th>Waliosajiliwa</th><th>Waliohudhuria</th><th>Wasiohudhuria</th></tr>
+  <tr><td style="text-align:left;font-weight:700">Wavulana</td><td>{{ doc.boys }}</td><td>{{ doc.present_boys|default_if_none:"" }}</td><td>{{ doc.absent_boys|default_if_none:"" }}</td></tr>
+  <tr><td style="text-align:left;font-weight:700">Wasichana</td><td>{{ doc.girls }}</td><td>{{ doc.present_girls|default_if_none:"" }}</td><td>{{ doc.absent_girls|default_if_none:"" }}</td></tr>
+  <tr><td style="text-align:left;font-weight:700">Jumla</td><td><b>{{ doc.total }}</b></td><td>{{ doc.present_total|default_if_none:"" }}</td><td>{{ doc.absent_total|default_if_none:"" }}</td></tr></table>
+
+<h3>Umahiri na Shughuli</h3>
+<div><b>Umahiri Mkuu:</b> {{ doc.main_competence }}</div><div style="margin-top:1.4mm"><b>Umahiri Mahususi:</b> {{ doc.specific_competence }}</div>
+<div style="margin-top:1.4mm"><b>Shughuli Kuu:</b> {{ doc.main_activity }}</div>
+<div style="margin-top:1.4mm"><b>Shughuli Mahususi:</b> {{ doc.objectives_intro }}<ol style="margin:1mm 0 0 5mm">{% for o in doc.objectives %}<li>{{ o }}</li>{% endfor %}</ol></div>
+
+<h3>Zana za Ufundishaji na Ujifunzaji</h3><div>{{ doc.resources }}</div>
+<h3>Marejeo</h3><div>{{ doc.references }}</div>
+<h3>Ukuzaji wa Somo (Muundo wa IDDR)</h3>
+<table style="font-size:9.6pt"><colgroup><col style="width:17%"><col style="width:8%"><col style="width:27%"><col style="width:26%"><col style="width:22%"></colgroup>
+  <thead><tr><th>Hatua</th><th>Muda (dk)</th><th>Shughuli za Ufundishaji</th><th>Shughuli za Ujifunzaji</th><th>Vigezo vya Upimaji</th></tr></thead>
+  {% for s in doc.stages %}<tr><td style="font-weight:700">{{ s.name }}</td><td style="text-align:center">{{ s.minutes }}</td><td>{{ s.teaching }}</td><td>{{ s.learning }}</td><td>{{ s.assessment }}</td></tr>{% endfor %}
+  <tr><td style="font-weight:700">Jumla</td><td style="text-align:center;font-weight:700">{{ doc.duration }}</td><td colspan="3"></td></tr></table>
+
+<h3>Maoni</h3><div>{{ doc.remarks }}</div>
+{% endblock %}

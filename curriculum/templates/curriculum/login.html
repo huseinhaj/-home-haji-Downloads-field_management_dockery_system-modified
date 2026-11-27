@@ -1,0 +1,21 @@
+{% extends "curriculum/base.html" %}
+{% block title %}Ingia · TLM Tanzania{% endblock %}
+{% block chrome %}{% endblock %}{% block bottomnav %}{% endblock %}
+{% block body_class %}no-top{% endblock %}
+{% block content %}
+<style>.no-top{padding-top:0}</style>
+<form method="post" action="{% url 'curriculum:login' %}" class="page" style="padding-top:44px">
+  {% csrf_token %}
+  <a href="{% url 'curriculum:dashboard' %}" class="nb" style="height:40px;padding:0 14px"><svg class="ic"><use href="#i-chevron-left"/></svg>Rudi</a>
+  <div class="login-logo"><svg class="ic" style="width:110px;height:110px;stroke-width:1.4"><use href="#i-book-open"/></svg></div>
+  <h1 style="text-align:center;margin-top:26px;font-size:24px">Karibu Tena</h1>
+  <p class="page-sub" style="text-align:center">Ingia kwenye akaunti yako.</p>
+  <div class="f" style="margin-top:22px"><div class="lb" style="font-weight:600;color:var(--ink)">Namba ya Simu</div>
+    <div style="position:relative"><svg class="ic" style="position:absolute;left:12px;top:10px;color:var(--muted)"><use href="#i-phone"/></svg>
+      <input class="tlm-input" style="height:46px;padding-left:42px" name="phone" inputmode="tel" placeholder="0712 345 678" required></div>
+    {% if form.errors %}<div class="err-text">Namba hii haijasajiliwa.</div>{% endif %}</div>
+  <button class="btn-tlm solid" style="height:46px;margin-top:14px;border-radius:8px"><svg class="ic"><use href="#i-log-in"/></svg>Ingia</button>
+  <a href="{% url 'curriculum:teacher_register' %}" class="btn-tlm" style="height:46px;margin-top:12px;border-radius:8px;border-color:var(--blue-200)">Jisajili sasa</a>
+  {# NOTE: there is intentionally NO "Umesahau namba?" link. #}
+</form>
+{% endblock %}

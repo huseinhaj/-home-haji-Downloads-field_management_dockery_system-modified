@@ -1,0 +1,9 @@
+{# include with: doc_title, doc_sub, info (list of (label,value)) #}
+<div class="cover"><div class="head">
+  <img src="{{ coat_of_arms_url }}" alt="">
+  <div class="l1">JAMHURI YA MUUNGANO WA TANZANIA</div>
+  <div class="l2">OFISI YA WAZIRI MKUU</div><div class="l2" style="font-size:11pt">TAWALA ZA MIKOA NA SERIKALI ZA MITAA</div>
+  <div class="rule"></div><div class="ttl">{{ doc_title }}</div><div class="sub">({{ doc_sub }})</div></div>
+  <table class="info">{% for l,v in info %}<tr><td class="lb">{{ l }}</td><td>{{ v }}</td></tr>{% endfor %}</table>
+  {# NO signatures, NO school stamp on the cover. #}
+</div>
