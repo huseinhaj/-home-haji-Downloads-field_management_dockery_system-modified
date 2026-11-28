@@ -306,14 +306,14 @@ def pwa_manifest(request):
             {
                 "name": "Scheme of Work",
                 "short_name": "Scheme",
-                "description": "Tengeneza Scheme of Work kwa AI",
+                "description": "Tengeneza Scheme of Work haraka",
                 "url": "/curriculum/scheme/",
                 "icons": [{"src": "/static/curriculum/pwa/icon-192.png", "sizes": "192x192"}]
             },
             {
                 "name": "Lesson Plan",
                 "short_name": "Lesson",
-                "description": "Tengeneza Lesson Plan kwa AI",
+                "description": "Tengeneza Lesson Plan haraka",
                 "url": "/curriculum/lesson-plan/",
                 "icons": [{"src": "/static/curriculum/pwa/icon-192.png", "sizes": "192x192"}]
             },
