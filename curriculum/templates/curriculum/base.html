@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#FFFFFF">
+  <link rel="icon" type="image/png" sizes="192x192" href="{% static 'curriculum/pwa/icon-192.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'curriculum/pwa/icon-192.png' %}">
+  <meta name="apple-mobile-web-app-title" content="TLM Tanzania">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>{% block title %}TLM Tanzania{% endblock %}</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,6 +18,21 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
 {% include "curriculum/partials/icons.html" %}
+
+<!-- Opening screen (installed PWA only, once per session): the book draws itself, "TLM" + name appear, the icon pulses twice, then it fades into the page. -->
+<div id="tlm-splash" aria-hidden="true">
+  <div class="sp-ic"><svg viewBox="0 0 112 112" width="176" height="176">
+    <g transform="translate(29 18) scale(2.25)" fill="none" stroke="#1E40AF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 7v14"/>
+      <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>
+    </g>
+    <text class="sp-t" x="56" y="90" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="13" letter-spacing="1.6" fill="#1E40AF">TLM</text>
+  </svg></div>
+  <div class="sp-nm">TLM Tanzania</div>
+  <div class="sp-ft">TANZANIA · LMS</div>
+</div>
+<script>(function(){var s=document.getElementById('tlm-splash');var pwa=matchMedia('(display-mode: standalone)').matches||navigator.standalone; if(!pwa||sessionStorage.getItem('tlm-splashed')){s.remove();return}try{sessionStorage.setItem('tlm-splashed','1')}catch(e){}})();</script>
+
 {% block chrome %}
 <!-- Top bar (no ministry masthead in the new design) -->
 <header class="app-top">
@@ -68,6 +87,11 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
 <script src="{% static 'curriculum/tlm-ui.js' %}" defer></script>
 <script src="{% static 'curriculum/pwa-register.js' %}" defer></script>
+<!-- Speed: Chrome prepares the next page as soon as the finger touches a bottom-nav tab, so it opens quickly. -->
+<script type="speculationrules">
+{"prerender":[{"where":{"selector_matches":".bottom-nav a"},"eagerness":"moderate"}],
+ "prefetch":[{"where":{"selector_matches":".bottom-nav a"},"eagerness":"eager"}]}
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

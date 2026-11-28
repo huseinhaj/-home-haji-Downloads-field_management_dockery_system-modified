@@ -71,6 +71,7 @@ from django.db.utils import IntegrityError
 from django.db import connection as _db_conn
 from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from django.templatetags.static import static
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -274,54 +275,32 @@ from .models import (
 
 def pwa_manifest(request):
     """Serve Web App Manifest for PWA install on mobile devices."""
+    def _icon(size, purpose="any"):
+        return {
+            "src": static(f"curriculum/pwa/icon-{size}.png"),
+            "sizes": f"{size}x{size}",
+            "type": "image/png",
+            "purpose": purpose,
+        }
+
     manifest = {
-        "name": "TLM Tanzania — Teaching & Learning Materials",
+        "name": "TLM Tanzania",
         "short_name": "TLM Tanzania",
-        "description": "Mfumo wa Nyenzo za Kufundishia na Kujifunza — Scheme of Work, Lesson Plan & Logbook kwa Walimu wa Tanzania",
-        "start_url": "/curriculum/",
+        "description": "Teaching & Learning Materials",
+        "start_url": "/",
         "scope": "/",
         "display": "standalone",
-        "orientation": "portrait-primary",
-        "background_color": "#0D4F2B",
-        "theme_color": "#0D4F2B",
+        "orientation": "portrait",
+        "background_color": "#FFFFFF",  # Android launch screen = white
+        "theme_color": "#FFFFFF",  # status bar / nav bar = white (no more green)
         "categories": ["education", "productivity", "books"],
         "lang": "sw",
         "dir": "ltr",
         "icons": [
-            {
-                "src": "/static/curriculum/pwa-icon-192.png",
-                "sizes": "192x192",
-                "type": "image/png",
-                "purpose": "any"
-            },
-            {
-                "src": "/static/curriculum/pwa-icon-512.png",
-                "sizes": "512x512",
-                "type": "image/png",
-                "purpose": "any maskable"
-            },
-            {
-                "src": "/static/curriculum/pwa-icon.svg",
-                "sizes": "any",
-                "type": "image/svg+xml",
-                "purpose": "any"
-            }
-        ],
-        "screenshots": [
-            {
-                "src": "/static/curriculum/pwa-splash.png",
-                "sizes": "1280x640",
-                "type": "image/png",
-                "form_factor": "wide",
-                "label": "TLM Tanzania — Scheme of Work, Lesson Plan & Logbook"
-            },
-            {
-                "src": "/static/curriculum/pwa-splash.png",
-                "sizes": "1280x640",
-                "type": "image/png",
-                "form_factor": "narrow",
-                "label": "TLM Tanzania — Nyenzo za Kufundishia"
-            }
+            _icon(192),
+            _icon(512),
+            _icon(1024),
+            _icon(512, "maskable"),
         ],
         "shortcuts": [
             {
@@ -329,28 +308,28 @@ def pwa_manifest(request):
                 "short_name": "Scheme",
                 "description": "Tengeneza Scheme of Work kwa AI",
                 "url": "/curriculum/scheme/",
-                "icons": [{"src": "/static/curriculum/pwa-icon-192.png", "sizes": "192x192"}]
+                "icons": [{"src": "/static/curriculum/pwa/icon-192.png", "sizes": "192x192"}]
             },
             {
                 "name": "Lesson Plan",
                 "short_name": "Lesson",
                 "description": "Tengeneza Lesson Plan kwa AI",
                 "url": "/curriculum/lesson-plan/",
-                "icons": [{"src": "/static/curriculum/pwa-icon-192.png", "sizes": "192x192"}]
+                "icons": [{"src": "/static/curriculum/pwa/icon-192.png", "sizes": "192x192"}]
             },
             {
                 "name": "Library",
                 "short_name": "Library",
                 "description": "Tazama mifano ya walimu wengine",
                 "url": "/curriculum/library/",
-                "icons": [{"src": "/static/curriculum/pwa-icon-192.png", "sizes": "192x192"}]
+                "icons": [{"src": "/static/curriculum/pwa/icon-192.png", "sizes": "192x192"}]
             },
             {
                 "name": "Lesson Notes",
                 "short_name": "Notes",
                 "description": "Andika na hifadhi maelezo ya somo",
                 "url": "/curriculum/lesson-notes/",
-                "icons": [{"src": "/static/curriculum/pwa-icon-192.png", "sizes": "192x192"}]
+                "icons": [{"src": "/static/curriculum/pwa/icon-192.png", "sizes": "192x192"}]
             }
         ]
     }
@@ -359,11 +338,13 @@ def pwa_manifest(request):
 
 def pwa_service_worker(request):
     """Serve the Service Worker JS for offline caching & PWA install."""
-    sw_code = '''const CACHE_NAME = "tlm-tanzania-v2";
+    sw_code = '''const CACHE_NAME = "tlm-v3-blue";
 const STATIC_ASSETS = [
-  "/static/curriculum/pwa-icon-192.png",
-  "/static/curriculum/pwa-icon-512.png",
-  "/static/curriculum/pwa-icon.svg",
+  "/static/curriculum/pwa/icon-192.png",
+  "/static/curriculum/pwa/icon-512.png",
+  "/static/curriculum/pwa/icon.svg",
+  "/static/curriculum/tlm.css",
+  "/static/curriculum/tlm-ui.js",
 ];
 
 // ── Install: cache static assets ──
@@ -761,25 +742,35 @@ def landing(request):
 
 def about_view(request):
     """Kuhusu Sisi page (new UI)."""
-    from django.conf import settings
-
     about_blocks = [
-        ('Changamoto',
+        ('alert-triangle', 'Changamoto',
          'Mwalimu hutumia saa nyingi kuandaa Scheme of Work, Lesson Plan na Logbook kwa mkono. '
          'Kila muhula anatakiwa kufuata muundo ule ule wa TIE, jambo linalopunguza muda wa kufundisha.'),
-        ('Suluhisho Letu',
-         'TLM Tanzania inamsaidia mwalimu kuzalisha nyaraka hizo kwa muundo rasmi kwa dakika chache, '
+        ('lightbulb', 'Suluhisho Letu',
+         'TLM Tanzania inamsaidia mwalimu kutengeneza nyaraka hizo kwa muundo rasmi kwa dakika chache, '
          'kisha kuzihifadhi na kuzipakua kama PDF tayari kuchapishwa.'),
-        ('Lengo Letu',
+        ('target', 'Lengo Letu',
          'Kila mwalimu Tanzania apate nyenzo bora za kufundishia bila gharama, kwa kutumia simu yake.'),
+    ]
+
+    team = [
+        dict(initials='HH', name='Hajj Hussein Hamisi', role='SYSTEM ADMIN',
+             bio='Anasimamia mfumo mzima wa TLM Tanzania: seva, usalama wa taarifa za walimu na '
+                 'uendeshaji wa kila siku wa mfumo.',
+             degree='Shahada ya Kwanza ya Sayansi ya Uhandisi wa Programu',
+             phone='+255625607088', phone_display='+255 625 607 088'),
+        dict(initials='HS', name='Hamisi Selemani Hamisi', role='AFISA MTENDAJI MKUU',
+             bio='Anaongoza utekelezaji, uratibu na mwelekeo wa kila siku wa TLM Tanzania, pamoja na '
+                 'mawasiliano na walimu.',
+             degree='Shahada ya Kwanza ya Sayansi ya Uhandisi wa Programu',
+             phone='+255763795801', phone_display='+255 763 795 801'),
     ]
 
     return render(request, 'curriculum/about.html', {
         'tlm_teacher': get_tlm_teacher(request),
         'about_blocks': about_blocks,
-        'team': [],
-        'contact_email': (getattr(settings, 'SUPPORT_EMAIL', '')
-                          or getattr(settings, 'EMAIL_HOST_USER', '') or ''),
+        'team': team,
+        'contact_email': 'huseinhaj09@gmail.com',
     })
 
 

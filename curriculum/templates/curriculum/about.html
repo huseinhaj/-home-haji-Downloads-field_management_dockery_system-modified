@@ -1,40 +1,55 @@
 {% extends "curriculum/base.html" %}
+{% load static %}
 {% block title %}Kuhusu Sisi · TLM Tanzania{% endblock %}
 {% block content %}
-<div class="page">
-  <div class="stt" style="color:var(--blue)">Kuhusu Sisi</div>
-  <h1 style="margin-top:6px">TLM Tanzania</h1>
-  <p class="page-sub" style="line-height:1.55">Jukwaa la kidijitali linalomsaidia mwalimu kutengeneza Scheme of Work, Lesson Plan na Logbook kwa haraka, kwa muundo rasmi.</p>
+<div class="page about">
+  <h1>Kuhusu Sisi</h1>
 
-  {% for t,txt in about_blocks %}{# [('Changamoto','…'),('Suluhisho Letu','…'),('Lengo Letu','…')] #}
-  <div class="kb"><b style="font-size:16px">{{ t }}</b><p class="page-sub" style="line-height:1.55;margin-top:6px">{{ txt }}</p></div>
-  {% endfor %}
+  <!-- Intro: logo + name + short description -->
+  <div class="kb about-hero">
+    <img src="{% static 'curriculum/pwa/icon-192.png' %}" alt="" class="about-logo">
+    <div><b>TLM Tanzania</b><small>TANZANIA · LMS</small></div>
+  </div>
+  <p class="about-lead">Jukwaa la kidijitali linalomsaidia mwalimu kutengeneza Scheme of Work, Lesson Plan na Logbook kwa haraka, kwa muundo rasmi.</p>
 
-  {% if team %}
-  <h2 class="h1" style="font-size:22px;text-align:center;margin-top:28px">Timu Yetu</h2>
-  {% for p in team %}{# dicts: initials, name, role, bio, degree, phone, phone_display #}
-  <div class="kb">
-    <div style="display:flex;gap:12px;align-items:center">
-      <span style="width:54px;height:54px;border-radius:50%;background:var(--blue-50);color:var(--blue);display:grid;place-items:center;font-weight:700;font-size:18px">{{ p.initials }}</span>
-      <div><b style="font-size:17px">{{ p.name }}</b><div style="font-size:12.5px;font-weight:700;color:var(--blue);letter-spacing:.05em">{{ p.role }}</div></div>
-    </div>
-    <p class="page-sub" style="line-height:1.55;margin-top:10px">{{ p.bio }}</p>
-    <div style="display:grid;gap:8px;font-size:13.5px;margin-top:8px">
-      <div style="display:flex;gap:10px"><svg class="ic ic-lg" style="color:var(--blue)"><use href="#i-graduation-cap"/></svg><span><b>Chuo Kikuu cha Dodoma</b> · {{ p.degree }}</span></div>
-      <div style="display:flex;gap:10px"><svg class="ic ic-lg" style="color:var(--blue)"><use href="#i-award"/></svg>Mhitimu 2026</div>
-      <div style="display:flex;gap:10px"><svg class="ic ic-lg" style="color:var(--blue)"><use href="#i-map-pin"/></svg>Dodoma, Tanzania</div>
-    </div>
-    <a class="call-btn" href="tel:{{ p.phone }}"><svg class="ic ic-sm"><use href="#i-phone"/></svg>Piga {{ p.phone_display }}</a>
+  {% comment %}
+    about_blocks = [(icon, title, text)]:
+    ('alert-triangle','Changamoto','…'), ('lightbulb','Suluhisho Letu','…'), ('target','Lengo Letu','…')
+  {% endcomment %}
+  {% for ic,t,txt in about_blocks %}
+  <div class="kb about-card">
+    <div class="about-card-h"><span class="ibox"><svg class="ic"><use href="#i-{{ ic }}"/></svg></span><b>{{ t }}</b></div>
+    <p>{{ txt }}</p>
   </div>
   {% endfor %}
-  {% endif %}
 
-  <h2 class="h1" style="font-size:22px;text-align:center;margin-top:28px">Wasiliana Nasi</h2>
-  <div class="kb" style="display:grid;gap:12px;font-size:14px">
-    <div style="display:flex;gap:10px"><svg class="ic" style="color:var(--blue)"><use href="#i-phone"/></svg>Simu: 0763 795 801</div>
-    <div style="display:flex;gap:10px"><svg class="ic" style="color:var(--blue)"><use href="#i-message-circle"/></svg>WhatsApp: +255 625 607 088</div>
-    <div style="display:flex;gap:10px"><svg class="ic" style="color:var(--blue)"><use href="#i-mail"/></svg>Barua pepe: {{ contact_email }}</div>
+  <div class="about-sec"><h2>Timu Yetu</h2></div>
+  {% for p in team %}
+  <div class="kb person">
+    <div class="person-h">
+      <span class="avatar">{{ p.initials }}</span>
+      <div><b>{{ p.name }}</b><small>{{ p.role }}</small></div>
+    </div>
+    <p>{{ p.bio }}</p>
+    <ul class="facts">
+      <li><svg class="ic"><use href="#i-graduation-cap"/></svg><span><b>Chuo Kikuu cha Dodoma</b><br>{{ p.degree }}</span></li>
+      <li><svg class="ic"><use href="#i-award"/></svg><span>Mhitimu 2026</span></li>
+      <li><svg class="ic"><use href="#i-map-pin"/></svg><span>Dodoma, Tanzania</span></li>
+    </ul>
+    <a class="btn-tlm grey call" href="tel:{{ p.phone }}"><svg class="ic ic-sm"><use href="#i-phone"/></svg>Piga {{ p.phone_display }}</a>
   </div>
-  <p class="page-sub" style="text-align:center;margin:22px 0">© 2026 TLM Tanzania</p>
+  {% endfor %}
+
+  <div class="about-sec"><span class="ibox"><svg class="ic"><use href="#i-headset"/></svg></span><h2>Wasiliana Nasi</h2></div>
+  <div class="kb contact" style="padding:4px 0">
+    <a href="tel:+255763795801"><span class="ci"><svg class="ic"><use href="#i-phone"/></svg></span>
+      <span class="cv"><small>Simu</small><b>0763 795 801</b></span><svg class="ic ic-sm chev"><use href="#i-chevron-right"/></svg></a>
+    <a href="https://wa.me/255625607088"><span class="ci"><svg class="ic"><use href="#i-message-circle"/></svg></span>
+      <span class="cv"><small>WhatsApp</small><b>+255 625 607 088</b></span><svg class="ic ic-sm chev"><use href="#i-chevron-right"/></svg></a>
+    <a href="mailto:{{ contact_email }}"><span class="ci"><svg class="ic"><use href="#i-mail"/></svg></span>
+      <span class="cv"><small>Barua pepe</small><b>{{ contact_email }}</b></span><svg class="ic ic-sm chev"><use href="#i-chevron-right"/></svg></a>
+  </div>
+
+  <p class="about-foot">© 2026 TLM Tanzania</p>
 </div>
 {% endblock %}

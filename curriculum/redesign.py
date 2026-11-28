@@ -271,6 +271,11 @@ def lesson_page(request):
     return render(request, 'curriculum/lesson_plan.html', page_context(request, teacher))
 
 
+def kfmt(n):
+    """Short count for the tab pill: 27 → "27", 2604 → "2.6K"."""
+    return f"{n / 1000:.1f}".rstrip("0").rstrip(".") + "K" if n >= 1000 else str(n)
+
+
 def hariri(request):
     """Hariri — ?tab=scheme|lesson|logbook with counts and newest-first items."""
     tab = request.GET.get('tab') or 'scheme'
@@ -328,6 +333,8 @@ def hariri(request):
             counts['logbook'] = TLMTopicLogbook.objects.count()
         except Exception:
             pass
+
+    counts.update({f'{k}_k': kfmt(v) for k, v in list(counts.items())})
 
     return render(request, 'curriculum/library.html', {
         'tlm_teacher': _teacher_ctx(_teacher(request)), 'tab': tab,
@@ -583,12 +590,28 @@ def _int(value, default=0):
 # PDFs (inline so the phone opens them in its viewer)
 # ---------------------------------------------------------------------------
 
-def doc_pdf(request, kind, pk):
+def _pdf_name(*parts):
+    """'Scheme_Hisabati_Form_2.pdf' — safe for Content-Disposition."""
+    raw = '_'.join(str(x).strip() for x in parts if x)
+    clean = ''.join(c if (c.isalnum() or c in '._-') else '_' for c in raw)
+    while '__' in clean:
+        clean = clean.replace('__', '_')
+    return (clean.strip('_') or 'TLM') + '.pdf'
+
+
+def _docx_name(*parts):
+    """Same safe name as the PDF, with the .docx extension."""
+    return _pdf_name(*parts)[:-4] + '.docx'
+
+
+def _doc_spec(request, kind, pk):
+    """(payload, name parts, pdf renderer, word renderer) for a saved document.
+    payload is None when the row does not exist."""
     if kind == 'scheme':
         from field_app.models import SchemeOfWork
         obj = SchemeOfWork.objects.filter(pk=pk).select_related('subject', 'school').first()
         if obj is None:
-            return HttpResponse('Hati haipatikani', status=404)
+            return None, None, None, None
         payload = {
             'scheme_data': obj.scheme_data or [],
             'subject': obj.subject.name if obj.subject else '',
@@ -602,25 +625,49 @@ def doc_pdf(request, kind, pk):
             'education_level': obj.education_level,
             'format': obj.format,
         }
-        response = V.download_scheme_pdf(_JsonRequest(request, payload))
-    else:
-        from field_app.models import LessonPlan
-        lp = LessonPlan.objects.filter(pk=pk).select_related('subject', 'school').first()
-        if lp is None:
-            return HttpResponse('Hati haipatikani', status=404)
-        lesson_data, form_data = V._lp_to_dicts(lp)
-        # The saved row may predate the teacher fields — the official PDF still
-        # has to print the teacher's name on the cover.
-        if not form_data.get('teacher_name'):
-            teacher = _teacher(request)
-            form_data['teacher_name'] = getattr(teacher, 'full_name', '') or ''
-        response = V.download_lesson_plan_pdf(
-            _JsonRequest(request, {'lesson_data': lesson_data, 'form_data': form_data}))
+        return (payload, ('Scheme', payload['subject'], payload['class_name']),
+                V.download_scheme_pdf, V.download_scheme_word)
 
+    from field_app.models import LessonPlan
+    lp = LessonPlan.objects.filter(pk=pk).select_related('subject', 'school').first()
+    if lp is None:
+        return None, None, None, None
+    lesson_data, form_data = V._lp_to_dicts(lp)
+    # The saved row may predate the teacher fields — the official document still
+    # has to print the teacher's name on the cover.
+    if not form_data.get('teacher_name'):
+        teacher = _teacher(request)
+        form_data['teacher_name'] = getattr(teacher, 'full_name', '') or ''
+    return ({'lesson_data': lesson_data, 'form_data': form_data},
+            ('Lesson_Plan', getattr(lp.subject, 'name', '') if lp.subject else '',
+             getattr(lp, 'class_name', '') or ''),
+            V.download_lesson_plan_pdf, V.download_lesson_plan_word)
+
+
+def doc_pdf(request, kind, pk):
+    payload, parts, render, _ = _doc_spec(request, kind, pk)
+    if payload is None:
+        return HttpResponse('Hati haipatikani', status=404)
+    response = render(_JsonRequest(request, payload))
     if getattr(response, 'status_code', 200) != 200:
         return response
     response['Content-Type'] = 'application/pdf'
-    response['Content-Disposition'] = 'inline; filename="TLM-%s-%s.pdf"' % (kind, pk)
+    # attachment: the phone saves the file with its name and opens it in the PDF reader
+    response['Content-Disposition'] = 'attachment; filename="%s"' % _pdf_name(*parts)
+    return response
+
+
+def doc_docx(request, kind, pk):
+    """The same document as Word (.docx) — the Word button downloads it."""
+    payload, parts, _, render = _doc_spec(request, kind, pk)
+    if payload is None:
+        return HttpResponse('Hati haipatikani', status=404)
+    response = render(_JsonRequest(request, payload))
+    if getattr(response, 'status_code', 200) != 200:
+        return response
+    response['Content-Type'] = ('application/vnd.openxmlformats-officedocument'
+                                '.wordprocessingml.document')
+    response['Content-Disposition'] = 'attachment; filename="%s"' % _docx_name(*parts)
     return response
 
 
@@ -800,7 +847,9 @@ def api_generate_scheme(request):
     if not saved_id:
         return JsonResponse({'error': 'Hati haikuhifadhiwa. Jaribu tena.'}, status=502)
     return JsonResponse({'id': saved_id,
-                         'pdf_url': reverse('curriculum:doc_pdf', args=['scheme', saved_id])})
+                         'pdf_url': reverse('curriculum:doc_pdf', args=['scheme', saved_id]),
+                         'docx_url': reverse('curriculum:doc_docx', args=['scheme', saved_id]),
+                         'filename': _pdf_name('Scheme', payload['subject'], payload['class_name'])})
 
 
 @csrf_exempt
@@ -854,4 +903,6 @@ def api_generate_lesson(request):
     if not saved_id:
         return JsonResponse({'error': 'Hati haikuhifadhiwa. Jaribu tena.'}, status=502)
     return JsonResponse({'id': saved_id,
-                         'pdf_url': reverse('curriculum:doc_pdf', args=['lesson', saved_id])})
+                         'pdf_url': reverse('curriculum:doc_pdf', args=['lesson', saved_id]),
+                         'docx_url': reverse('curriculum:doc_docx', args=['lesson', saved_id]),
+                         'filename': _pdf_name('Lesson_Plan', payload['subject'], payload['class_name'])})

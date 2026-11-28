@@ -288,8 +288,156 @@ textarea.tlm-input,.ta{height:auto;min-height:64px;padding:9px 12px;line-height:
 .auto{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .auto span{font-size:12.5px;background:var(--soft);border-radius:6px;padding:5px 9px}.auto b{font-weight:600}
 .sub{font-size:13.5px;font-weight:600;margin:14px 0 2px;padding-top:12px;border-top:1px solid #F1F3F5}
+/* About · Wasiliana Nasi (rows: icon box + small label + bold value + chevron) */
+.contact a{display:flex;align-items:center;gap:14px;padding:14px 16px;text-decoration:none;color:var(--ink);border-top:1px solid #F1F3F5}
+.contact a:first-child{border-top:0}
+.contact .ci{width:44px;height:44px;border-radius:12px;background:var(--blue-50);color:var(--blue);display:grid;place-items:center;flex:none}
+.contact .cv{min-width:0;flex:1}.contact .cv small{display:block;font-size:13px;color:var(--muted)}
+.contact .cv b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.contact .chev{color:var(--faint)}
+
+/* About page layout */
+.about h1{margin-bottom:14px}
+.about-hero{display:flex;align-items:center;gap:14px;margin-top:0}
+.about-logo{width:56px;height:56px;border-radius:14px;border:1px solid var(--line)}
+.about-hero b{display:block;font-size:18px;font-weight:700}
+.about-hero small{display:block;font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--ink-2);margin-top:2px}
+.about-lead{font-size:14.5px;line-height:1.6;color:var(--ink-2);margin:14px 2px 4px}
+.ibox{width:38px;height:38px;border-radius:10px;background:var(--blue-50);color:var(--blue);display:grid;place-items:center;flex:none}
+.about-card{padding:16px}
+.about-card-h{display:flex;align-items:center;gap:12px}
+.about-card-h b{font-size:16px;font-weight:700}
+.about-card p{font-size:14px;line-height:1.6;color:var(--ink-2);margin:10px 0 0}
+.about-sec{display:flex;align-items:center;gap:12px;margin:30px 0 4px}
+.about-sec h2{font-family:var(--font-display);font-size:21px;font-weight:800;margin:0}
+.person{padding:16px}
+.person-h{display:flex;align-items:center;gap:12px}
+.avatar{width:52px;height:52px;border-radius:50%;background:var(--blue-50);color:var(--blue);display:grid;place-items:center;font-weight:700;font-size:17px;flex:none}
+.person-h b{display:block;font-size:16.5px;font-weight:700}
+.person-h small{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--blue);margin-top:2px}
+.person p{font-size:14px;line-height:1.6;color:var(--ink-2);margin:12px 0 0}
+.facts{list-style:none;margin:12px 0 0;padding:12px 0 0;border-top:1px solid #F1F3F5;display:grid;gap:10px}
+.facts li{display:flex;gap:10px;font-size:13.5px;line-height:1.45;color:var(--ink-2)}.facts .ic{color:var(--blue);margin-top:1px}
+.facts b{color:var(--ink);font-weight:600}
+.call{margin-top:14px;height:42px;font-size:14px}
+.about-foot{text-align:center;font-size:13px;color:var(--muted);margin:24px 0}
+
 /* About */
 .call-btn{height:44px;border-radius:6px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;text-decoration:none;margin-top:14px}
 
 /* ---------- 14. Print: never show app chrome ---------- */
 @media print{.app-top,.bottom-nav,.drawer,.drawer-dim,.toast-wrap,.ab-bar{display:none!important}body{padding:0;background:#fff}}
+
+/* ---------- 15. Opening screen (PWA splash, animated) ---------- */
+#tlm-splash{position:fixed;inset:0;z-index:100;background:#FFFFFF;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+#tlm-splash .sp-ic{width:176px;height:176px;border-radius:42px;border:1px solid #E5E7EB;background:#fff;
+  animation:sp-in .3s ease both, sp-pulse 1.1s ease-in-out 1.5s 2}
+#tlm-splash .sp-ic path{stroke-dasharray:80;stroke-dashoffset:80;animation:sp-draw 1.1s ease .2s forwards}
+#tlm-splash .sp-t{animation:sp-in .4s ease 1.1s both}
+#tlm-splash .sp-nm{font-family:var(--font-display);font-weight:800;font-size:30px;color:#1E40AF;animation:sp-in .5s ease 1.2s both}
+#tlm-splash .sp-ft{position:absolute;bottom:calc(56px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;
+  font-size:14px;font-weight:700;letter-spacing:.14em;color:#111827;animation:sp-in .5s ease 1.3s both}
+#tlm-splash.hide{animation:sp-out .45s ease forwards}
+@keyframes sp-draw{to{stroke-dashoffset:0}}
+@keyframes sp-in{from{opacity:0}}
+@keyframes sp-pulse{50%{transform:scale(1.08);box-shadow:0 10px 30px rgba(30,64,175,.18)}}
+@keyframes sp-out{to{opacity:0}}
+@media (prefers-reduced-motion:reduce){#tlm-splash *{animation:none!important;stroke-dashoffset:0!important}}
+
+/* ---------- 16. Links never underlined ---------- */
+/* Bootstrap underlines links; "Jisajili" and "Ingia" must sit on a clean line. */
+a,a:hover,a:focus{text-decoration:none}
+
+/* ---------- 17. Bottom nav: strong blue for the current tab + quick, visible page change ---------- */
+/* No box/square: the current tab (and the one you just tapped, instantly) is shown in strong, bold blue */
+.bottom-nav a.active,.bottom-nav a.going{color:#1E40AF;font-weight:700}
+.bottom-nav a.active .ic,.bottom-nav a.going .ic{stroke-width:2.4}
+.bottom-nav a:active{color:#1E40AF}
+
+/* Thin blue bar at the very top while the next page loads */
+#nav-progress{position:fixed;top:0;left:0;height:3px;width:0;background:var(--blue);z-index:200;opacity:0;transition:width .25s ease,opacity .2s}
+#nav-progress.on{opacity:1}
+
+/* Page change: fast but visible — old page fades out (0.15 s), new page rises 20px and fades in (0.26 s). Chrome/Edge 126+. */
+@view-transition{navigation:auto}
+::view-transition-old(root){animation:tlm-out .15s ease both}
+::view-transition-new(root){animation:tlm-in .26s cubic-bezier(.16,1,.3,1) both}
+@keyframes tlm-out{to{opacity:0}}
+@keyframes tlm-in{from{opacity:0;transform:translateY(20px)}}
+
+/* The top bar and bottom nav stay still while the page changes */
+.app-top{view-transition-name:tlm-top}
+.bottom-nav{view-transition-name:tlm-nav}
+
+/* ---------- 18. Clearer forms: darker borders and text, blue options in pickers ---------- */
+.lb{color:#374151;font-weight:600}
+.ip,.tlm-input{border-color:#6B7280;color:#111827}
+.ip.ph,.ip.ph span,.tlm-input::placeholder{color:#6B7280}
+.ip:focus,.tlm-input:focus{border-color:var(--blue)}
+.mu button,.seg2 button{border-color:#6B7280;color:#111827}
+.mu button[aria-pressed="true"],.seg2 button[aria-pressed="true"]{border-color:var(--blue);color:var(--blue)}
+.cp button{border-color:#6B7280;color:#111827}
+.cp button[aria-pressed="true"]{border-color:var(--blue);color:var(--blue);font-weight:600}
+.cp button.add{border-color:#6B7280;color:#374151}
+.hcard{border-color:#9CA3AF}
+.hcard .sq{border-color:#6B7280;color:#111827}
+.check input{border-color:#6B7280}
+.check{color:#111827}
+.page-sub{color:#4B5563}
+.opt{color:#1E40AF;font-weight:500}
+.opt .rd{border-color:#1E40AF}
+.dlg-search .tlm-input{border-color:#6B7280}
+
+/* ---------- 19. Blue labels, section titles and delete icons ---------- */
+.lb,.gl,.sl{color:#1E40AF}
+.stt{color:#1E40AF!important}
+.hcard .sq{color:#1E40AF;border-color:#BFD0F5}
+
+/* ---------- 20. Generate button: stronger fill so progress is clearly visible ---------- */
+.btn-gen.is-running{border-color:var(--blue)}
+.btn-gen .gen-fill{background:repeating-linear-gradient(-45deg,#93B4FF 0 10px,#C7D4F7 10px 20px)}
+.gen-note{color:#1E40AF;font-weight:600}
+
+/* Toast with an action button (e.g. "Fungua PDF") */
+.toast-tlm .tbtn{flex:none;height:32px;padding:0 12px;border-radius:7px;border:1px solid var(--blue);background:var(--blue);color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+
+/* ---------- 21. Hariri: tabs on one line, blue numbers, clear row dividers ---------- */
+.tabs{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:2px}
+.tabs a{white-space:nowrap;font-size:13px;padding:0 6px;gap:5px;min-width:0}
+.tabs a span{font-size:11px;padding:1px 6px;flex:none}
+.lib-row{border-top:1px solid #9CA3AF}
+.lib-row:first-child{border-top:0}
+.lib-row .nm{background:#DCE5FB;color:#1E40AF}
+
+/* ---------- 22. Hariri tabs: three separate cards, name on top + count below ---------- */
+.tabs{background:none!important;padding:0!important;gap:8px!important;grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.tabs a{height:auto!important;flex-direction:column;gap:2px!important;padding:9px 4px!important;border:1px solid #D1D5DB;border-radius:10px;background:var(--card);color:#374151;font-size:13px;font-weight:500;box-shadow:none!important}
+.tabs a span{background:none!important;padding:0!important;font-size:18px!important;font-weight:700;color:#111827;line-height:1.2}
+.tabs a.on{border-color:var(--blue);background:var(--blue-50);color:var(--blue);font-weight:600}
+.tabs a.on span{color:var(--blue)!important}
+
+/* ---------- 23. Hariri tabs (final): simple underline; only the selected word is highlighted ---------- */
+.tabs{display:grid!important;grid-template-columns:1fr 1.45fr 1fr!important;background:none!important;padding:0!important;gap:0!important;border-bottom:1px solid #D1D5DB;margin-top:16px}
+.tabs a{flex-direction:row!important;height:auto!important;white-space:nowrap;min-width:0;padding:10px 2px 11px!important;gap:5px!important;font-size:13.5px;color:#6B7280;font-weight:500;background:none!important;border:0!important;border-bottom:2px solid transparent!important;margin-bottom:-1px;border-radius:0!important;box-shadow:none!important}
+.tabs a span{font-size:13px!important;font-weight:500;color:#9CA3AF!important;background:none!important;padding:0!important}
+.tabs a.on{color:#1E40AF;font-weight:600;background:none!important;border-bottom-color:#1E40AF!important}
+.tabs a.on span{color:#1E40AF!important;font-weight:600}
+/* Class · date: a clear round dot with space on both sides */
+.lib-row .m{display:flex;align-items:center;flex-wrap:wrap}
+.lib-row .m .dot{width:5px;height:5px;border-radius:50%;background:#374151;margin:0 9px;flex:none}
+.tabs a{color:#111827!important}.tabs a span{color:#374151!important}
+.tabs a.on{color:#1E40AF!important}.tabs a.on span{color:#1E40AF!important}
+
+/* ---------- 24. Result buttons after generating (PDF + Word) and clearer student labels ---------- */
+.gen-result{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.gen-result a{height:44px;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14.5px;font-weight:600;text-decoration:none}
+.gen-result .pdf{background:#1E40AF;color:#fff}
+.gen-result .word{border:1px solid #1E40AF;color:#1E40AF;background:#fff}
+.gen-done{text-align:center;font-size:13px;color:#111827;font-weight:600;margin-top:14px}
+.gh{color:#111827}.gh span{color:#4B5563!important}
+.gb.ro{background:#EEF2F7;color:#111827}
+.gb.in{border-color:#1E40AF}
+.or{color:#4B5563}
+/* PDF and Word buttons: both white with blue border, slimmer */
+.gen-result a{height:38px;font-size:14px}
+.gen-result .pdf,.gen-result .word{background:#fff;color:#1E40AF;border:1px solid #1E40AF}

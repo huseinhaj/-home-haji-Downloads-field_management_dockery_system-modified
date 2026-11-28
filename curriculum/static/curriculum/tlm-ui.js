@@ -208,15 +208,47 @@
     if (inp) { inp.value = b.dataset.value; inp.dispatchEvent(new Event('change', { bubbles: true })); }
   });
 
-  /* ---------- Open the finished PDF directly (phone shows "Open with…") ---------- */
-  function openPdf(src, filename = 'TLM.pdf') {
-    if (src instanceof Blob) {
-      const url = URL.createObjectURL(src);
+  /* ---------- Open the finished PDF in the phone's PDF reader ----------
+     Works in the installed PWA too: the PDF is fetched as a file, saved with a name
+     (download), and Android opens it in the PDF reader automatically (no extra button).
+     Server: the PDF URL must return Content-Type: application/pdf and
+     Content-Disposition: attachment; filename="Scheme_<Somo>_<Darasa>.pdf" */
+  async function openPdf(src, filename = 'TLM.pdf', label = 'PDF iko tayari') {
+    try {
+      let blob = src;
+      if (!(src instanceof Blob)) {
+        const r = await fetch(src, { credentials: 'same-origin' });
+        if (!r.ok) throw new Error('pdf ' + r.status);
+        const cd = r.headers.get('Content-Disposition') || '';
+        const m = cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)/i);
+        if (m) filename = decodeURIComponent(m[1]);
+        blob = await r.blob();
+      }
+      const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
       const a = document.createElement('a');
-      a.href = url; a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-    } else window.location.href = src; // server returns Content-Type: application/pdf
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10 * 60 * 1000);
+    } catch (e) {
+      // Last resort: let the browser open the URL itself
+      if (!(src instanceof Blob)) window.location.href = src;
+      else toast('Imeshindikana kufungua PDF.');
+    }
+  }
+
+  function toastAction(msg, btnText, onClick, ms = 12000) {
+    let w = $('.toast-wrap');
+    if (!w) { w = document.createElement('div'); w.className = 'toast-wrap'; document.body.appendChild(w); }
+    const t = document.createElement('div');
+    t.className = 'toast-tlm';
+    t.setAttribute('role', 'status');
+    t.innerHTML = `${icon('info')}<span class="grow">${esc(msg)}</span><button type="button" class="tbtn">${icon('download', 'ic ic-sm')}${esc(btnText)}</button>`;
+    t.querySelector('.tbtn').onclick = () => { onClick(); t.remove(); };
+    w.appendChild(t);
+    setTimeout(() => t.remove(), ms);
   }
 
   /* ---------- G1: generate button fills while the request runs ----------
@@ -273,6 +305,51 @@
     b.textContent = open ? 'Funga zote' : 'Fungua zote';
   });
 
+  /* ---------- Opening screen: fade out when BOTH the animation (3.9 s) and page load are done ---------- */
+  const splashStart = performance.now();
+  function hideSplash() {
+    const s = document.getElementById('tlm-splash');
+    if (!s) return;
+    const wait = Math.max(0, 3900 - (performance.now() - splashStart));
+    setTimeout(() => { s.classList.add('hide'); setTimeout(() => s.remove(), 450); }, wait);
+  }
+  if (document.readyState === 'complete') hideSplash();
+  else window.addEventListener('load', hideSplash);
+
+  /* ---------- Bottom nav: highlight the tapped tab at once + show a top progress bar ---------- */
+  function startNav(a) {
+    const nav = a.closest('.bottom-nav');
+    if (nav) {
+      $$('a', nav).forEach(x => x.classList.remove('active', 'going'));
+      a.classList.add('going');
+    }
+    let bar = document.getElementById('nav-progress');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'nav-progress';
+      document.body.appendChild(bar);
+    }
+    bar.classList.add('on');
+    bar.style.width = '30%';
+    let w = 30;
+    clearInterval(bar._t);
+    bar._t = setInterval(() => { w += (90 - w) * 0.12; bar.style.width = w + '%'; }, 120);
+  }
+
+  document.addEventListener('click', e => {
+    const a = e.target.closest('.bottom-nav a[href]');
+    if (!a || e.defaultPrevented) return;
+    const url = new URL(a.href, location.href);
+    if (url.pathname === location.pathname && url.search === location.search) return;
+    startNav(a);
+  });
+
+  // Back/forward from bfcache: clear the bar
+  window.addEventListener('pageshow', () => {
+    const b = document.getElementById('nav-progress');
+    if (b) { clearInterval(b._t); b.classList.remove('on'); b.style.width = '0'; }
+  });
+
   /* ---------- Boot ---------- */
   function boot(root = document) {
     $$('select[data-picker]', root).forEach(enhanceSelect);
@@ -281,5 +358,5 @@
   }
   document.addEventListener('DOMContentLoaded', () => boot());
 
-  window.TLM = { toast, confirm: confirmDlg, pick, calendar, openPdf, runGenerate, boot, icon, dmy };
+  window.TLM = { toast, toastAction, confirm: confirmDlg, pick, calendar, openPdf, runGenerate, boot, icon, dmy };
 })();

@@ -72,6 +72,15 @@
 
   <button type="button" class="btn-tlm btn-gen" id="btn-gen" style="margin-top:18px"><span class="gen-fill"></span>
     <span class="gen-label" style="display:flex;gap:8px;align-items:center"><svg class="ic"><use href="#i-file-plus"/></svg><span id="gen-text">Tengeneza Lesson Plan</span></span></button>
+
+  <!-- Shown after generating: two clear download buttons -->
+  <div id="gen-out" class="tlm-hidden">
+    <p class="gen-done">Lesson Plan iko tayari. Pakua:</p>
+    <div class="gen-result">
+      <a id="dl-pdf" class="pdf" href="#"><svg class="ic ic-sm"><use href="#i-download"/></svg>PDF</a>
+      <a id="dl-word" class="word" href="#"><svg class="ic ic-sm"><use href="#i-file-text"/></svg>Word</a>
+    </div>
+  </div>
   <div style="height:24px"></div>
 </form>
 {% endblock %}
@@ -100,8 +109,17 @@ document.addEventListener('DOMContentLoaded', () => {
   btn.onclick = async () => {
     const r = await TLM.runGenerate(btn, () => fetch("{% url 'curriculum:api_generate_lesson' %}", { method: 'POST', body: new FormData(form) }));
     const j = await r.json();
-    if (j.pdf_url) TLM.openPdf(j.pdf_url);
-    else TLM.toast(j.error || 'Imeshindikana kutengeneza.');
+    if (!j.pdf_url) return TLM.toast(j.error || 'Imeshindikana kutengeneza.');
+    // Two buttons appear under the generate button; the PDF is also opened automatically.
+    const out = document.getElementById('gen-out'), p = document.getElementById('dl-pdf'), w = document.getElementById('dl-word');
+    p.href = j.pdf_url;
+    p.setAttribute('download', j.filename || 'TLM.pdf');
+    w.href = j.docx_url || '#';
+    w.setAttribute('download', (j.filename || 'TLM.pdf').replace(/\.pdf$/, '.docx'));
+    w.classList.toggle('tlm-hidden', !j.docx_url);
+    out.classList.remove('tlm-hidden');
+    out.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    await TLM.openPdf(j.pdf_url, j.filename || 'TLM.pdf', 'Lesson Plan iko tayari');
   };
 });
 </script>

@@ -3,14 +3,15 @@
 {% block content %}
 {% comment %}
 ?tab=scheme|lesson|logbook. View passes: tab, counts{scheme,lesson,logbook}, items (newest first).
+counts.*_k = short count for the tab pill: 27 → "27", 2604 → "2.6K" (format in the view).
 Each item: id, subject, topic (lesson) / summary (logbook), class_label, created (date).
 {% endcomment %}
 <div class="page">
   <h1>Hariri</h1><p class="page-sub">Chagua uliyotengeneza ili kuirekebisha.</p>
   <div class="tabs">
-    <a href="?tab=scheme" class="{% if tab == 'scheme' %}on{% endif %}">Scheme <span>{{ counts.scheme }}</span></a>
-    <a href="?tab=lesson" class="{% if tab == 'lesson' %}on{% endif %}">Lesson Plan <span>{{ counts.lesson }}</span></a>
-    <a href="?tab=logbook" class="{% if tab == 'logbook' %}on{% endif %}">Logbook <span>{{ counts.logbook }}</span></a>
+    <a href="?tab=scheme" class="{% if tab == 'scheme' %}on{% endif %}">Scheme <span>{{ counts.scheme_k }}</span></a>
+    <a href="?tab=lesson" class="{% if tab == 'lesson' %}on{% endif %}">Lesson Plan <span>{{ counts.lesson_k }}</span></a>
+    <a href="?tab=logbook" class="{% if tab == 'logbook' %}on{% endif %}">Logbook <span>{{ counts.logbook_k }}</span></a>
   </div>
   <div class="kb lib" style="margin-top:12px">
     {% for it in items %}
@@ -18,7 +19,7 @@ Each item: id, subject, topic (lesson) / summary (logbook), class_label, created
       <span class="nm">{{ forloop.counter }}</span>
       <div class="t" style="min-width:0"><b>{{ it.subject }}</b>
         {% if it.topic %}<div class="s">{{ it.topic }}</div>{% endif %}
-        <div class="m"><strong>{{ it.class_label }}</strong> · <strong>{{ it.created|date:"j M Y" }}</strong></div></div>
+        <div class="m"><strong>{{ it.class_label }}</strong><span class="dot"></span><strong>{{ it.created|date:"j M Y" }}</strong></div></div>
       <a class="edit" href="{% url 'curriculum:edit_doc' tab it.id %}" aria-label="Hariri"><svg class="ic"><use href="#i-notebook-pen"/></svg></a>
     </div>
     {% empty %}

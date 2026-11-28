@@ -21,6 +21,7 @@ urlpatterns = [
     path('hariri/', redesign.hariri, name='library'),
     path('hariri/<str:kind>/<int:pk>/', redesign.edit_doc, name='edit_doc'),
     path('hati/<str:kind>/<int:pk>/pdf/', redesign.doc_pdf, name='doc_pdf'),
+    path('hati/<str:kind>/<int:pk>/docx/', redesign.doc_docx, name='doc_docx'),
 
     # Backend contract for the new screens (handover Hati 1, section 3)
     path('api/check-phone/', redesign.api_check_phone, name='api_check_phone'),

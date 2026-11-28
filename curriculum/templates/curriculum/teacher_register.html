@@ -11,11 +11,14 @@ Steps are shown/hidden client-side. Backend endpoints used (adapt names):
   - GET {% url 'curriculum:api_locations' %}?kind=school&parent=ID
   - GET {% url 'curriculum:api_subjects' %}?level=primary|olevel|alevel -> ["Biology",…]
 {% endcomment %}
-<form method="post" action="{% url 'curriculum:teacher_register' %}" id="reg" class="page wz-center" novalidate>
+<form method="post" action="{% url 'curriculum:teacher_register' %}" id="reg" class="page wz-center" style="position:relative" novalidate>
   {% csrf_token %}
   <input type="hidden" name="level"><input type="hidden" name="region_id"><input type="hidden" name="district_id">
   <input type="hidden" name="school_id"><input type="hidden" name="school_name"><input type="hidden" name="class_name">
   <input type="hidden" name="stream"><input type="hidden" name="subject">
+
+  <!-- Square back button, always visible (step 1 → previous page, other steps → previous step) -->
+  <button type="button" class="sq" id="btn-top-back" aria-label="Rudi" style="position:absolute;top:14px;left:20px"><svg class="ic"><use href="#i-chevron-left"/></svg></button>
 
   <div id="reg-head" style="text-align:center"><h1 style="font-size:21px">Jisajili</h1><p class="page-sub">Jaza taarifa chache tu ili ujisajili.</p></div>
   <div class="stepper" id="stepper">
@@ -192,6 +195,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   $('#btn-back').onclick = () => { if (step > 1) { step--; paint(); window.scrollTo(0, 0); } };
+  $('#btn-top-back').onclick = () => {
+    if (step > 1) { step--; paint(); window.scrollTo(0, 0); }
+    else if (history.length > 1) history.back();
+    else location.href = "{% url 'curriculum:dashboard' %}";
+  };
   $('#btn-next').onclick = async () => {
     if (!valid()) return;
     if (step === 5) return f.submit();
