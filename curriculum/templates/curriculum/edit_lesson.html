@@ -9,8 +9,8 @@
   <div class="ed-meta"><b>{{ doc.class_label }}</b> · <b>{{ doc.lesson_date|date:"j M Y" }}</b></div>
 
   <div class="kb"><div class="stt">Taarifa za somo</div>
-    <div class="f r2"><div><div class="lb">Mada</div><input class="tlm-input" name="topic" value="{{ doc.topic }}"></div>
-      <div><div class="lb">Mada ndogo</div><input class="tlm-input" name="subtopic" value="{{ doc.subtopic }}"></div></div>
+    <div class="f r2"><div><div class="lb">Mada</div><textarea class="tlm-input" name="topic" rows="2">{{ doc.topic }}</textarea></div>
+      <div><div class="lb">Mada ndogo</div><textarea class="tlm-input" name="subtopic" rows="2">{{ doc.subtopic }}</textarea></div></div>
     <div class="f r2"><div><div class="lb">Tarehe</div><input type="hidden" name="lesson_date" value="{{ doc.lesson_date|date:'Y-m-d' }}" data-date data-title="Tarehe"></div>
       <div><div class="lb">Dakika</div><input class="tlm-input" name="duration" value="{{ doc.duration }}"></div></div>
   </div>
@@ -37,7 +37,7 @@
 
   <div class="kb"><div class="stt-row"><span class="stt">Ukuzaji wa somo (IDDR)</span><span class="page-sub" style="margin:0">Jumla: dakika <b id="mins-total">{{ doc.duration }}</b></span></div>
     {% for s in doc.stages %}
-    <div class="stg"><div class="h">{{ s.name }}<span>Muda: dakika <input name="stage_{{ forloop.counter0 }}_minutes" value="{{ s.minutes }}" data-min style="width:30px;border:0;font:inherit;text-align:center;background:none"></span></div>
+    <div class="stg"><div class="h">{{ s.name }}<span>Muda: dakika <input class="min-in" name="stage_{{ forloop.counter0 }}_minutes" value="{{ s.minutes }}" data-min inputmode="numeric" aria-label="Dakika"></span></div>
       <div class="b"><input type="hidden" name="stage_{{ forloop.counter0 }}_name" value="{{ s.name }}">
         <div class="sl">Shughuli za ufundishaji</div><textarea class="tlm-input" name="stage_{{ forloop.counter0 }}_teaching">{{ s.teaching }}</textarea>
         <div class="sl">Shughuli za ujifunzaji</div><textarea class="tlm-input" name="stage_{{ forloop.counter0 }}_learning">{{ s.learning }}</textarea>

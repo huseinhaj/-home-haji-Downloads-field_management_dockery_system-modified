@@ -396,6 +396,15 @@ def _row_get(row, field, default=''):
     return default
 
 
+_MONTHS_SW = {en.lower(): sw for en, sw in zip(MONTHS_EN, MONTHS)}
+
+
+def _swahili_month(name):
+    """'January' → 'Januari'. Other names are left as they are."""
+    key = str(name or '').strip().lower()
+    return _MONTHS_SW.get(key, name)
+
+
 def _scheme_months(data):
     """Group scheme rows into months, keeping the document order."""
     months = []
@@ -406,6 +415,7 @@ def _scheme_months(data):
         name = str(_row_get(row, 'month', '') or '').strip()
         if not name:
             name = months[-1]['name'] if months else MONTHS[0]
+        name = _swahili_month(name)
         if not months or months[-1]['name'] != name:
             months.append({'name': name, 'weeks': []})
         weeks = months[-1]['weeks']
@@ -443,12 +453,18 @@ def _stage_get(stage, field, default=''):
     return default
 
 
+def _minutes(value):
+    """'06 m', '6 min', 6 → '6': a whole number that fits in the box."""
+    digits = re.sub(r'\D', '', str(value or ''))
+    return str(int(digits)) if digits else ''
+
+
 def _lesson_stages(lp):
     stages = []
     for stage in (lp.lesson_development or []):
         stages.append({
             'name': _stage_get(stage, 'name'),
-            'minutes': _stage_get(stage, 'minutes'),
+            'minutes': _minutes(_stage_get(stage, 'minutes')),
             'teaching': _stage_get(stage, 'teaching'),
             'learning': _stage_get(stage, 'learning'),
             'assessment': _stage_get(stage, 'assessment'),
@@ -556,7 +572,7 @@ def _edit_lesson(request, pk):
         while ('stage_%d_minutes' % index) in p:
             stages.append({
                 'name': p.get('stage_%d_name' % index, ''),
-                'minutes': p.get('stage_%d_minutes' % index, ''),
+                'minutes': _minutes(p.get('stage_%d_minutes' % index, '')),
                 'teaching': p.get('stage_%d_teaching' % index, ''),
                 'learning': p.get('stage_%d_learning' % index, ''),
                 'assessment': p.get('stage_%d_assessment' % index, ''),

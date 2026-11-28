@@ -474,3 +474,14 @@ a,a:hover,a:focus{text-decoration:none}
 .promo-never{color:#6B7280}.promo-later{color:#374151;font-weight:500}
 .promo-go{height:36px;padding:0 16px;border:1px solid #1E40AF;border-radius:8px;color:#1E40AF;font-weight:600;font-size:13.5px;display:flex;align-items:center;background:#fff}
 @media(min-width:992px){.promo{bottom:20px}}
+
+/* ---------- 26. Hariri: boxes grow with the text, whole minutes, room below ---------- */
+/* No scrollbar inside a box and nothing cut off: tlm-ui.js sets the height. */
+textarea.tlm-input,.ta{resize:none;overflow-y:hidden;min-height:52px}
+/* "Muda: dakika" box: wide enough for the whole number, e.g. 6 and not "06 m" */
+.stg>.h span{display:inline-flex;align-items:center;gap:4px;justify-content:center;min-width:76px}
+.stg>.h .min-in{width:38px;min-width:38px;border:0;background:transparent;font:inherit;text-align:center;padding:0;
+  font-variant-numeric:tabular-nums;outline:none}
+/* Room at the bottom: the last box is never hidden behind Hifadhi / Pakua PDF */
+.has-ab-bar{padding-bottom:210px}
+.page.has-ab-bar{scroll-margin-bottom:210px}

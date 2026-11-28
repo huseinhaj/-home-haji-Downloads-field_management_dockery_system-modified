@@ -350,13 +350,44 @@
     if (b) { clearInterval(b._t); b.classList.remove('on'); b.style.width = '0'; }
   });
 
+  /* ---------- Auto-grow boxes (one function, used by every page) ----------
+     Every textarea grows with its text: no scrollbar inside, nothing cut off,
+     and whatever sits below it moves down. Recalculated when the page opens,
+     while typing, and when a collapsed week/stage is opened. */
+  function autoGrow(el) {
+    if (!el || el.tagName !== 'TEXTAREA') return;
+    el.style.overflowY = 'hidden';
+    el.style.resize = 'none';
+    el.style.height = 'auto';            // shrink first, then fit the content
+    el.style.height = el.scrollHeight + 'px';
+  }
+
+  function growAll(root = document) {
+    $$('textarea', root).forEach(autoGrow);
+  }
+
+  document.addEventListener('input', e => {
+    if (e.target.tagName === 'TEXTAREA') autoGrow(e.target);
+  }, true);
+
+  // Opening a week / stage: the boxes inside were hidden, so measure them now
+  document.addEventListener('toggle', e => {
+    if (e.target.tagName === 'DETAILS' && e.target.open) growAll(e.target);
+  }, true);
+
+  window.addEventListener('resize', () => growAll());
+
+  // Web fonts load after the first paint and change the width: measure again
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => growAll());
+
   /* ---------- Boot ---------- */
   function boot(root = document) {
     $$('select[data-picker]', root).forEach(enhanceSelect);
     $$('input[data-date]', root).forEach(enhanceDate);
     $$('[data-students]', root).forEach(students);
+    growAll(root);
   }
   document.addEventListener('DOMContentLoaded', () => boot());
 
-  window.TLM = { toast, toastAction, confirm: confirmDlg, pick, calendar, openPdf, runGenerate, boot, icon, dmy };
+  window.TLM = { toast, toastAction, confirm: confirmDlg, pick, calendar, openPdf, runGenerate, boot, icon, dmy, autoGrow, growAll };
 })();
