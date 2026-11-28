@@ -286,7 +286,8 @@ textarea.tlm-input,.ta{height:auto;min-height:64px;padding:9px 12px;line-height:
 .wk>summary{list-style:none;display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer}
 .wk>summary::-webkit-details-marker{display:none}
 .wk .w{flex:none;font-size:12px;font-weight:700;background:#EEF2F7;border-radius:6px;padding:3px 7px}
-.wk .t{flex:1;min-width:0;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Week card header: the topic is shown in full (it wraps instead of "...") */
+.wk .t{flex:1;min-width:0;font-size:13.5px;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35}
 .wk .sqb{flex:none;width:28px;height:28px;border:1px solid var(--blue-200);border-radius:6px;display:grid;place-items:center;color:var(--blue)}
 .wk[open]{border-color:var(--blue-200)}.wk[open]>summary{background:#F8FAFF;border-bottom:1px solid var(--line)}
 .wk[open] .sqb{background:var(--blue-50);transform:rotate(180deg)}
