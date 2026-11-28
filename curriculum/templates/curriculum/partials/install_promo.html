@@ -1,0 +1,47 @@
+{% load static %}
+{% comment %}
+  Promo card for the "Matokeo ya Shule" app (option A: bottom, above the bottom nav).
+  Include it in base.html just before the bottom nav.
+
+  Context (optional):
+    promo_url  – where "Sakinisha" goes (default "/shule/")
+    promo_icon – icon of the results app (white icon with blue book, like TLM)
+
+  Shows 3 s after the page loads.
+  "Baadaye" hides it for 3 days, "Usionyeshe tena" hides it for good.
+{% endcomment %}
+<div class="promo tlm-hidden" id="promo" role="dialog" aria-label="Sakinisha App: Matokeo ya Shule">
+  <div class="promo-row">
+    <img src="{{ promo_icon|default:'/static/curriculum/pwa/icon-192.png' }}" alt="" class="promo-ic">
+    <div>
+      <b>Sakinisha App: Matokeo ya Shule</b>
+      <span>Pakia alama za mitihani, tengeneza PDF na ugawe matokeo kwa wanafunzi, moja kwa moja kutoka simu yako.</span>
+    </div>
+  </div>
+  <div class="promo-actions">
+    <button type="button" class="promo-never" data-promo="never">Usionyeshe tena</button>
+    <button type="button" class="promo-later" data-promo="later">Baadaye</button>
+    <a class="promo-go" href="{{ promo_url|default:'/shule/' }}" data-promo="go">Sakinisha</a>
+  </div>
+</div>
+<script>
+(function () {
+  var KEY = 'tlm-promo-results', box = document.getElementById('promo');
+  if (!box) return;
+  var v = null;
+  try { v = localStorage.getItem(KEY); } catch (e) {}
+  if (v === 'never' || (v && +v > Date.now())) { box.remove(); return; }
+  setTimeout(function () { box.classList.remove('tlm-hidden'); box.classList.add('show'); }, 3000);
+  box.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-promo]');
+    if (!b) return;
+    var k = b.dataset.promo;
+    try {
+      if (k === 'never') localStorage.setItem(KEY, 'never');
+      if (k === 'later') localStorage.setItem(KEY, String(Date.now() + 3 * 864e5));
+      if (k === 'go') localStorage.setItem(KEY, String(Date.now() + 30 * 864e5));
+    } catch (err) {}
+    if (k !== 'go') { e.preventDefault(); box.remove(); }
+  });
+})();
+</script>
