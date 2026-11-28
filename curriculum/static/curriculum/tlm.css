@@ -455,7 +455,10 @@ a,a:hover,a:focus{text-decoration:none}
 /* Login: slimmer logo card and buttons */
 .login-logo{width:150px!important;height:150px!important;border-radius:36px!important;box-shadow:0 6px 20px rgba(17,24,39,.07)!important}
 .login-btn{height:38px!important}
-.login .tlm-input{height:40px}
+.login .tlm-input{height:40px;border-color:#374151}
+.login .tlm-input:focus{border-color:#1E40AF}
+.login .tlm-input.is-error{border-color:#DC2626}
+.login .err-text{font-size:13px;color:#DC2626;margin-top:6px}
 
 /* ---------- 25. Promo card "Matokeo ya Shule" (bottom, above the bottom nav) ---------- */
 .promo{position:fixed;left:12px;right:12px;bottom:calc(var(--nav-h) + 12px + env(safe-area-inset-bottom));z-index:50;max-width:520px;margin:0 auto;

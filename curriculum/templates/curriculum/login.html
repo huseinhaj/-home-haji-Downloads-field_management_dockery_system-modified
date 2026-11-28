@@ -2,9 +2,24 @@
 {% block title %}Ingia · TLM Tanzania{% endblock %}
 {% block chrome %}{% endblock %}{% block bottomnav %}{% endblock %}
 {% block body_class %}no-top{% endblock %}
+{% block head %}
+<style>
+/* Login page styles live here so the page is correct even if an old tlm.css is still cached */
+.login{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding-top:70px;padding-bottom:40px;max-width:560px;margin:0 auto}
+.login-back{position:absolute;top:24px;left:20px;height:34px!important;padding:0 12px!important;font-size:13.5px!important;text-decoration:none}
+.login-logo{width:150px;height:150px;border-radius:36px;background:#fff;border:1px solid #F1F3F5;box-shadow:0 6px 20px rgba(17,24,39,.07);display:grid;place-items:center;margin:0 auto;color:#1E40AF}
+.login-t{text-align:center;margin-top:24px;font-size:30px}
+.login-sub{text-align:center;font-size:16px;color:#6B7280;margin-top:6px}
+.login .tlm-input{height:40px;border-color:#374151}
+.login .tlm-input:focus{border-color:#1E40AF}
+.login .tlm-input.is-error{border-color:#DC2626}
+.login-btn{height:38px!important;font-size:14px;margin-top:12px;border-radius:8px;width:100%;text-decoration:none}
+.login .err-text{font-size:13px;color:#DC2626;margin-top:6px}
+</style>
+{% endblock %}
 {% block content %}
 <style>.no-top{padding-top:0}</style>
-<form method="post" action="{% url 'curriculum:login' %}" class="page login" id="login-form">
+<form method="post" action="{% url 'curriculum:login' %}" class="page login" id="login-form" novalidate>
   {% csrf_token %}
   <a href="{% url 'curriculum:dashboard' %}" class="nb login-back"><svg class="ic ic-sm"><use href="#i-chevron-left"/></svg>Rudi</a>
   <div class="login-logo"><svg class="ic" style="width:84px;height:84px;stroke-width:1.2"><use href="#i-book-open"/></svg></div>
@@ -13,6 +28,7 @@
   <div class="f" style="margin-top:28px"><div class="lb" style="font-weight:600;color:var(--ink)">Namba ya Simu</div>
     <div style="position:relative"><svg class="ic ic-sm" style="position:absolute;left:12px;top:12px;color:var(--muted)"><use href="#i-phone"/></svg>
       <input class="tlm-input login-phone" style="padding-left:38px" name="phone" inputmode="tel" placeholder="0712 345 678" required></div>
+    <div class="err-text tlm-hidden" id="phone-empty">Jaza namba ya simu.</div>
     {% if form.errors %}<div class="err-text">Namba hii haijasajiliwa.</div>{% endif %}</div>
   <button class="btn-tlm login-btn" id="login-btn"><svg class="ic ic-sm"><use href="#i-log-in"/></svg>Ingia</button>
   <a href="{% url 'curriculum:teacher_register' %}" class="btn-tlm grey login-btn">Jisajili sasa</a>
@@ -23,8 +39,17 @@
 <script>
 // Show clearly that we are signing in: spinner + "Inaingia…" in the button, button disabled, blue bar at the top.
 document.getElementById('login-form').addEventListener('submit', e => {
-  const f = e.target, b = document.getElementById('login-btn');
-  if (!f.phone.value.trim()) return;
+  const f = e.target, b = document.getElementById('login-btn'), msg = document.getElementById('phone-empty');
+  if (!f.phone.value.trim()) {
+    // empty: our own message, no browser bubble
+    e.preventDefault();
+    msg.classList.remove('tlm-hidden');
+    f.phone.classList.add('is-error');
+    f.phone.focus();
+    return;
+  }
+  msg.classList.add('tlm-hidden');
+  f.phone.classList.remove('is-error');
   b.classList.add('is-loading');
   b.disabled = true;
   b.innerHTML = '<svg class="ic ic-sm spin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="#BFD0F5" stroke-width="2.6" fill="none"/><path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>Inaingia…';
@@ -33,6 +58,10 @@ document.getElementById('login-form').addEventListener('submit', e => {
   bar.classList.add('on');
   let w = 20; bar.style.width = w + '%';
   setInterval(() => { w += (90 - w) * 0.1; bar.style.width = w + '%'; }, 150);
+});
+document.querySelector('#login-form [name=phone]').addEventListener('input', () => {
+  document.getElementById('phone-empty').classList.add('tlm-hidden');
+  document.querySelector('#login-form [name=phone]').classList.remove('is-error');
 });
 // Back button from the browser cache: reset the button
 window.addEventListener('pageshow', () => {
