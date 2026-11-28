@@ -11,6 +11,9 @@
     navigator.serviceWorker.register('/sw.js', { scope: '/' })
       .then(function(reg) {
         console.log('[PWA] ✅ SW registered: ', reg.scope);
+        // Check for a new Service Worker on every load so a rebuilt
+        // tlm.css / tlm-ui.js is picked up instead of the cached copy.
+        reg.update();
       })
       .catch(function(err) {
         console.warn('[PWA] ❌ SW registration failed: ', err);
