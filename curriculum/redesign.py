@@ -171,7 +171,19 @@ def _term_starts():
     return json.dumps({'1': first.isoformat(), '2': second.isoformat()})
 
 
+_STATS_TTL = 60  # Nyumbani stats — a minute is fresh enough
+
+
 def _stats():
+    """Landing statistics for Nyumbani, cached for a minute.
+
+    These are four COUNT(*) queries; running them on every visit made the home
+    page wait on the database for numbers that barely change.
+    """
+    from django.core.cache import cache
+    cached = cache.get('curriculum:tlm_stats')
+    if cached is not None:
+        return cached
     teachers, schemes, lessons, logbooks = 0, 0, 0, 0
     try:
         from .models import TLMTeacher
@@ -197,8 +209,10 @@ def _stats():
         lesson_k = '%s<small>K</small>' % (round(lessons / 1000.0, 1))
     else:
         lesson_k = str(lessons)
-    return {'teachers': teachers, 'lesson_plans_k': lesson_k,
+    data = {'teachers': teachers, 'lesson_plans_k': lesson_k,
             'schemes': schemes, 'logbooks': logbooks}
+    cache.set('curriculum:tlm_stats', data, _STATS_TTL)
+    return data
 
 
 def _coat_of_arms():
