@@ -788,6 +788,11 @@ def login_view(request):
             teacher = TLMTeacher.objects.filter(phone_number__endswith=digits[-9:]).first()
         if teacher:
             request.session['tlm_teacher_id'] = teacher.id
+            first = teacher.full_name.split()[0].title() if teacher.full_name else ''
+            if first:
+                messages.success(request, f'Karibu tena, {first}! Umeingia kwenye akaunti yako.')
+            else:
+                messages.success(request, 'Karibu tena! Umeingia kwenye akaunti yako.')
             return redirect('curriculum:landing')
         form = {'errors': True}
 

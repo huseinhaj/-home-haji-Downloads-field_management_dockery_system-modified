@@ -238,7 +238,17 @@ textarea.tlm-input,.ta{height:auto;min-height:64px;padding:9px 12px;line-height:
 .chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .chips button{height:38px;border:1px solid var(--line);border-radius:9px;background:var(--card);font-weight:500;font-size:13.5px}
 .chips button[aria-pressed="true"]{background:var(--blue-50);border-color:var(--blue-200);color:var(--blue)}
-.login-logo{width:200px;height:200px;border-radius:44px;background:#fff;box-shadow:0 10px 40px rgba(17,24,39,.10);border:1px solid #F1F3F5;display:grid;place-items:center;margin:28px auto 0;color:var(--blue)}
+.login-logo{width:168px;height:168px;border-radius:40px;background:#fff;box-shadow:0 8px 28px rgba(17,24,39,.08);border:1px solid #F1F3F5;display:grid;place-items:center;margin:26px auto 0;color:var(--blue)}
+.login{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding-top:70px;padding-bottom:40px}
+.login-phone{border-color:#374151}
+.login-phone:focus{border-color:var(--blue)}
+.btn-tlm.is-loading{opacity:.9;pointer-events:none;background:var(--blue-50)}
+.spin{animation:tlm-spin .8s linear infinite}
+@keyframes tlm-spin{to{transform:rotate(360deg)}}
+.login-back{position:absolute;top:24px;left:20px}
+.login-t{text-align:center;margin-top:24px;font-size:30px}
+.login-sub{text-align:center;font-size:16px;color:var(--muted);margin-top:6px}
+.login-btn{height:40px;font-size:14px;margin-top:12px;border-radius:8px}
 
 /* ---------- 12. Students (Lesson Plan) ---------- */
 .gh{font-size:13.5px;font-weight:600;color:var(--ink);margin:14px 0 6px}.gh span{font-weight:400;color:var(--faint);font-size:12px}

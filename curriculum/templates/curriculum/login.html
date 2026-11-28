@@ -4,18 +4,42 @@
 {% block body_class %}no-top{% endblock %}
 {% block content %}
 <style>.no-top{padding-top:0}</style>
-<form method="post" action="{% url 'curriculum:login' %}" class="page" style="padding-top:44px">
+<form method="post" action="{% url 'curriculum:login' %}" class="page login" id="login-form">
   {% csrf_token %}
-  <a href="{% url 'curriculum:dashboard' %}" class="nb" style="height:40px;padding:0 14px"><svg class="ic"><use href="#i-chevron-left"/></svg>Rudi</a>
-  <div class="login-logo"><svg class="ic" style="width:110px;height:110px;stroke-width:1.4"><use href="#i-book-open"/></svg></div>
-  <h1 style="text-align:center;margin-top:26px;font-size:24px">Karibu Tena</h1>
-  <p class="page-sub" style="text-align:center">Ingia kwenye akaunti yako.</p>
-  <div class="f" style="margin-top:22px"><div class="lb" style="font-weight:600;color:var(--ink)">Namba ya Simu</div>
-    <div style="position:relative"><svg class="ic" style="position:absolute;left:12px;top:10px;color:var(--muted)"><use href="#i-phone"/></svg>
-      <input class="tlm-input" style="height:46px;padding-left:42px" name="phone" inputmode="tel" placeholder="0712 345 678" required></div>
+  <a href="{% url 'curriculum:dashboard' %}" class="nb login-back"><svg class="ic ic-sm"><use href="#i-chevron-left"/></svg>Rudi</a>
+  <div class="login-logo"><svg class="ic" style="width:92px;height:92px;stroke-width:1.5"><use href="#i-book-open"/></svg></div>
+  <h1 class="login-t">Karibu Tena</h1>
+  <p class="login-sub">Ingia kwenye akaunti yako.</p>
+  <div class="f" style="margin-top:28px"><div class="lb" style="font-weight:600;color:var(--ink)">Namba ya Simu</div>
+    <div style="position:relative"><svg class="ic ic-sm" style="position:absolute;left:12px;top:12px;color:var(--muted)"><use href="#i-phone"/></svg>
+      <input class="tlm-input login-phone" style="padding-left:38px" name="phone" inputmode="tel" placeholder="0712 345 678" required></div>
     {% if form.errors %}<div class="err-text">Namba hii haijasajiliwa.</div>{% endif %}</div>
-  <button class="btn-tlm solid" style="height:46px;margin-top:14px;border-radius:8px"><svg class="ic"><use href="#i-log-in"/></svg>Ingia</button>
-  <a href="{% url 'curriculum:teacher_register' %}" class="btn-tlm" style="height:46px;margin-top:12px;border-radius:8px;border-color:var(--blue-200)">Jisajili sasa</a>
+  <button class="btn-tlm login-btn" id="login-btn"><svg class="ic ic-sm"><use href="#i-log-in"/></svg>Ingia</button>
+  <a href="{% url 'curriculum:teacher_register' %}" class="btn-tlm grey login-btn">Jisajili sasa</a>
   {# NOTE: there is intentionally NO "Umesahau namba?" link. #}
 </form>
+{% endblock %}
+{% block scripts %}
+<script>
+// Show clearly that we are signing in: spinner + "Inaingia…" in the button, button disabled, blue bar at the top.
+document.getElementById('login-form').addEventListener('submit', e => {
+  const f = e.target, b = document.getElementById('login-btn');
+  if (!f.phone.value.trim()) return;
+  b.classList.add('is-loading');
+  b.disabled = true;
+  b.innerHTML = '<svg class="ic ic-sm spin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="#BFD0F5" stroke-width="2.6" fill="none"/><path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>Inaingia…';
+  let bar = document.getElementById('nav-progress');
+  if (!bar) { bar = document.createElement('div'); bar.id = 'nav-progress'; document.body.appendChild(bar); }
+  bar.classList.add('on');
+  let w = 20; bar.style.width = w + '%';
+  setInterval(() => { w += (90 - w) * 0.1; bar.style.width = w + '%'; }, 150);
+});
+// Back button from the browser cache: reset the button
+window.addEventListener('pageshow', () => {
+  const b = document.getElementById('login-btn');
+  b.disabled = false;
+  b.classList.remove('is-loading');
+  b.innerHTML = '<svg class="ic ic-sm"><use href="#i-log-in"/></svg>Ingia';
+});
+</script>
 {% endblock %}
